@@ -75,24 +75,29 @@ let selectedBotColor = 'b';
 const botEnabledInput = document.getElementById('botEnabled');
 const botOptions = document.getElementById('botOptions');
 const botColorOptions = document.getElementById('botColorOptions');
-botEnabledInput.onchange = () => {
-  botEnabled = botEnabledInput.checked;
-  botOptions.hidden = !botEnabled;
-  botColorOptions.hidden = !botEnabled;
-};
+function setBotEnabled(on) {
+  botEnabled = on;
+  botEnabledInput.checked = on;
+  if (!on) {
+    document.querySelectorAll('#botOptions .tc-btn, #botColorOptions .tc-btn').forEach((b) => b.classList.remove('active'));
+  }
+}
+botEnabledInput.onchange = () => setBotEnabled(botEnabledInput.checked);
+
 document.querySelectorAll('#botOptions .tc-btn').forEach((btn) => {
   btn.onclick = () => {
     document.querySelectorAll('#botOptions .tc-btn').forEach((b) => b.classList.remove('active'));
     btn.classList.add('active');
     selectedBotDifficulty = btn.dataset.bd;
+    setBotEnabled(true);
   };
 });
 document.querySelectorAll('#botColorOptions .tc-btn').forEach((btn) => {
   btn.onclick = () => {
     document.querySelectorAll('#botColorOptions .tc-btn').forEach((b) => b.classList.remove('active'));
     btn.classList.add('active');
-    // Bot color = opposite of user's choice
     selectedBotColor = btn.dataset.bc === 'w' ? 'b' : 'w';
+    setBotEnabled(true);
   };
 });
 
