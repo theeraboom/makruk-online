@@ -59,6 +59,12 @@ socket.on('room_state', (state) => {
   gameType = state.gameType || 'chess';
   const labelEl = document.getElementById('roomGameTypeLabel');
   if (labelEl) labelEl.textContent = gameType === 'checkers' ? 'หมากฮอสไทย' : 'หมากรุกไทย';
+  const chessRules = document.getElementById('chessRulesList');
+  const checkersRules = document.getElementById('checkersRulesList');
+  if (chessRules && checkersRules) {
+    chessRules.hidden = gameType === 'checkers';
+    checkersRules.hidden = gameType !== 'checkers';
+  }
   board = state.board;
   currentPlayer = state.currentPlayer;
   status = state.status;

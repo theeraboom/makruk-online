@@ -894,6 +894,87 @@ body[data-board-theme="gray"] { --sq-light: #FFFFFF; --sq-dark: #B8B8B8; --sq-se
   100% { opacity: 0; transform: translateY(-450px) scale(0.7) rotate(10deg); }
 }
 
+/* ============ SEO content section (lobby) ============ */
+.seo-intro {
+  margin-top: 32px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 720px) {
+  .seo-intro { grid-template-columns: 1fr; }
+}
+.seo-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px 28px;
+  box-shadow: var(--shadow-xs);
+}
+.seo-card h2 {
+  margin: 0 0 12px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+}
+.seo-card p {
+  margin: 0 0 12px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-2);
+}
+.seo-card a {
+  color: var(--primary);
+  font-weight: 600;
+}
+.seo-card a:hover { text-decoration: underline; }
+.seo-card ul {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+}
+.seo-card ul li {
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: var(--text-2);
+  line-height: 1.6;
+}
+.seo-features { grid-column: 1 / -1; }
+
+/* ============ FAQ items (rules page) ============ */
+.faq-item {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin-bottom: 10px;
+}
+.faq-item summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text);
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+}
+.faq-item summary::-webkit-details-marker { display: none; }
+.faq-item summary::before {
+  content: '▸';
+  transition: transform 0.2s;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+.faq-item[open] summary::before { transform: rotate(90deg); }
+.faq-item p {
+  margin: 12px 0 0;
+  padding-left: 24px;
+  color: var(--text-2);
+  line-height: 1.7;
+  font-size: 14px;
+}
+
 /* ============ Footer ============ */
 footer {
   margin-top: 48px;
