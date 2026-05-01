@@ -99,7 +99,7 @@ socket.on('room_state', (state) => {
 
   if (moves.length > lastMoveCount && prevStatus === 'playing') {
     const lastMove = moves[moves.length - 1];
-    if (lastMove.piece && lastMove.piece[0] !== myRole) playSound('move');
+    playSound(lastMove && lastMove.capture ? 'capture' : 'move');
   }
   lastMoveCount = moves.length;
 
@@ -510,6 +510,16 @@ soundBtn.onclick = () => {
 };
 
 let audioCtx = null;
+let noiseBuffer = null;
+function getNoiseBuffer(ctx) {
+  if (noiseBuffer) return noiseBuffer;
+  const buf = ctx.createBuffer(1, ctx.sampleRate * 0.3, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+  noiseBuffer = buf;
+  return buf;
+}
+
 function playSound(type) {
   if (!soundEnabled) return;
   try {
@@ -517,8 +527,10 @@ function playSound(type) {
     const ctx = audioCtx;
     const now = ctx.currentTime;
     if (type === 'move') {
-      tone(ctx, now, 600, 0.08);
-      tone(ctx, now + 0.05, 800, 0.08);
+      woodClick(ctx, now, 0.9);
+    } else if (type === 'capture') {
+      woodClick(ctx, now, 1.2);
+      woodClick(ctx, now + 0.04, 0.7);
     } else if (type === 'chat') {
       tone(ctx, now, 880, 0.06);
     } else if (type === 'end') {
@@ -528,6 +540,51 @@ function playSound(type) {
     }
   } catch (e) {}
 }
+
+function woodClick(ctx, when, intensity) {
+  intensity = intensity || 1;
+  // Low "thud" — deep wood resonance
+  const osc = ctx.createOscillator();
+  const oscGain = ctx.createGain();
+  osc.frequency.setValueAtTime(150, when);
+  osc.frequency.exponentialRampToValueAtTime(60, when + 0.08);
+  osc.type = 'triangle';
+  oscGain.gain.setValueAtTime(0, when);
+  oscGain.gain.linearRampToValueAtTime(0.35 * intensity, when + 0.003);
+  oscGain.gain.exponentialRampToValueAtTime(0.001, when + 0.15);
+  osc.connect(oscGain).connect(ctx.destination);
+  osc.start(when);
+  osc.stop(when + 0.16);
+
+  // Mid "click" — sharp attack via filtered noise
+  const noise = ctx.createBufferSource();
+  noise.buffer = getNoiseBuffer(ctx);
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.frequency.value = 1200;
+  filter.Q.value = 3;
+  const noiseGain = ctx.createGain();
+  noiseGain.gain.setValueAtTime(0, when);
+  noiseGain.gain.linearRampToValueAtTime(0.18 * intensity, when + 0.002);
+  noiseGain.gain.exponentialRampToValueAtTime(0.001, when + 0.06);
+  noise.connect(filter).connect(noiseGain).connect(ctx.destination);
+  noise.start(when);
+  noise.stop(when + 0.08);
+
+  // High-end snap (click sharpness)
+  const noise2 = ctx.createBufferSource();
+  noise2.buffer = getNoiseBuffer(ctx);
+  const filter2 = ctx.createBiquadFilter();
+  filter2.type = 'highpass';
+  filter2.frequency.value = 3000;
+  const noise2Gain = ctx.createGain();
+  noise2Gain.gain.setValueAtTime(0.08 * intensity, when);
+  noise2Gain.gain.exponentialRampToValueAtTime(0.001, when + 0.025);
+  noise2.connect(filter2).connect(noise2Gain).connect(ctx.destination);
+  noise2.start(when);
+  noise2.stop(when + 0.03);
+}
+
 function tone(ctx, when, freq, dur) {
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
