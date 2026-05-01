@@ -5,8 +5,17 @@ const fs = require('fs');
 const { Server } = require('socket.io');
 const Chess = require('./public/chess.js');
 const Checkers = require('./public/checkers.js');
-const ENGINES = { chess: Chess, checkers: Checkers };
-const ALLOWED_GAME_TYPES = ['chess', 'checkers'];
+const ChessIntl = require('./public/chess-intl.js');
+const CheckersIntl = require('./public/checkers-intl.js');
+const ENGINES = {
+  chess: Chess,
+  checkers: Checkers,
+  'chess-intl': ChessIntl,
+  'checkers-intl': CheckersIntl,
+};
+const ALLOWED_GAME_TYPES = ['chess', 'checkers', 'chess-intl', 'checkers-intl'];
+const CHECKERS_TYPES = ['checkers', 'checkers-intl'];
+const CHESS_TYPES = ['chess', 'chess-intl'];
 
 const app = express();
 const server = http.createServer(app);
@@ -20,7 +29,7 @@ const ALLOWED_TIME_INCREMENT = [0, 2, 3, 5, 10, 15, 30];
 function buildInitialMatchState(gameType, timeBase, timeIncrement) {
   const ms = timeBase ? timeBase * 60 * 1000 : null;
   const engine = ENGINES[gameType] || Chess;
-  return {
+  const state = {
     gameType,
     board: engine.initialBoard(),
     currentPlayer: 'w',
@@ -34,6 +43,11 @@ function buildInitialMatchState(gameType, timeBase, timeIncrement) {
     endedWinner: null,
     mustContinueFrom: null,
   };
+  if (gameType === 'chess-intl') {
+    state.castling = { wK: true, wQ: true, bK: true, bQ: true };
+    state.enPassant = null;
+  }
+  return state;
 }
 
 function deductTime(room) {
@@ -184,6 +198,8 @@ function broadcastRoomState(roomId) {
     endedWinner: room.endedWinner,
     isPrivate: !!room.password,
     mustContinueFrom: room.mustContinueFrom,
+    castling: room.castling || null,
+    enPassant: room.enPassant || null,
   });
 }
 
@@ -216,7 +232,13 @@ io.on('connection', (socket) => {
     const validBase = ALLOWED_TIME_BASE.includes(p.timeBase) ? p.timeBase : null;
     const validInc = ALLOWED_TIME_INCREMENT.includes(p.timeIncrement) ? p.timeIncrement : 0;
     const password = (typeof p.password === 'string' && p.password.trim()) ? p.password.trim().slice(0, 40) : null;
-    const defaultName = gameType === 'checkers' ? 'วงหมากฮอสไทย' : 'วงหมากรุกไทย';
+    const defaultNames = {
+      'chess': 'วงหมากรุกไทย',
+      'checkers': 'วงหมากฮอสไทย',
+      'chess-intl': 'วงหมากรุกสากล',
+      'checkers-intl': 'วงหมากฮอสสากล',
+    };
+    const defaultName = defaultNames[gameType] || 'วงหมากรุก';
     const room = {
       id,
       name: (typeof p.name === 'string' && p.name.trim()) ? p.name.trim().slice(0, 40) : defaultName,
@@ -287,12 +309,17 @@ io.on('connection', (socket) => {
     }
 
     let legal;
-    if (room.gameType === 'checkers') {
+    let chessIntlCtx = null;
+    if (CHECKERS_TYPES.includes(room.gameType)) {
       legal = engine.getLegalMoves(room.board, from.r, from.c, room.currentPlayer, room.mustContinueFrom);
+    } else if (room.gameType === 'chess-intl') {
+      chessIntlCtx = { castling: room.castling, enPassant: room.enPassant };
+      legal = engine.getLegalMoves(room.board, from.r, from.c, chessIntlCtx);
     } else {
       legal = engine.getLegalMoves(room.board, from.r, from.c);
     }
-    if (!legal.some(m => m.r === to.r && m.c === to.c)) {
+    const moveInfo = legal.find(m => m.r === to.r && m.c === to.c);
+    if (!moveInfo) {
       socket.emit('error_msg', 'เดินไม่ได้'); return;
     }
 
@@ -310,11 +337,33 @@ io.on('connection', (socket) => {
     let captured = false;
     let promoted = false;
 
-    if (room.gameType === 'checkers') {
+    if (CHECKERS_TYPES.includes(room.gameType)) {
       const result = engine.applyMove(room.board, from.r, from.c, to.r, to.c);
       room.board = result.newBoard;
       captured = result.captured;
       promoted = result.promoted;
+    } else if (room.gameType === 'chess-intl') {
+      const targetBefore = room.board[to.r][to.c];
+      captured = !!targetBefore || !!moveInfo.enPassant;
+      room.board = engine.applyMove(room.board, from.r, from.c, to.r, to.c, moveInfo);
+      promoted = (movingPiece === 'wP' && to.r === 0) || (movingPiece === 'bP' && to.r === 7);
+      // Update castling rights
+      if (movingPiece === 'wK') { room.castling.wK = false; room.castling.wQ = false; }
+      if (movingPiece === 'bK') { room.castling.bK = false; room.castling.bQ = false; }
+      if (movingPiece === 'wR' && from.r === 7 && from.c === 0) room.castling.wQ = false;
+      if (movingPiece === 'wR' && from.r === 7 && from.c === 7) room.castling.wK = false;
+      if (movingPiece === 'bR' && from.r === 0 && from.c === 0) room.castling.bQ = false;
+      if (movingPiece === 'bR' && from.r === 0 && from.c === 7) room.castling.bK = false;
+      if (to.r === 7 && to.c === 0) room.castling.wQ = false;
+      if (to.r === 7 && to.c === 7) room.castling.wK = false;
+      if (to.r === 0 && to.c === 0) room.castling.bQ = false;
+      if (to.r === 0 && to.c === 7) room.castling.bK = false;
+      if (moveInfo.doublePawn) {
+        const dir = movingPiece === 'wP' ? -1 : 1;
+        room.enPassant = { r: from.r + dir, c: from.c };
+      } else {
+        room.enPassant = null;
+      }
     } else {
       const targetBefore = room.board[to.r][to.c];
       captured = !!targetBefore;
@@ -327,12 +376,15 @@ io.on('connection', (socket) => {
       piece: movingPiece,
       capture: captured,
       promoted,
-      notation: engine.moveNotation(movingPiece, from, to, captured, promoted),
+      notation: engine.moveNotation(movingPiece, from, to, captured, promoted, moveInfo),
       time: Date.now(),
+      special: (moveInfo && (moveInfo.castle || moveInfo.enPassant || moveInfo.doublePawn)) ? {
+        castle: moveInfo.castle, enPassant: moveInfo.enPassant, doublePawn: moveInfo.doublePawn
+      } : null,
     });
 
     let switchTurn = true;
-    if (room.gameType === 'checkers' && captured) {
+    if (CHECKERS_TYPES.includes(room.gameType) && captured) {
       if (engine.canContinueCapture(room.board, to.r, to.c)) {
         room.mustContinueFrom = { r: to.r, c: to.c };
         switchTurn = false;
@@ -348,11 +400,16 @@ io.on('connection', (socket) => {
       room.currentPlayer = room.currentPlayer === 'w' ? 'b' : 'w';
     }
 
-    const status = engine.gameStatus(room.board, room.currentPlayer);
+    let status;
+    if (room.gameType === 'chess-intl') {
+      status = engine.gameStatus(room.board, room.currentPlayer, { castling: room.castling, enPassant: room.enPassant });
+    } else {
+      status = engine.gameStatus(room.board, room.currentPlayer);
+    }
     if (status.ended) {
       endGame(room, status.reason, status.winner);
       let text;
-      if (room.gameType === 'checkers') {
+      if (CHECKERS_TYPES.includes(room.gameType)) {
         text = status.reason === 'no_pieces'
           ? `🏆 ${status.winner === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} ชนะ — เก็บหมากหมด!`
           : `🏆 ${status.winner === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} ชนะ — อีกฝ่ายเดินไม่ได้`;

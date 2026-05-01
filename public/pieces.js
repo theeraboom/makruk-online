@@ -23,7 +23,7 @@
   function renderPiece(piece, gameType, pieceSet) {
     if (!piece) return '';
     const type = piece[1];
-    if (gameType === 'checkers') {
+    if (gameType === 'checkers' || gameType === 'checkers-intl') {
       return CHECKERS_UNICODE[piece] || '';
     }
     if (pieceSet === 'thai-carved') {

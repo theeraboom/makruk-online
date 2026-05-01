@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>เล่นหมากรุก หมากฮอส ออนไลน์ - นั่งเล่น ยืนดู คุยกันสนุกๆ บรรยากาศเป็นกันเอง</title>
-<meta name="description" content="เล่นหมากรุกไทยและหมากฮอสไทยออนไลน์ฟรี กับเพื่อนหรือคนทั่วไทย ไม่ต้องสมัคร เปิดวงเล่น 2 คน คนอื่นเข้าดูได้ พร้อมแชทสด บรรยากาศเหมือนเล่นข้างถนน">
-<meta name="keywords" content="หมากรุกไทย, หมากฮอสไทย, หมากรุกออนไลน์, หมากฮอสออนไลน์, Makruk, Makhos, Thai chess, Thai draughts, เล่นหมากรุก, เล่นหมากฮอส, makruk online, เกมหมากรุก, เกมหมากฮอส">
+<meta name="description" content="เล่นหมากรุกไทย หมากรุกสากล หมากฮอสไทย และหมากฮอสสากล ออนไลน์ฟรี กับเพื่อนหรือคนทั่วไทย ไม่ต้องสมัคร เปิดวงเล่น 2 คน คนอื่นเข้าดูได้ พร้อมแชทสด บรรยากาศเป็นกันเอง">
+<meta name="keywords" content="หมากรุกไทย, หมากรุกสากล, หมากฮอสไทย, หมากฮอสสากล, หมากรุกออนไลน์, หมากฮอสออนไลน์, Makruk, Makhos, Chess, Checkers, Draughts, Thai chess, International chess, English checkers, เล่นหมากรุก, เล่นหมากฮอส, makruk online, เกมหมากรุก, เกมหมากฮอส">
 <meta name="author" content="theeraboom">
 <meta name="theme-color" content="#B45309">
 <link rel="canonical" href="https://playmakruk.com/">
@@ -83,10 +83,28 @@
     {
       "@type": "Game",
       "position": 2,
+      "name": "หมากรุกสากล",
+      "alternateName": "International Chess",
+      "description": "หมากรุกฉบับสากล กระดาน 8x8 ฝ่ายละ 16 ตัว เบี้ยเริ่มแถว 2 มี Castling, En Passant, Pawn Promotion เลือกได้ Queen เดินไกลทุกทิศ",
+      "url": "https://playmakruk.com/rules.html#chess-intl",
+      "numberOfPlayers": "2"
+    },
+    {
+      "@type": "Game",
+      "position": 3,
       "name": "หมากฮอสไทย",
       "alternateName": "Makhos",
       "description": "หมากฮอสฉบับไทย กระดาน 8x8 ฝ่ายละ 8 ตัว 2 แถวบนช่องสีเข้ม บังคับกิน กินติดได้ หงายเป็นขุนบินไกล",
       "url": "https://playmakruk.com/rules.html#checkers",
+      "numberOfPlayers": "2"
+    },
+    {
+      "@type": "Game",
+      "position": 4,
+      "name": "หมากฮอสสากล",
+      "alternateName": "English Checkers / American Checkers",
+      "description": "หมากฮอสฉบับสากล กระดาน 8x8 ฝ่ายละ 12 ตัว 3 แถวบนช่องสีเข้ม บังคับกิน กินติดได้ ขุนเดินทแยง 1 ช่อง 4 ทิศ",
+      "url": "https://playmakruk.com/rules.html#checkers-intl",
       "numberOfPlayers": "2"
     }
   ]
@@ -126,7 +144,9 @@
           <span class="tc-label">🎲 ประเภทเกม</span>
           <div class="tc-options" id="gameTypeOptions">
             <button type="button" class="tc-btn active" data-gt="chess">♛ หมากรุกไทย</button>
+            <button type="button" class="tc-btn" data-gt="chess-intl">♚ หมากรุกสากล</button>
             <button type="button" class="tc-btn" data-gt="checkers">⛂ หมากฮอสไทย</button>
+            <button type="button" class="tc-btn" data-gt="checkers-intl">⛀ หมากฮอสสากล</button>
           </div>
         </div>
 
@@ -201,9 +221,11 @@
         </div>
 
         <div class="info-card">
-          <h3>♟ กฎหมากรุกไทยและหมากฮอสไทย ฉบับย่อ</h3>
-          <p><strong>♛ หมากรุกไทย:</strong> เบี้ยเริ่มแถว 3 ถึงแถว 6 เลื่อนเป็นเม็ด, เม็ดเดินทแยง 1 ช่อง, โคนเดินทแยง 4 ทิศ + ตรงหน้า 1 ช่อง</p>
-          <p><strong>⛂ หมากฮอสไทย:</strong> ฝ่ายละ 8 ตัว 2 แถวบนช่องสีเข้ม เดิน/กินทแยงไปข้างหน้า (ถอยหลังกินไม่ได้) บังคับกินถ้ามีโอกาส กินติดได้ — เดินถึงแถวสุดท้าย "เข้าฮอส" หงายเป็นขุนบินไกล + กินได้ 4 ทิศ</p>
+          <h3>♟ กฎทั้ง 4 เกม ฉบับย่อ</h3>
+          <p><strong>♛ หมากรุกไทย:</strong> 16 ตัว เบี้ยเริ่มแถว 3 เม็ดทแยง 1 ช่อง โคนทแยง 4 ทิศ + ตรงหน้า 1 มีนับศักดิ์</p>
+          <p><strong>♚ หมากรุกสากล:</strong> 16 ตัว เบี้ยเริ่มแถว 2 Queen ไกลทุกทิศ มี Castling, En Passant, เลื่อนเลือกได้ 4 ตัว</p>
+          <p><strong>⛂ หมากฮอสไทย:</strong> 8 ตัว 2 แถว เดินทแยงข้างหน้า บังคับกิน + กินติด เข้าฮอสเป็นขุนบินไกล</p>
+          <p><strong>⛀ หมากฮอสสากล:</strong> 12 ตัว 3 แถว กฎคล้ายไทย แต่ขุนเดิน 1 ช่อง 4 ทิศ ไม่บินไกล</p>
           <p><a href="/rules.html">อ่านประวัติและกติกาเต็ม →</a></p>
         </div>
 
@@ -215,29 +237,40 @@
 
     <section class="seo-intro">
       <div class="seo-card">
-        <h2>♛ เล่นหมากรุกไทยออนไลน์</h2>
-        <p>หมากรุกไทย (Makruk) คือเกมหมากกระดานพื้นบ้านของไทย สืบทอดมาแต่โบราณ มีบรรพบุรุษร่วมกับหมากรุกสากลคือเกมจตุรงค์ของอินเดีย เล่นบนกระดาน 8×8 ฝ่ายละ 16 ตัว — <strong>ขุน</strong>, <strong>เม็ด</strong>, <strong>โคน</strong>, <strong>ม้า</strong>, <strong>เรือ</strong>, <strong>เบี้ย</strong>. เป้าหมายคือ <strong>"รุกจน"</strong> ขุนของฝ่ายตรงข้าม</p>
-        <p>เด่นกว่าหมากรุกสากลตรงที่เม็ดเดินทแยง 1 ช่อง โคนเดินทแยง 4 ทิศ + ตรงหน้า 1 ช่อง เบี้ยเริ่มแถว 3 ไม่มี castling ไม่มี en passant และมี<strong>กฎนับศักดิ์</strong>เพื่อจบเกมที่ลากยาว</p>
-        <p><a href="/rules.html#chess">อ่านกฎหมากรุกไทยฉบับเต็ม →</a></p>
+        <h2>♛ หมากรุกไทย</h2>
+        <p>เกมหมากกระดานพื้นบ้านของไทย กระดาน 8×8 ฝ่ายละ 16 ตัว — <strong>ขุน เม็ด โคน ม้า เรือ เบี้ย</strong>. เบี้ยเริ่มแถว 3 เม็ดเดินทแยง 1 ช่อง โคนเดินทแยง 4 ทิศ + ตรงหน้า 1 ช่อง มี<strong>กฎนับศักดิ์</strong>เพื่อจบเกมยืดยาว</p>
+        <p><a href="/rules.html#chess">อ่านกฎหมากรุกไทย →</a></p>
       </div>
 
       <div class="seo-card">
-        <h2>⛂ เล่นหมากฮอสไทยออนไลน์</h2>
-        <p>หมากฮอสไทย (Makhos / Thai Draughts) เป็นเกมข้างถนนยอดฮิตของไทย เห็นเล่นทุกตลาด ทุกร้านกาแฟ — เล่นง่าย กฎไม่กี่ข้อ แต่กลยุทธ์ลึก. ฝ่ายละ <strong>8 ตัว</strong> วาง 2 แถวบนช่องสีเข้มแบบสลับฟันปลา</p>
-        <p>หมากธรรมดาเดิน/กินทแยง<strong>ไปข้างหน้า</strong>เท่านั้น (ถอยหลังกินไม่ได้) มี<strong>กฎบังคับกิน</strong>และ<strong>กินติด</strong> เมื่อเดินถึงแถวสุดท้ายจะ<strong>"เข้าฮอส"</strong> หงายเป็นขุนที่บินทแยงไกลและกินได้ 4 ทิศ ฝ่ายที่กินหมากตรงข้ามหมดหรือทำให้อีกฝ่ายเดินไม่ได้คือผู้ชนะ</p>
-        <p><a href="/rules.html#checkers">อ่านกฎหมากฮอสไทยฉบับเต็ม →</a></p>
+        <h2>♚ หมากรุกสากล</h2>
+        <p>หมากรุกที่นิยมที่สุดในโลก กระดาน 8×8 ฝ่ายละ 16 ตัว — <strong>King, Queen, Bishop, Knight, Rook, Pawn</strong>. เบี้ยเริ่มแถว 2 มี <strong>Castling</strong>, <strong>En Passant</strong>, เลื่อนเบี้ยเลือกได้ 4 ตัว Queen เดินไกลทุกทิศ ดูแลโดย FIDE</p>
+        <p><a href="/rules.html#chess-intl">อ่านกฎหมากรุกสากล →</a></p>
+      </div>
+
+      <div class="seo-card">
+        <h2>⛂ หมากฮอสไทย</h2>
+        <p>เกมข้างถนนยอดฮิต กระดาน 8×8 ฝ่ายละ <strong>8 ตัว</strong> 2 แถวบนช่องสีเข้ม หมากธรรมดากินทแยงข้างหน้าเท่านั้น มี<strong>บังคับกิน + กินติด</strong> เมื่อเดินถึงแถวสุดท้าย<strong>"เข้าฮอส"</strong> หงายเป็นขุนบินไกล</p>
+        <p><a href="/rules.html#checkers">อ่านกฎหมากฮอสไทย →</a></p>
+      </div>
+
+      <div class="seo-card">
+        <h2>⛀ หมากฮอสสากล</h2>
+        <p>English Checkers (American Checkers) กระดาน 8×8 ฝ่ายละ <strong>12 ตัว</strong> 3 แถวบนช่องสีเข้ม กฎคล้ายหมากฮอสไทยแต่ <strong>King เดินทแยง 1 ช่อง 4 ทิศ</strong> (ไม่บินไกล) — เป็นเกมที่คอมพิวเตอร์ "แก้ได้" แล้วในปี 2007</p>
+        <p><a href="/rules.html#checkers-intl">อ่านกฎหมากฮอสสากล →</a></p>
       </div>
 
       <div class="seo-card seo-features">
         <h2>ทำไมต้อง Playmakruk?</h2>
         <ul>
+          <li>✓ <strong>4 เกมในที่เดียว</strong> — หมากรุกไทย, หมากรุกสากล, หมากฮอสไทย, หมากฮอสสากล</li>
           <li>✓ <strong>ฟรี 100%</strong> ไม่ต้องสมัคร ไม่มีค่าใช้จ่าย</li>
           <li>✓ <strong>เล่นได้ทุกอุปกรณ์</strong> — มือถือ แท็บเล็ต คอม</li>
-          <li>✓ <strong>มีผู้ชมยืนดู</strong> — เหมือนวงหมากรุกข้างถนน คนรอบข้างคุยเชียร์ได้</li>
+          <li>✓ <strong>มีผู้ชมยืนดู</strong> — เหมือนวงหมากรุกข้างถนน คุยเชียร์กันได้ในแชทสด</li>
           <li>✓ <strong>ตั้งเวลาแบบมาตรฐานแข่งขัน</strong> — Fischer increment เลือกได้</li>
           <li>✓ <strong>ห้องส่วนตัว</strong> — ตั้งรหัสห้อง เล่นกับเพื่อนเฉพาะ</li>
-          <li>✓ <strong>5 ธีมกระดาน</strong> — ไม้ เขียว น้ำเงิน ม่วง เทา</li>
-          <li>✓ <strong>ตรวจกฎอัตโนมัติ</strong> — รุก รุกจน นับศักดิ์ บังคับกิน กินติด หงาย ครบทุกอย่าง</li>
+          <li>✓ <strong>5 ธีมกระดาน + 4 ตัวหมาก</strong> — ไม้ เขียว น้ำเงิน ม่วง เทา / คลาสสิก ไทยแกะสลัก อักษรไทย โครงเส้น</li>
+          <li>✓ <strong>ตรวจกฎอัตโนมัติ</strong> — รุก รุกจน นับศักดิ์ Castling En Passant บังคับกิน กินติด หงาย ครบทุกอย่าง</li>
         </ul>
       </div>
     </section>

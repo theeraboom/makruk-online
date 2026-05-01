@@ -5,8 +5,14 @@ const CHESS_SYMBOLS = {
 const CHECKERS_SYMBOLS = {
   'wM': '⛂', 'wK': '⛃', 'bM': '⛂', 'bK': '⛃'
 };
-function getEngine() { return gameType === 'checkers' ? Checkers : Chess; }
-function getSymbols() { return gameType === 'checkers' ? CHECKERS_SYMBOLS : CHESS_SYMBOLS; }
+function getEngine() {
+  if (gameType === 'checkers') return Checkers;
+  if (gameType === 'checkers-intl') return CheckersIntl;
+  if (gameType === 'chess-intl') return ChessIntl;
+  return Chess;
+}
+function isCheckersGame() { return gameType === 'checkers' || gameType === 'checkers-intl'; }
+function getSymbols() { return isCheckersGame() ? CHECKERS_SYMBOLS : CHESS_SYMBOLS; }
 
 const params = new URLSearchParams(window.location.search);
 const roomId = params.get('id');
@@ -24,6 +30,8 @@ let flipped = false;
 let chatMsgCount = 0;
 let gameType = 'chess';
 let mustContinueFrom = null;
+let chessCastling = null;
+let chessEnPassant = null;
 let timeBase = null;
 let timeIncrement = 0;
 let whiteTime = null;
@@ -59,19 +67,22 @@ socket.on('room_state', (state) => {
   const prevStatus = status;
   gameType = state.gameType || 'chess';
   const labelEl = document.getElementById('roomGameTypeLabel');
-  if (labelEl) labelEl.textContent = gameType === 'checkers' ? 'หมากฮอสไทย' : 'หมากรุกไทย';
+  const gameLabels = { 'chess': 'หมากรุกไทย', 'chess-intl': 'หมากรุกสากล', 'checkers': 'หมากฮอสไทย', 'checkers-intl': 'หมากฮอสสากล' };
+  if (labelEl) labelEl.textContent = gameLabels[gameType] || 'Playmakruk';
   const chessRules = document.getElementById('chessRulesList');
   const checkersRules = document.getElementById('checkersRulesList');
   if (chessRules && checkersRules) {
-    chessRules.hidden = gameType === 'checkers';
-    checkersRules.hidden = gameType !== 'checkers';
+    chessRules.hidden = isCheckersGame();
+    checkersRules.hidden = !isCheckersGame();
   }
   const piecePicker = document.getElementById('piecePicker');
-  if (piecePicker) piecePicker.hidden = gameType === 'checkers';
+  if (piecePicker) piecePicker.hidden = isCheckersGame();
   board = state.board;
   currentPlayer = state.currentPlayer;
   status = state.status;
   mustContinueFrom = state.mustContinueFrom || null;
+  chessCastling = state.castling || null;
+  chessEnPassant = state.enPassant || null;
   timeBase = state.timeBase;
   timeIncrement = state.timeIncrement || 0;
   whiteTime = state.whiteTime;
@@ -241,7 +252,7 @@ function updateStatus() {
     if (mustContinueFrom && currentPlayer === myRole) {
       el.textContent = `${turnText} • กินต่อได้!`;
       el.classList.add('check');
-    } else if (gameType === 'chess' && Chess.isInCheck(board, currentPlayer)) {
+    } else if (!isCheckersGame() && getEngine().isInCheck && getEngine().isInCheck(board, currentPlayer)) {
       el.textContent = `${turnText} • ถูกรุก!`;
       el.classList.add('check');
     } else {
@@ -324,7 +335,7 @@ function render() {
 
   const symbols = getSymbols();
   const engine = getEngine();
-  const inCheck = gameType === 'chess' && engine.isInCheck && engine.isInCheck(board, currentPlayer);
+  const inCheck = !isCheckersGame() && engine.isInCheck && engine.isInCheck(board, currentPlayer);
   const kingPos = inCheck ? engine.findKing(board, currentPlayer) : null;
 
   for (let i = 0; i < 8; i++) {
@@ -344,7 +355,7 @@ function render() {
       if (piece) {
         sq.innerHTML = Pieces.renderPiece(piece, gameType, pieceSet);
         sq.classList.add(engine.pieceColor(piece) === 'w' ? 'piece-w' : 'piece-b');
-        if (gameType === 'checkers') sq.classList.add('checker-piece');
+        if (isCheckersGame()) sq.classList.add('checker-piece');
         else sq.classList.add('piece-set-' + pieceSet);
       }
 
@@ -402,8 +413,11 @@ function handleClick(r, c) {
 
 function legalMovesFor(r, c) {
   const engine = getEngine();
-  if (gameType === 'checkers') {
+  if (isCheckersGame()) {
     return engine.getLegalMoves(board, r, c, currentPlayer, mustContinueFrom);
+  }
+  if (gameType === 'chess-intl') {
+    return engine.getLegalMoves(board, r, c, { castling: chessCastling, enPassant: chessEnPassant });
   }
   return engine.getLegalMoves(board, r, c);
 }
@@ -455,8 +469,9 @@ document.getElementById('resignBtn').onclick = () => {
 
 document.getElementById('shareBtn').onclick = async () => {
   const url = window.location.href;
-  const gameLabel = gameType === 'checkers' ? 'หมากฮอส' : 'หมากรุก';
-  const text = `มาดูวง${gameLabel}ไทยที่ ${url}`;
+  const gameLabel = isCheckersGame() ? 'หมากฮอส' : 'หมากรุก';
+  const variantLabel = (gameType === 'chess-intl' || gameType === 'checkers-intl') ? 'สากล' : 'ไทย';
+  const text = `มาดูวง${gameLabel}${variantLabel}ที่ ${url}`;
   if (navigator.share) {
     try { await navigator.share({ title: 'Playmakruk', text, url }); return; } catch (e) {}
   }

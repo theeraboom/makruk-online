@@ -32,12 +32,18 @@ let selectedTimeBase = null;
 let selectedTimeIncrement = 0;
 let selectedGameType = 'chess';
 
+const GAME_TYPE_LABELS = {
+  'chess': 'วงหมากรุกไทย',
+  'chess-intl': 'วงหมากรุกสากล',
+  'checkers': 'วงหมากฮอสไทย',
+  'checkers-intl': 'วงหมากฮอสสากล',
+};
 document.querySelectorAll('#gameTypeOptions .tc-btn').forEach((btn) => {
   btn.onclick = () => {
     document.querySelectorAll('#gameTypeOptions .tc-btn').forEach((b) => b.classList.remove('active'));
     btn.classList.add('active');
     selectedGameType = btn.dataset.gt;
-    newRoomInput.placeholder = selectedGameType === 'checkers' ? 'ตั้งชื่อห้อง (วงหมากฮอส)' : 'ตั้งชื่อห้อง (วงหมากรุก)';
+    newRoomInput.placeholder = 'ตั้งชื่อห้อง (' + GAME_TYPE_LABELS[selectedGameType] + ')';
   };
 });
 
@@ -136,9 +142,13 @@ function renderRooms(rooms) {
     const tcPill = formatTimeControl(r.timeBase, r.timeIncrement);
     const tcPillHTML = tcPill ? `<span class="thumb-pill">⏱ ${tcPill}</span>` : '';
     const lockBadge = r.isPrivate ? '<span class="thumb-pill private">🔒 ส่วนตัว</span>' : '';
-    const gtBadge = r.gameType === 'checkers'
-      ? '<span class="thumb-pill game-type">⛂ หมากฮอส</span>'
-      : '<span class="thumb-pill game-type">♛ หมากรุก</span>';
+    const gtBadgeMap = {
+      'chess': '♛ หมากรุกไทย',
+      'chess-intl': '♚ หมากรุกสากล',
+      'checkers': '⛂ หมากฮอสไทย',
+      'checkers-intl': '⛀ หมากฮอสสากล',
+    };
+    const gtBadge = `<span class="thumb-pill game-type">${gtBadgeMap[r.gameType] || gtBadgeMap.chess}</span>`;
 
     card.innerHTML = `
       <div class="room-thumb">
@@ -191,7 +201,8 @@ function formatTimeControl(base, inc) {
 
 function renderMiniBoard(board, gameType) {
   if (!board) return '<div class="mini-board-empty">♟</div>';
-  const symbols = gameType === 'checkers' ? CHECKERS_SYMBOLS : CHESS_SYMBOLS;
+  const isCheckers = gameType === 'checkers' || gameType === 'checkers-intl';
+  const symbols = isCheckers ? CHECKERS_SYMBOLS : CHESS_SYMBOLS;
   let html = '<div class="mini-board">';
   for (let r = 0; r < 8; r++) {
     for (let c = 0; c < 8; c++) {
