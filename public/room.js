@@ -527,10 +527,9 @@ function playSound(type) {
     const ctx = audioCtx;
     const now = ctx.currentTime;
     if (type === 'move') {
-      woodTap(ctx, now, 0.9);
+      moveSound(ctx, now);
     } else if (type === 'capture') {
-      woodTap(ctx, now, 1.1);
-      woodTap(ctx, now + 0.05, 0.7);
+      captureSound(ctx, now);
     } else if (type === 'chat') {
       tone(ctx, now, 880, 0.06);
     } else if (type === 'end') {
@@ -541,48 +540,106 @@ function playSound(type) {
   } catch (e) {}
 }
 
-function woodTap(ctx, when, intensity) {
-  intensity = intensity || 1;
+// MOVE — short ringing tap (กังวาน, ไม่ทุ้ม)
+function moveSound(ctx, when) {
+  const I = 1.6;
 
-  // Mid wood body — bandpass noise burst (the main "tap" character)
-  const noise1 = ctx.createBufferSource();
-  noise1.buffer = getNoiseBuffer(ctx);
-  const filter1 = ctx.createBiquadFilter();
-  filter1.type = 'bandpass';
-  filter1.frequency.value = 900;
-  filter1.Q.value = 1.5;
-  const ng1 = ctx.createGain();
-  ng1.gain.setValueAtTime(0.45 * intensity, when);
-  ng1.gain.exponentialRampToValueAtTime(0.001, when + 0.05);
-  noise1.connect(filter1).connect(ng1).connect(ctx.destination);
-  noise1.start(when);
-  noise1.stop(when + 0.06);
+  // Sharp attack — high noise transient
+  const noise = ctx.createBufferSource();
+  noise.buffer = getNoiseBuffer(ctx);
+  const nFilter = ctx.createBiquadFilter();
+  nFilter.type = 'highpass';
+  nFilter.frequency.value = 1500;
+  const nG = ctx.createGain();
+  nG.gain.setValueAtTime(0.3 * I, when);
+  nG.gain.exponentialRampToValueAtTime(0.001, when + 0.018);
+  noise.connect(nFilter).connect(nG).connect(ctx.destination);
+  noise.start(when);
+  noise.stop(when + 0.025);
 
-  // Sharp click attack
+  // Main ring — short sine with subtle resonance
+  const osc1 = ctx.createOscillator();
+  const g1 = ctx.createGain();
+  osc1.frequency.setValueAtTime(900, when);
+  osc1.frequency.exponentialRampToValueAtTime(720, when + 0.13);
+  osc1.type = 'sine';
+  g1.gain.setValueAtTime(0, when);
+  g1.gain.linearRampToValueAtTime(0.4 * I, when + 0.002);
+  g1.gain.exponentialRampToValueAtTime(0.001, when + 0.16);
+  osc1.connect(g1).connect(ctx.destination);
+  osc1.start(when);
+  osc1.stop(when + 0.18);
+
+  // Higher harmonic — adds shimmer (ความกังวาน)
+  const osc2 = ctx.createOscillator();
+  const g2 = ctx.createGain();
+  osc2.frequency.setValueAtTime(1800, when);
+  osc2.frequency.exponentialRampToValueAtTime(1500, when + 0.08);
+  osc2.type = 'sine';
+  g2.gain.setValueAtTime(0, when);
+  g2.gain.linearRampToValueAtTime(0.18 * I, when + 0.002);
+  g2.gain.exponentialRampToValueAtTime(0.001, when + 0.1);
+  osc2.connect(g2).connect(ctx.destination);
+  osc2.start(when);
+  osc2.stop(when + 0.12);
+}
+
+// CAPTURE — heavy impact (กระแทก) + resonance
+function captureSound(ctx, when) {
+  const I = 1.6;
+
+  // Big punch — mid-bass thud (กระแทก)
+  const oscPunch = ctx.createOscillator();
+  const punchG = ctx.createGain();
+  oscPunch.frequency.setValueAtTime(220, when);
+  oscPunch.frequency.exponentialRampToValueAtTime(80, when + 0.07);
+  oscPunch.type = 'triangle';
+  punchG.gain.setValueAtTime(0, when);
+  punchG.gain.linearRampToValueAtTime(0.55 * I, when + 0.003);
+  punchG.gain.exponentialRampToValueAtTime(0.001, when + 0.13);
+  oscPunch.connect(punchG).connect(ctx.destination);
+  oscPunch.start(when);
+  oscPunch.stop(when + 0.14);
+
+  // Sharp impact noise — broad spectrum
+  const noise = ctx.createBufferSource();
+  noise.buffer = getNoiseBuffer(ctx);
+  const nFilter = ctx.createBiquadFilter();
+  nFilter.type = 'bandpass';
+  nFilter.frequency.value = 1500;
+  nFilter.Q.value = 0.8;
+  const nG = ctx.createGain();
+  nG.gain.setValueAtTime(0.45 * I, when);
+  nG.gain.exponentialRampToValueAtTime(0.001, when + 0.05);
+  noise.connect(nFilter).connect(nG).connect(ctx.destination);
+  noise.start(when);
+  noise.stop(when + 0.06);
+
+  // High snap
   const noise2 = ctx.createBufferSource();
   noise2.buffer = getNoiseBuffer(ctx);
-  const filter2 = ctx.createBiquadFilter();
-  filter2.type = 'highpass';
-  filter2.frequency.value = 2500;
-  const ng2 = ctx.createGain();
-  ng2.gain.setValueAtTime(0.15 * intensity, when);
-  ng2.gain.exponentialRampToValueAtTime(0.001, when + 0.018);
-  noise2.connect(filter2).connect(ng2).connect(ctx.destination);
+  const n2Filter = ctx.createBiquadFilter();
+  n2Filter.type = 'highpass';
+  n2Filter.frequency.value = 3500;
+  const n2G = ctx.createGain();
+  n2G.gain.setValueAtTime(0.18 * I, when);
+  n2G.gain.exponentialRampToValueAtTime(0.001, when + 0.02);
+  noise2.connect(n2Filter).connect(n2G).connect(ctx.destination);
   noise2.start(when);
   noise2.stop(when + 0.025);
 
-  // Subtle wood resonance — short triangle, no bell sustain
-  const osc = ctx.createOscillator();
-  const og = ctx.createGain();
-  osc.frequency.setValueAtTime(420, when);
-  osc.frequency.exponentialRampToValueAtTime(260, when + 0.04);
-  osc.type = 'triangle';
-  og.gain.setValueAtTime(0, when);
-  og.gain.linearRampToValueAtTime(0.16 * intensity, when + 0.002);
-  og.gain.exponentialRampToValueAtTime(0.001, when + 0.05);
-  osc.connect(og).connect(ctx.destination);
-  osc.start(when);
-  osc.stop(when + 0.06);
+  // Ringing aftermath — like piece sliding away
+  const osc1 = ctx.createOscillator();
+  const g1 = ctx.createGain();
+  osc1.frequency.setValueAtTime(700, when + 0.015);
+  osc1.frequency.exponentialRampToValueAtTime(520, when + 0.18);
+  osc1.type = 'sine';
+  g1.gain.setValueAtTime(0, when + 0.015);
+  g1.gain.linearRampToValueAtTime(0.3 * I, when + 0.02);
+  g1.gain.exponentialRampToValueAtTime(0.001, when + 0.22);
+  osc1.connect(g1).connect(ctx.destination);
+  osc1.start(when + 0.015);
+  osc1.stop(when + 0.23);
 }
 
 function tone(ctx, when, freq, dur) {
