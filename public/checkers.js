@@ -5,9 +5,12 @@
 
   function initialBoard() {
     const board = Array(8).fill(null).map(() => Array(8).fill(null));
-    for (let c = 0; c < 8; c++) {
-      board[1][c] = 'bM';
-      board[6][c] = 'wM';
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        if ((r + c) % 2 !== 1) continue;
+        if (r < 2) board[r][c] = 'bM';
+        else if (r > 5) board[r][c] = 'wM';
+      }
     }
     return board;
   }
