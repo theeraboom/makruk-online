@@ -137,8 +137,8 @@ function fmtFooterLobby(totalVisits, onlineUsers) {
 }
 socket.on('site_stats', ({ totalVisits, onlineUsers }) => {
   lastSiteStats = { totalVisits, onlineUsers };
-  const visitsEl = document.getElementById('statVisits');
-  if (visitsEl) visitsEl.textContent = totalVisits.toLocaleString(I18N.getLang() === 'th' ? 'th-TH' : 'en-US');
+  const onlineEl = document.getElementById('statOnline');
+  if (onlineEl) onlineEl.textContent = onlineUsers.toLocaleString(I18N.getLang() === 'th' ? 'th-TH' : 'en-US');
   const footer = document.getElementById('footerStats');
   if (footer) footer.innerHTML = fmtFooterLobby(totalVisits, onlineUsers);
 });
@@ -146,8 +146,8 @@ document.addEventListener('langchange', () => {
   if (lastSiteStats) {
     const f = document.getElementById('footerStats');
     if (f) f.innerHTML = fmtFooterLobby(lastSiteStats.totalVisits, lastSiteStats.onlineUsers);
-    const v = document.getElementById('statVisits');
-    if (v) v.textContent = lastSiteStats.totalVisits.toLocaleString(I18N.getLang() === 'th' ? 'th-TH' : 'en-US');
+    const o = document.getElementById('statOnline');
+    if (o) o.textContent = lastSiteStats.onlineUsers.toLocaleString(I18N.getLang() === 'th' ? 'th-TH' : 'en-US');
   }
   // Update placeholder when active button selected
   const activeBtn = document.querySelector('#gameTypeOptions .tc-btn.active');

@@ -18,6 +18,7 @@
       'stat.players': 'กำลังเล่น',
       'stat.viewers': 'กำลังดู',
       'stat.visits': 'ผู้เข้าชมทั้งหมด',
+      'stat.online': 'ออนไลน์ตอนนี้',
 
       // Create room
       'create.gameType': '🎲 ประเภทเกม',
@@ -150,6 +151,7 @@
       'stat.players': 'playing',
       'stat.viewers': 'watching',
       'stat.visits': 'total visitors',
+      'stat.online': 'online now',
 
       'create.gameType': '🎲 Game type',
       'gt.chess': '♛ Thai Chess',

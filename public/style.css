@@ -154,6 +154,10 @@ header {
   white-space: nowrap;
 }
 
+/* Lang-based content show/hide */
+html[lang="th"] [data-only="en"] { display: none !important; }
+html[lang="en"] [data-only="th"] { display: none !important; }
+
 .back-btn {
   padding: 8px 14px;
   background: var(--surface-2);
