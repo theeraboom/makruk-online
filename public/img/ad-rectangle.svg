@@ -52,8 +52,8 @@
   <g transform="translate(262, 84) rotate(-12)">
     <!-- 16-point starburst, outer 30 / inner 23 -->
     <path d="M0,-30 L5.4,-21.8 L14.6,-26.8 L13.2,-16.8 L23.4,-15.7 L16.8,-8.2 L23.9,-0.7 L14.6,2.1 L17.1,11.4 L7.9,8.6 L5.4,17.9 L0,10.7 L-5.4,17.9 L-7.9,8.6 L-17.1,11.4 L-14.6,2.1 L-23.9,-0.7 L-16.8,-8.2 L-23.4,-15.7 L-13.2,-16.8 L-14.6,-26.8 L-5.4,-21.8 Z" fill="url(#rcRed)" stroke="#FEF3C7" stroke-width="1.2"/>
-    <text x="0" y="-5" font-family="'Prompt','Sarabun',sans-serif" font-size="7" font-weight="800" fill="#FFFFFF" text-anchor="middle">NEW</text>
-    <text x="0" y="4" font-family="'Prompt','Sarabun',sans-serif" font-size="9" font-weight="900" fill="#FDE68A" text-anchor="middle">AI BOT</text>
+    <text x="0" y="-7" font-family="'Prompt','Sarabun',sans-serif" font-size="7" font-weight="800" fill="#FFFFFF" text-anchor="middle">NEW</text>
+    <text x="0" y="2" font-family="'Prompt','Sarabun',sans-serif" font-size="9" font-weight="900" fill="#FDE68A" text-anchor="middle">AI BOT</text>
   </g>
 
   <!-- Robot + AI BOT headline -->
