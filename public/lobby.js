@@ -93,7 +93,7 @@ socket.on('site_stats', ({ totalVisits, onlineUsers }) => {
   if (visitsEl) visitsEl.textContent = totalVisits.toLocaleString('th-TH');
   const footer = document.getElementById('footerStats');
   if (footer) {
-    footer.innerHTML = `© 2026 หมากรุกไทยออนไลน์ — ผู้เข้าชมทั้งหมด <strong>${totalVisits.toLocaleString('th-TH')}</strong> ครั้ง • ออนไลน์ตอนนี้ <strong>${onlineUsers.toLocaleString('th-TH')}</strong> คน`;
+    footer.innerHTML = `© 2026 Playmakruk.com — ผู้เข้าชมทั้งหมด <strong>${totalVisits.toLocaleString('th-TH')}</strong> ครั้ง • ออนไลน์ตอนนี้ <strong>${onlineUsers.toLocaleString('th-TH')}</strong> คน`;
   }
 });
 
