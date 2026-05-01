@@ -63,31 +63,73 @@ function endGame(room, reason, winner) {
 }
 
 const VISITS_FILE = path.join(__dirname, 'visits.json');
+const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
+const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+const VISITS_KEY = 'playmakruk:visits';
 let totalVisits = 0;
 let onlineUsers = 0;
-try {
-  const data = JSON.parse(fs.readFileSync(VISITS_FILE, 'utf8'));
-  totalVisits = data.total || 0;
-} catch (e) {}
 
-let saveTimer = null;
-function saveVisits() {
-  if (saveTimer) return;
-  saveTimer = setTimeout(() => {
-    saveTimer = null;
+async function upstashCmd(pathSegment) {
+  const res = await fetch(`${UPSTASH_URL}/${pathSegment}`, {
+    headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` },
+  });
+  if (!res.ok) throw new Error(`Upstash ${res.status}`);
+  return (await res.json()).result;
+}
+
+async function loadVisits() {
+  if (UPSTASH_URL && UPSTASH_TOKEN) {
+    try {
+      const v = await upstashCmd(`get/${VISITS_KEY}`);
+      return v ? Number(v) : 0;
+    } catch (e) {
+      console.error('[Upstash] load failed, falling back to file:', e.message);
+    }
+  }
+  try {
+    return JSON.parse(fs.readFileSync(VISITS_FILE, 'utf8')).total || 0;
+  } catch (e) { return 0; }
+}
+
+let fileSaveTimer = null;
+function saveVisitsToFile() {
+  if (fileSaveTimer) return;
+  fileSaveTimer = setTimeout(() => {
+    fileSaveTimer = null;
     fs.writeFile(VISITS_FILE, JSON.stringify({ total: totalVisits }), () => {});
   }, 1500);
 }
+
+async function incrVisits() {
+  if (UPSTASH_URL && UPSTASH_TOKEN) {
+    try {
+      const v = await upstashCmd(`incr/${VISITS_KEY}`);
+      return Number(v);
+    } catch (e) {
+      console.error('[Upstash] incr failed, falling back to file:', e.message);
+    }
+  }
+  totalVisits++;
+  saveVisitsToFile();
+  return totalVisits;
+}
+
+loadVisits().then((n) => {
+  totalVisits = n;
+  console.log(`[Visits] starting count: ${totalVisits}${UPSTASH_URL ? ' (Upstash)' : ' (file)'}`);
+  io.emit('site_stats', { totalVisits, onlineUsers });
+});
 
 const HTML_PATHS = ['/', '/index.html', '/room.html', '/rules.html'];
 app.use((req, res, next) => {
   if (req.method !== 'GET' || !HTML_PATHS.includes(req.path)) return next();
   const cookie = req.headers.cookie || '';
   if (!cookie.includes('mkv=1')) {
-    totalVisits++;
-    saveVisits();
     res.setHeader('Set-Cookie', 'mkv=1; Path=/; Max-Age=31536000; SameSite=Lax');
-    io.emit('site_stats', { totalVisits, onlineUsers });
+    incrVisits().then((n) => {
+      totalVisits = n;
+      io.emit('site_stats', { totalVisits, onlineUsers });
+    }).catch(() => {});
   }
   next();
 });
