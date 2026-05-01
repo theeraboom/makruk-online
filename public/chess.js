@@ -126,9 +126,28 @@
     return { ended: false, inCheck };
   }
 
+  function applyMoves(moves) {
+    let board = initialBoard();
+    for (const m of moves) {
+      board = applyMove(board, m.from.r, m.from.c, m.to.r, m.to.c);
+    }
+    return board;
+  }
+
+  function moveNotation(piece, from, to, capture, promoted) {
+    const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+    const fromSq = files[from.c] + (8 - from.r);
+    const toSq = files[to.c] + (8 - to.r);
+    const p = pieceType(piece);
+    const sep = capture ? 'x' : '-';
+    let str = (p === 'P' ? '' : p) + fromSq + sep + toSq;
+    if (promoted) str += '=Q';
+    return str;
+  }
+
   const api = {
-    initialBoard, getRawMoves, getLegalMoves, applyMove, isInCheck,
-    hasAnyLegalMove, gameStatus, pieceColor, pieceType, findKing
+    initialBoard, getRawMoves, getLegalMoves, applyMove, applyMoves, isInCheck,
+    hasAnyLegalMove, gameStatus, pieceColor, pieceType, findKing, moveNotation
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

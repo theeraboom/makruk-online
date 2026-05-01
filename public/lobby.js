@@ -23,10 +23,20 @@ saveNameBtn.onclick = () => {
 
 const newRoomInput = document.getElementById('newRoomName');
 const createBtn = document.getElementById('createBtn');
+let selectedTimeControl = null;
+
+document.querySelectorAll('#tcOptions .tc-btn').forEach((btn) => {
+  btn.onclick = () => {
+    document.querySelectorAll('#tcOptions .tc-btn').forEach((b) => b.classList.remove('active'));
+    btn.classList.add('active');
+    const tc = btn.dataset.tc;
+    selectedTimeControl = tc ? Number(tc) : null;
+  };
+});
 
 function createRoom() {
   const name = newRoomInput.value.trim() || 'วงหมากรุกไทย';
-  socket.emit('create_room', name);
+  socket.emit('create_room', { name, timeControl: selectedTimeControl });
 }
 createBtn.onclick = createRoom;
 newRoomInput.addEventListener('keydown', (e) => {
@@ -87,6 +97,9 @@ function renderRooms(rooms) {
     const turnPill = r.status === 'playing'
       ? `<span class="thumb-pill">${turnIcon} ตา${r.currentPlayer === 'w' ? 'ขาว' : 'ดำ'}</span>`
       : '';
+    const tcPill = r.timeControl
+      ? `<span class="thumb-pill">⏱ ${r.timeControl}น.</span>`
+      : '';
 
     card.innerHTML = `
       <div class="room-thumb">
@@ -94,7 +107,10 @@ function renderRooms(rooms) {
         <div class="thumb-overlay">
           <div class="thumb-overlay-top">
             ${statusBadge}
-            <span class="thumb-pill">👁 ${r.viewerCount}</span>
+            <div style="display:flex;gap:4px;flex-direction:column;align-items:flex-end">
+              <span class="thumb-pill">👁 ${r.viewerCount}</span>
+              ${tcPill}
+            </div>
           </div>
           <div class="thumb-overlay-bottom">
             ${turnPill}

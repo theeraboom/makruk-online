@@ -16,6 +16,16 @@ let selected = null;
 let validMoves = [];
 let flipped = false;
 let chatMsgCount = 0;
+let timeControl = null;
+let whiteTime = null;
+let blackTime = null;
+let runningSince = null;
+let drawOfferBy = null;
+let endedReason = null;
+let endedWinner = null;
+let moves = [];
+let lastMoveCount = 0;
+let soundEnabled = localStorage.getItem('makruk_sound') !== 'off';
 
 const userName = localStorage.getItem('makruk_name') || '';
 if (userName) socket.emit('set_name', userName);
@@ -30,9 +40,32 @@ socket.on('joined', ({ role }) => {
 socket.on('room_state', (state) => {
   document.getElementById('roomName').textContent = state.name;
   document.title = state.name + ' — หมากรุกไทยออนไลน์';
+  const prevStatus = status;
+  const prevPlayer = currentPlayer;
   board = state.board;
   currentPlayer = state.currentPlayer;
   status = state.status;
+  timeControl = state.timeControl;
+  whiteTime = state.whiteTime;
+  blackTime = state.blackTime;
+  runningSince = state.runningSince;
+  drawOfferBy = state.drawOfferBy;
+  endedReason = state.endedReason;
+  endedWinner = state.endedWinner;
+  moves = state.moves || [];
+
+  if (moves.length > lastMoveCount && prevStatus === 'playing') {
+    const lastMove = moves[moves.length - 1];
+    if (lastMove.piece && lastMove.piece[0] !== myRole) playSound('move');
+  }
+  lastMoveCount = moves.length;
+
+  if (status === 'ended' && prevStatus === 'playing') playSound('end');
+
+  renderMoves();
+  renderClocks();
+  renderDrawOffer();
+  renderControls();
 
   updatePlayerSlot('W', state.players.w);
   updatePlayerSlot('B', state.players.b);
@@ -109,6 +142,7 @@ socket.on('chat_history', (msgs) => {
 
 socket.on('chat_message', (msg) => {
   appendChat(msg);
+  if (msg.type === 'chat' && msg.user !== userName) playSound('chat');
 });
 
 socket.on('error_msg', (msg) => {
@@ -162,7 +196,13 @@ function updateStatus() {
     el.textContent = '⏳ รอผู้เล่นอีก 1 คน';
     el.classList.add('waiting');
   } else if (status === 'ended') {
-    el.textContent = '🏁 เกมจบแล้ว';
+    let label = '🏁 เกมจบ';
+    if (endedReason === 'checkmate') label = `🏆 ${endedWinner === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} ชนะ (รุกจน)`;
+    else if (endedReason === 'resign') label = `🏳 ${endedWinner === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} ชนะ (อีกฝ่ายยอมแพ้)`;
+    else if (endedReason === 'timeout') label = `⏰ ${endedWinner === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} ชนะ (อีกฝ่ายหมดเวลา)`;
+    else if (endedReason === 'draw_agreement') label = '🤝 เสมอ (ตกลงร่วมกัน)';
+    else if (endedReason === 'stalemate') label = '🤝 เสมอ (อับ)';
+    el.textContent = label;
   } else {
     const inCheck = Chess.isInCheck(board, currentPlayer);
     const turnText = currentPlayer === 'w' ? 'ตาฝ่ายขาว' : 'ตาฝ่ายดำ';
@@ -174,6 +214,84 @@ function updateStatus() {
       el.classList.add('playing');
     }
   }
+}
+
+function fmtClock(ms) {
+  if (ms == null) return '--:--';
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  if (m >= 10) return `${m}:${String(s).padStart(2, '0')}`;
+  if (total < 10) return `${m}:${String(s).padStart(2, '0')}.${Math.floor((Math.max(0, ms) % 1000) / 100)}`;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+function renderClocks() {
+  const cw = document.getElementById('clockW');
+  const cb = document.getElementById('clockB');
+  if (!timeControl) {
+    cw.hidden = true; cb.hidden = true;
+    return;
+  }
+  cw.hidden = false; cb.hidden = false;
+
+  const liveAdjust = (color) => {
+    const base = color === 'w' ? whiteTime : blackTime;
+    if (status === 'playing' && currentPlayer === color && runningSince) {
+      return base - (Date.now() - runningSince);
+    }
+    return base;
+  };
+
+  const wms = liveAdjust('w');
+  const bms = liveAdjust('b');
+  cw.textContent = fmtClock(wms);
+  cb.textContent = fmtClock(bms);
+  cw.classList.toggle('low', wms != null && wms < 30000);
+  cb.classList.toggle('low', bms != null && bms < 30000);
+  cw.classList.toggle('active', status === 'playing' && currentPlayer === 'w');
+  cb.classList.toggle('active', status === 'playing' && currentPlayer === 'b');
+}
+
+setInterval(() => { if (timeControl) renderClocks(); }, 200);
+
+function renderDrawOffer() {
+  const banner = document.getElementById('drawOfferBanner');
+  if (drawOfferBy && status === 'playing' && (myRole === 'w' || myRole === 'b') && drawOfferBy !== myRole) {
+    banner.hidden = false;
+    document.getElementById('drawOfferText').textContent = `${drawOfferBy === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} ขอเสมอ`;
+  } else {
+    banner.hidden = true;
+  }
+}
+
+function renderControls() {
+  const isPlayer = myRole === 'w' || myRole === 'b';
+  const playing = status === 'playing';
+  document.getElementById('resignBtn').hidden = !(isPlayer && playing);
+  document.getElementById('drawBtn').hidden = !(isPlayer && playing);
+  document.getElementById('drawBtn').disabled = !!drawOfferBy;
+}
+
+function renderMoves() {
+  const list = document.getElementById('movesList');
+  const counter = document.getElementById('moveCount');
+  counter.textContent = moves.length ? `(${moves.length})` : '';
+  if (!moves.length) {
+    list.innerHTML = '<div class="moves-empty">ยังไม่มีการเดิน</div>';
+    return;
+  }
+  list.innerHTML = '';
+  for (let i = 0; i < moves.length; i += 2) {
+    const num = (i / 2 + 1) + '.';
+    const wMove = moves[i];
+    const bMove = moves[i + 1];
+    const row = document.createElement('div');
+    row.className = 'move-row';
+    row.innerHTML = `<span class="move-num">${num}</span><span class="move-w">${wMove.notation}</span><span class="move-b">${bMove ? bMove.notation : ''}</span>`;
+    list.appendChild(row);
+  }
+  list.scrollTop = list.scrollHeight;
 }
 
 function render() {
@@ -252,6 +370,77 @@ document.getElementById('resetBtn').onclick = () => {
   }
   if (confirm('เริ่มเกมใหม่?')) socket.emit('reset_game');
 };
+
+document.getElementById('resignBtn').onclick = () => {
+  if (confirm('ยอมแพ้เกมนี้?')) socket.emit('resign');
+};
+
+document.getElementById('drawBtn').onclick = () => {
+  socket.emit('offer_draw');
+  showToast('ส่งคำขอเสมอแล้ว');
+};
+
+document.getElementById('acceptDrawBtn').onclick = () => socket.emit('respond_draw', true);
+document.getElementById('declineDrawBtn').onclick = () => socket.emit('respond_draw', false);
+
+document.getElementById('shareBtn').onclick = async () => {
+  const url = window.location.href;
+  const text = `มาดูวงหมากรุกไทยของผมที่ ${url}`;
+  if (navigator.share) {
+    try { await navigator.share({ title: 'หมากรุกไทยออนไลน์', text, url }); return; } catch (e) {}
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    showToast('คัดลอกลิงก์แล้ว — ส่งให้เพื่อนได้เลย');
+  } catch (e) {
+    showToast('คัดลอกไม่ได้ — ' + url);
+  }
+};
+
+const soundBtn = document.getElementById('soundBtn');
+function updateSoundBtn() {
+  soundBtn.textContent = soundEnabled ? '🔔' : '🔕';
+  soundBtn.title = soundEnabled ? 'ปิดเสียง' : 'เปิดเสียง';
+}
+updateSoundBtn();
+soundBtn.onclick = () => {
+  soundEnabled = !soundEnabled;
+  localStorage.setItem('makruk_sound', soundEnabled ? 'on' : 'off');
+  updateSoundBtn();
+  if (soundEnabled) playSound('chat');
+};
+
+let audioCtx = null;
+function playSound(type) {
+  if (!soundEnabled) return;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = audioCtx;
+    const now = ctx.currentTime;
+    if (type === 'move') {
+      tone(ctx, now, 600, 0.08);
+      tone(ctx, now + 0.05, 800, 0.08);
+    } else if (type === 'chat') {
+      tone(ctx, now, 880, 0.06);
+    } else if (type === 'end') {
+      tone(ctx, now, 523, 0.15);
+      tone(ctx, now + 0.13, 659, 0.15);
+      tone(ctx, now + 0.26, 784, 0.25);
+    }
+  } catch (e) {}
+}
+function tone(ctx, when, freq, dur) {
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.frequency.value = freq;
+  osc.type = 'sine';
+  gain.gain.setValueAtTime(0, when);
+  gain.gain.linearRampToValueAtTime(0.15, when + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.001, when + dur);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(when);
+  osc.stop(when + dur);
+}
 
 const chatForm = document.getElementById('chatForm');
 const chatInput = document.getElementById('chatInput');

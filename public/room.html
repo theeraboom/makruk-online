@@ -51,12 +51,26 @@
         <div class="players-bar">
           <div class="player-info" id="playerW">
             <div class="avatar white" id="avatarW">?</div>
-            <span class="player-name empty">รอผู้เล่น</span>
+            <div class="player-meta">
+              <span class="player-name empty">รอผู้เล่น</span>
+              <span class="clock" id="clockW" hidden>--:--</span>
+            </div>
           </div>
           <div class="status-pill" id="status">รอผู้เล่น</div>
           <div class="player-info right" id="playerB">
             <div class="avatar black" id="avatarB">?</div>
-            <span class="player-name empty">รอผู้เล่น</span>
+            <div class="player-meta">
+              <span class="player-name empty">รอผู้เล่น</span>
+              <span class="clock" id="clockB" hidden>--:--</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="draw-offer-banner" id="drawOfferBanner" hidden>
+          <span id="drawOfferText">ฝ่ายตรงข้ามขอเสมอ</span>
+          <div class="draw-offer-actions">
+            <button class="primary" id="acceptDrawBtn">ตกลงเสมอ</button>
+            <button class="ghost" id="declineDrawBtn">ปฏิเสธ</button>
           </div>
         </div>
 
@@ -65,10 +79,19 @@
         </div>
 
         <div class="game-controls">
+          <button id="resignBtn" class="ghost" hidden>🏳 ยอมแพ้</button>
+          <button id="drawBtn" class="ghost" hidden>🤝 ขอเสมอ</button>
           <button id="resetBtn" class="ghost">🔁 เริ่มเกมใหม่</button>
           <button id="flipBtn" class="ghost">↕ หมุนกระดาน</button>
+          <button id="shareBtn" class="ghost" title="แชร์ลิงก์ห้อง">🔗 แชร์</button>
+          <button id="soundBtn" class="ghost" title="เปิด/ปิดเสียง">🔔</button>
           <span class="viewer-count">👁 <span id="viewerCount">0</span> คนกำลังดู</span>
         </div>
+
+        <details class="move-history" id="moveHistory">
+          <summary>📜 ประวัติการเดิน <span id="moveCount" class="move-count"></span></summary>
+          <div class="moves-list" id="movesList"></div>
+        </details>
 
         <div class="reaction-bar" id="reactionBar">
           <button class="reaction-btn" data-emoji="👍" title="ดี">👍</button>
