@@ -23,8 +23,9 @@
     const color = pieceColor(piece);
     const isKing = pieceType(piece) === 'K';
     const moves = [];
+    const dirs = isKing ? DIRS : (color === 'w' ? [[-1, -1], [-1, 1]] : [[1, -1], [1, 1]]);
 
-    for (const [dr, dc] of DIRS) {
+    for (const [dr, dc] of dirs) {
       if (isKing) {
         let nr = r + dr, nc = c + dc;
         let foundEnemy = null;
