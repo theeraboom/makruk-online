@@ -1610,19 +1610,23 @@ footer {
 }
 .tc-btn.active,
 .tc-btn.active:hover,
-.tc-btn.active:focus {
-  background: var(--primary);
-  color: #FFFFFF;
-  border-color: var(--primary);
-  font-weight: 700;
-  box-shadow: 0 2px 10px var(--primary-soft), 0 0 0 1px var(--primary) inset;
+.tc-btn.active:focus,
+.tc-btn.active:active {
+  background: var(--primary) !important;
+  color: #FFFFFF !important;
+  border-color: var(--primary) !important;
+  font-weight: 700 !important;
+  box-shadow: 0 0 0 2px var(--primary) inset, 0 4px 14px rgba(184, 134, 11, 0.45) !important;
+  transform: scale(1.04);
 }
 html[data-theme="dark"] .tc-btn.active,
 html[data-theme="dark"] .tc-btn.active:hover,
-html[data-theme="dark"] .tc-btn.active:focus {
-  color: #0F172A;
-  background: var(--primary);
-  border-color: var(--primary-hover);
+html[data-theme="dark"] .tc-btn.active:focus,
+html[data-theme="dark"] .tc-btn.active:active {
+  color: #0B1220 !important;
+  background: linear-gradient(135deg, #FCD34D, #D4AF37) !important;
+  border-color: #FFE066 !important;
+  box-shadow: 0 0 0 2px #FFE066 inset, 0 4px 18px rgba(212, 175, 55, 0.6) !important;
 }
 
 /* ============ Player meta + clock ============ */
