@@ -1,9 +1,9 @@
 const CHESS_SYMBOLS = {
-  'wK': '♔', 'wQ': '♕', 'wB': '♗', 'wN': '♘', 'wR': '♖', 'wP': '♙',
+  'wK': '♚', 'wQ': '♛', 'wB': '♝', 'wN': '♞', 'wR': '♜', 'wP': '♟',
   'bK': '♚', 'bQ': '♛', 'bB': '♝', 'bN': '♞', 'bR': '♜', 'bP': '♟'
 };
 const CHECKERS_SYMBOLS = {
-  'wM': '⛀', 'wK': '⛁', 'bM': '⛂', 'bK': '⛃'
+  'wM': '⛂', 'wK': '⛃', 'bM': '⛂', 'bK': '⛃'
 };
 function getEngine() { return gameType === 'checkers' ? Checkers : Chess; }
 function getSymbols() { return gameType === 'checkers' ? CHECKERS_SYMBOLS : CHESS_SYMBOLS; }
