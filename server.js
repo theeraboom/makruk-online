@@ -7,6 +7,7 @@ const Chess = require('./public/chess.js');
 const Checkers = require('./public/checkers.js');
 const ChessIntl = require('./public/chess-intl.js');
 const CheckersIntl = require('./public/checkers-intl.js');
+const Bot = require('./ai-bot.js');
 const ENGINES = {
   chess: Chess,
   checkers: Checkers,
@@ -16,6 +17,8 @@ const ENGINES = {
 const ALLOWED_GAME_TYPES = ['chess', 'checkers', 'chess-intl', 'checkers-intl'];
 const CHECKERS_TYPES = ['checkers', 'checkers-intl'];
 const CHESS_TYPES = ['chess', 'chess-intl'];
+const ALLOWED_BOT_DIFFICULTIES = ['easy', 'medium', 'hard'];
+const BOT_LABELS = { easy: 'Bot 🤖 (ง่าย)', medium: 'Bot 🤖 (กลาง)', hard: 'Bot 🤖 (ยาก)' };
 
 const app = express();
 const server = http.createServer(app);
@@ -74,6 +77,135 @@ function endGame(room, reason, winner) {
   room.endedReason = reason;
   room.endedWinner = winner;
   room.runningSince = null;
+}
+
+function processMove(room, from, to, moveInfo) {
+  const engine = ENGINES[room.gameType] || Chess;
+  const piece = room.board[from.r][from.c];
+  if (!piece) return;
+
+  deductTime(room);
+  if (room.timeBase && (room.whiteTime <= 0 || room.blackTime <= 0)) {
+    const loser = room.currentPlayer;
+    endGame(room, 'timeout', loser === 'w' ? 'b' : 'w');
+    pushSystemMessage(room, `${loser === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} หมดเวลา — ${loser === 'w' ? 'ฝ่ายดำ' : 'ฝ่ายขาว'} ชนะ ⏰`);
+    return;
+  }
+
+  const movingPiece = piece;
+  let captured = false;
+  let promoted = false;
+
+  if (CHECKERS_TYPES.includes(room.gameType)) {
+    const result = engine.applyMove(room.board, from.r, from.c, to.r, to.c);
+    room.board = result.newBoard;
+    captured = result.captured;
+    promoted = result.promoted;
+  } else if (room.gameType === 'chess-intl') {
+    const targetBefore = room.board[to.r][to.c];
+    captured = !!targetBefore || !!moveInfo.enPassant;
+    room.board = engine.applyMove(room.board, from.r, from.c, to.r, to.c, moveInfo);
+    promoted = (movingPiece === 'wP' && to.r === 0) || (movingPiece === 'bP' && to.r === 7);
+    if (movingPiece === 'wK') { room.castling.wK = false; room.castling.wQ = false; }
+    if (movingPiece === 'bK') { room.castling.bK = false; room.castling.bQ = false; }
+    if (movingPiece === 'wR' && from.r === 7 && from.c === 0) room.castling.wQ = false;
+    if (movingPiece === 'wR' && from.r === 7 && from.c === 7) room.castling.wK = false;
+    if (movingPiece === 'bR' && from.r === 0 && from.c === 0) room.castling.bQ = false;
+    if (movingPiece === 'bR' && from.r === 0 && from.c === 7) room.castling.bK = false;
+    if (to.r === 7 && to.c === 0) room.castling.wQ = false;
+    if (to.r === 7 && to.c === 7) room.castling.wK = false;
+    if (to.r === 0 && to.c === 0) room.castling.bQ = false;
+    if (to.r === 0 && to.c === 7) room.castling.bK = false;
+    if (moveInfo.doublePawn) {
+      const dir = movingPiece === 'wP' ? -1 : 1;
+      room.enPassant = { r: from.r + dir, c: from.c };
+    } else {
+      room.enPassant = null;
+    }
+  } else {
+    const targetBefore = room.board[to.r][to.c];
+    captured = !!targetBefore;
+    room.board = engine.applyMove(room.board, from.r, from.c, to.r, to.c);
+    promoted = (movingPiece === 'wP' && to.r === 2) || (movingPiece === 'bP' && to.r === 5);
+  }
+
+  room.moves.push({
+    from, to,
+    piece: movingPiece,
+    capture: captured,
+    promoted,
+    notation: engine.moveNotation(movingPiece, from, to, captured, promoted, moveInfo),
+    time: Date.now(),
+    special: (moveInfo && (moveInfo.castle || moveInfo.enPassant || moveInfo.doublePawn)) ? {
+      castle: moveInfo.castle, enPassant: moveInfo.enPassant, doublePawn: moveInfo.doublePawn
+    } : null,
+  });
+
+  let switchTurn = true;
+  if (CHECKERS_TYPES.includes(room.gameType) && captured) {
+    if (engine.canContinueCapture(room.board, to.r, to.c)) {
+      room.mustContinueFrom = { r: to.r, c: to.c };
+      switchTurn = false;
+    } else {
+      room.mustContinueFrom = null;
+    }
+  } else {
+    room.mustContinueFrom = null;
+  }
+
+  if (switchTurn) {
+    addIncrement(room);
+    room.currentPlayer = room.currentPlayer === 'w' ? 'b' : 'w';
+  }
+
+  let status;
+  if (room.gameType === 'chess-intl') {
+    status = engine.gameStatus(room.board, room.currentPlayer, { castling: room.castling, enPassant: room.enPassant });
+  } else {
+    status = engine.gameStatus(room.board, room.currentPlayer);
+  }
+  if (status.ended) {
+    endGame(room, status.reason, status.winner);
+    let text;
+    if (CHECKERS_TYPES.includes(room.gameType)) {
+      text = status.reason === 'no_pieces'
+        ? `🏆 ${status.winner === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} ชนะ — เก็บหมากหมด!`
+        : `🏆 ${status.winner === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} ชนะ — อีกฝ่ายเดินไม่ได้`;
+    } else {
+      text = status.reason === 'checkmate'
+        ? `รุกจน! ${status.winner === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} ชนะ 🎉`
+        : 'อับ — เสมอ';
+    }
+    pushSystemMessage(room, text);
+  } else if (switchTurn) {
+    startClock(room);
+    if (status.inCheck) {
+      pushSystemMessage(room, `${room.currentPlayer === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} กำลังถูกรุก!`);
+    }
+  }
+}
+
+function maybeBotMove(roomId, delayMs) {
+  const room = rooms.get(roomId);
+  if (!room || !room.bot || room.status !== 'playing') return;
+  if (room.currentPlayer !== room.bot.color && !room.mustContinueFrom) return;
+  if (room.mustContinueFrom && room.currentPlayer !== room.bot.color) return;
+  setTimeout(() => {
+    const r = rooms.get(roomId);
+    if (!r || !r.bot || r.status !== 'playing') return;
+    if (r.currentPlayer !== r.bot.color) return;
+    const ctx = r.gameType === 'chess-intl' ? { castling: r.castling, enPassant: r.enPassant } : null;
+    const move = Bot.chooseMove(r.board, r.gameType, r.bot.color, ctx, r.mustContinueFrom, r.bot.difficulty);
+    if (!move) return;
+    processMove(r, move.from, move.to, move.info);
+    broadcastRoomState(roomId);
+    broadcastRoomList();
+    if (r.mustContinueFrom && r.currentPlayer === r.bot.color) {
+      maybeBotMove(roomId, 400);
+    } else if (r.currentPlayer === r.bot.color && r.status === 'playing') {
+      maybeBotMove(roomId, 600);
+    }
+  }, delayMs || 600 + Math.random() * 700);
 }
 
 const VISITS_FILE = path.join(__dirname, 'visits.json');
@@ -165,6 +297,8 @@ function publicRoom(room) {
     timeBase: room.timeBase,
     timeIncrement: room.timeIncrement,
     isPrivate: !!room.password,
+    hasBot: !!room.bot,
+    botDifficulty: room.bot ? room.bot.difficulty : null,
   };
 }
 
@@ -183,8 +317,8 @@ function broadcastRoomState(roomId) {
     currentPlayer: room.currentPlayer,
     status: room.status,
     players: {
-      w: room.players.w ? { name: room.players.w.name } : null,
-      b: room.players.b ? { name: room.players.b.name } : null,
+      w: room.players.w ? { name: room.players.w.name, isBot: !!room.players.w.isBot } : null,
+      b: room.players.b ? { name: room.players.b.name, isBot: !!room.players.b.isBot } : null,
     },
     viewerCount: room.viewers.size,
     viewers: Array.from(room.viewers.values()),
@@ -200,6 +334,9 @@ function broadcastRoomState(roomId) {
     mustContinueFrom: room.mustContinueFrom,
     castling: room.castling || null,
     enPassant: room.enPassant || null,
+    hasBot: !!room.bot,
+    botDifficulty: room.bot ? room.bot.difficulty : null,
+    botColor: room.bot ? room.bot.color : null,
   });
 }
 
@@ -232,6 +369,9 @@ io.on('connection', (socket) => {
     const validBase = ALLOWED_TIME_BASE.includes(p.timeBase) ? p.timeBase : null;
     const validInc = ALLOWED_TIME_INCREMENT.includes(p.timeIncrement) ? p.timeIncrement : 0;
     const password = (typeof p.password === 'string' && p.password.trim()) ? p.password.trim().slice(0, 40) : null;
+    const botEnabled = !!p.botEnabled;
+    const botDifficulty = ALLOWED_BOT_DIFFICULTIES.includes(p.botDifficulty) ? p.botDifficulty : 'medium';
+    const botColor = p.botColor === 'w' ? 'w' : 'b';
     const defaultNames = {
       'chess': 'วงหมากรุกไทย',
       'checkers': 'วงหมากฮอสไทย',
@@ -247,8 +387,12 @@ io.on('connection', (socket) => {
       viewers: new Map(),
       messages: [],
       status: 'waiting',
+      bot: botEnabled ? { difficulty: botDifficulty, color: botColor } : null,
       ...buildInitialMatchState(gameType, validBase, validInc),
     };
+    if (room.bot) {
+      room.players[botColor] = { id: 'BOT', name: BOT_LABELS[botDifficulty], isBot: true };
+    }
     rooms.set(id, room);
     socket.emit('room_created', { id });
     broadcastRoomList();
@@ -267,15 +411,36 @@ io.on('connection', (socket) => {
     socket.data.roomId = roomId;
 
     let role;
-    if (!room.players.w) {
-      room.players.w = { id: socket.id, name: socket.data.user.name };
-      role = 'w';
-    } else if (!room.players.b) {
-      room.players.b = { id: socket.id, name: socket.data.user.name };
-      role = 'b';
-      if (room.status === 'waiting') {
-        room.status = 'playing';
-        startClock(room);
+    if (!room.players.w || (room.players.w && room.players.w.isBot)) {
+      if (!room.players.w) {
+        room.players.w = { id: socket.id, name: socket.data.user.name };
+        role = 'w';
+        if (room.bot && room.bot.color === 'b' && room.status === 'waiting') {
+          room.status = 'playing';
+          startClock(room);
+        }
+      } else if (!room.players.b) {
+        room.players.b = { id: socket.id, name: socket.data.user.name };
+        role = 'b';
+        if (room.status === 'waiting') {
+          room.status = 'playing';
+          startClock(room);
+        }
+      } else {
+        room.viewers.set(socket.id, { name: socket.data.user.name });
+        role = 'viewer';
+      }
+    } else if (!room.players.b || (room.players.b && room.players.b.isBot)) {
+      if (!room.players.b) {
+        room.players.b = { id: socket.id, name: socket.data.user.name };
+        role = 'b';
+        if (room.status === 'waiting') {
+          room.status = 'playing';
+          startClock(room);
+        }
+      } else {
+        room.viewers.set(socket.id, { name: socket.data.user.name });
+        role = 'viewer';
       }
     } else {
       room.viewers.set(socket.id, { name: socket.data.user.name });
@@ -290,6 +455,9 @@ io.on('connection', (socket) => {
 
     const roleText = role === 'viewer' ? 'ผู้ชม' : (role === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ');
     pushSystemMessage(room, `${socket.data.user.name} เข้าร่วมเป็น${roleText}`);
+    if (room.bot && room.status === 'playing' && room.currentPlayer === room.bot.color) {
+      maybeBotMove(roomId, 800);
+    }
   });
 
   socket.on('move', ({ from, to }) => {
@@ -323,110 +491,12 @@ io.on('connection', (socket) => {
       socket.emit('error_msg', 'เดินไม่ได้'); return;
     }
 
-    deductTime(room);
-    if (room.timeBase && (room.whiteTime <= 0 || room.blackTime <= 0)) {
-      const loser = room.currentPlayer;
-      endGame(room, 'timeout', loser === 'w' ? 'b' : 'w');
-      pushSystemMessage(room, `${loser === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} หมดเวลา — ${loser === 'w' ? 'ฝ่ายดำ' : 'ฝ่ายขาว'} ชนะ ⏰`);
-      broadcastRoomState(roomId);
-      broadcastRoomList();
-      return;
-    }
-
-    const movingPiece = piece;
-    let captured = false;
-    let promoted = false;
-
-    if (CHECKERS_TYPES.includes(room.gameType)) {
-      const result = engine.applyMove(room.board, from.r, from.c, to.r, to.c);
-      room.board = result.newBoard;
-      captured = result.captured;
-      promoted = result.promoted;
-    } else if (room.gameType === 'chess-intl') {
-      const targetBefore = room.board[to.r][to.c];
-      captured = !!targetBefore || !!moveInfo.enPassant;
-      room.board = engine.applyMove(room.board, from.r, from.c, to.r, to.c, moveInfo);
-      promoted = (movingPiece === 'wP' && to.r === 0) || (movingPiece === 'bP' && to.r === 7);
-      // Update castling rights
-      if (movingPiece === 'wK') { room.castling.wK = false; room.castling.wQ = false; }
-      if (movingPiece === 'bK') { room.castling.bK = false; room.castling.bQ = false; }
-      if (movingPiece === 'wR' && from.r === 7 && from.c === 0) room.castling.wQ = false;
-      if (movingPiece === 'wR' && from.r === 7 && from.c === 7) room.castling.wK = false;
-      if (movingPiece === 'bR' && from.r === 0 && from.c === 0) room.castling.bQ = false;
-      if (movingPiece === 'bR' && from.r === 0 && from.c === 7) room.castling.bK = false;
-      if (to.r === 7 && to.c === 0) room.castling.wQ = false;
-      if (to.r === 7 && to.c === 7) room.castling.wK = false;
-      if (to.r === 0 && to.c === 0) room.castling.bQ = false;
-      if (to.r === 0 && to.c === 7) room.castling.bK = false;
-      if (moveInfo.doublePawn) {
-        const dir = movingPiece === 'wP' ? -1 : 1;
-        room.enPassant = { r: from.r + dir, c: from.c };
-      } else {
-        room.enPassant = null;
-      }
-    } else {
-      const targetBefore = room.board[to.r][to.c];
-      captured = !!targetBefore;
-      room.board = engine.applyMove(room.board, from.r, from.c, to.r, to.c);
-      promoted = (movingPiece === 'wP' && to.r === 2) || (movingPiece === 'bP' && to.r === 5);
-    }
-
-    room.moves.push({
-      from, to,
-      piece: movingPiece,
-      capture: captured,
-      promoted,
-      notation: engine.moveNotation(movingPiece, from, to, captured, promoted, moveInfo),
-      time: Date.now(),
-      special: (moveInfo && (moveInfo.castle || moveInfo.enPassant || moveInfo.doublePawn)) ? {
-        castle: moveInfo.castle, enPassant: moveInfo.enPassant, doublePawn: moveInfo.doublePawn
-      } : null,
-    });
-
-    let switchTurn = true;
-    if (CHECKERS_TYPES.includes(room.gameType) && captured) {
-      if (engine.canContinueCapture(room.board, to.r, to.c)) {
-        room.mustContinueFrom = { r: to.r, c: to.c };
-        switchTurn = false;
-      } else {
-        room.mustContinueFrom = null;
-      }
-    } else {
-      room.mustContinueFrom = null;
-    }
-
-    if (switchTurn) {
-      addIncrement(room);
-      room.currentPlayer = room.currentPlayer === 'w' ? 'b' : 'w';
-    }
-
-    let status;
-    if (room.gameType === 'chess-intl') {
-      status = engine.gameStatus(room.board, room.currentPlayer, { castling: room.castling, enPassant: room.enPassant });
-    } else {
-      status = engine.gameStatus(room.board, room.currentPlayer);
-    }
-    if (status.ended) {
-      endGame(room, status.reason, status.winner);
-      let text;
-      if (CHECKERS_TYPES.includes(room.gameType)) {
-        text = status.reason === 'no_pieces'
-          ? `🏆 ${status.winner === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} ชนะ — เก็บหมากหมด!`
-          : `🏆 ${status.winner === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} ชนะ — อีกฝ่ายเดินไม่ได้`;
-      } else {
-        text = status.reason === 'checkmate'
-          ? `รุกจน! ${status.winner === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} ชนะ 🎉`
-          : 'อับ — เสมอ';
-      }
-      pushSystemMessage(room, text);
-    } else if (switchTurn) {
-      startClock(room);
-      if (status.inCheck) {
-        pushSystemMessage(room, `${room.currentPlayer === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} กำลังถูกรุก!`);
-      }
-    }
+    processMove(room, from, to, moveInfo);
     broadcastRoomState(roomId);
     broadcastRoomList();
+    if (room.bot && room.status === 'playing' && room.currentPlayer === room.bot.color) {
+      maybeBotMove(roomId);
+    }
   });
 
   socket.on('resign', () => {
@@ -475,11 +545,17 @@ io.on('connection', (socket) => {
     if (!room) return;
     if (socket.data.role !== 'w' && socket.data.role !== 'b') return;
     Object.assign(room, buildInitialMatchState(room.gameType, room.timeBase, room.timeIncrement));
+    if (room.bot) {
+      room.players[room.bot.color] = { id: 'BOT', name: BOT_LABELS[room.bot.difficulty], isBot: true };
+    }
     room.status = (room.players.w && room.players.b) ? 'playing' : 'waiting';
     if (room.status === 'playing') startClock(room);
     pushSystemMessage(room, `${socket.data.user.name} เริ่มเกมใหม่ 🔁`);
     broadcastRoomState(roomId);
     broadcastRoomList();
+    if (room.bot && room.status === 'playing' && room.currentPlayer === room.bot.color) {
+      maybeBotMove(roomId, 800);
+    }
   });
 
   socket.on('disconnect', () => {
@@ -505,7 +581,9 @@ io.on('connection', (socket) => {
       if (room.status === 'playing') room.status = 'waiting';
     }
 
-    if (!room.players.w && !room.players.b && room.viewers.size === 0) {
+    const wEmpty = !room.players.w || room.players.w.isBot;
+    const bEmpty = !room.players.b || room.players.b.isBot;
+    if (wEmpty && bEmpty && room.viewers.size === 0) {
       rooms.delete(roomId);
     } else {
       broadcastRoomState(roomId);

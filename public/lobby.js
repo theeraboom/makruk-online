@@ -66,6 +66,33 @@ document.querySelectorAll('#tcIncOptions .tc-btn').forEach((btn) => {
   };
 });
 
+let botEnabled = false;
+let selectedBotDifficulty = 'medium';
+let selectedBotColor = 'b';
+const botEnabledInput = document.getElementById('botEnabled');
+const botOptions = document.getElementById('botOptions');
+const botColorOptions = document.getElementById('botColorOptions');
+botEnabledInput.onchange = () => {
+  botEnabled = botEnabledInput.checked;
+  botOptions.hidden = !botEnabled;
+  botColorOptions.hidden = !botEnabled;
+};
+document.querySelectorAll('#botOptions .tc-btn').forEach((btn) => {
+  btn.onclick = () => {
+    document.querySelectorAll('#botOptions .tc-btn').forEach((b) => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedBotDifficulty = btn.dataset.bd;
+  };
+});
+document.querySelectorAll('#botColorOptions .tc-btn').forEach((btn) => {
+  btn.onclick = () => {
+    document.querySelectorAll('#botColorOptions .tc-btn').forEach((b) => b.classList.remove('active'));
+    btn.classList.add('active');
+    // Bot color = opposite of user's choice
+    selectedBotColor = btn.dataset.bc === 'w' ? 'b' : 'w';
+  };
+});
+
 function createRoom() {
   const name = newRoomInput.value.trim();
   const password = newRoomPasswordInput.value.trim();
@@ -75,6 +102,9 @@ function createRoom() {
     timeBase: selectedTimeBase,
     timeIncrement: selectedTimeIncrement,
     password: password || null,
+    botEnabled,
+    botDifficulty: selectedBotDifficulty,
+    botColor: selectedBotColor,
   });
 }
 createBtn.onclick = createRoom;
@@ -142,6 +172,8 @@ function renderRooms(rooms) {
     const tcPill = formatTimeControl(r.timeBase, r.timeIncrement);
     const tcPillHTML = tcPill ? `<span class="thumb-pill">⏱ ${tcPill}</span>` : '';
     const lockBadge = r.isPrivate ? '<span class="thumb-pill private">🔒 ส่วนตัว</span>' : '';
+    const botLabels = { easy: 'Bot ง่าย', medium: 'Bot กลาง', hard: 'Bot ยาก' };
+    const botBadge = r.hasBot ? `<span class="thumb-pill bot-badge">🤖 ${botLabels[r.botDifficulty] || 'Bot'}</span>` : '';
     const gtBadgeMap = {
       'chess': '♛ หมากรุกไทย',
       'chess-intl': '♚ หมากรุกสากล',
@@ -160,6 +192,7 @@ function renderRooms(rooms) {
               <span class="thumb-pill">👁 ${r.viewerCount}</span>
               ${tcPillHTML}
               ${lockBadge}
+              ${botBadge}
             </div>
           </div>
           <div class="thumb-overlay-bottom">

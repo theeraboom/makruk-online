@@ -169,13 +169,21 @@ function updatePlayerSlot(side, player) {
   const avatarEl = document.getElementById('avatar' + side);
   const nameEl = slot.querySelector('.player-name');
   if (player) {
-    avatarEl.textContent = (player.name || '?').slice(0, 2).toUpperCase();
+    if (player.isBot) {
+      avatarEl.textContent = '🤖';
+      avatarEl.classList.add('bot-avatar');
+      avatarEl.classList.remove('empty');
+    } else {
+      avatarEl.textContent = (player.name || '?').slice(0, 2).toUpperCase();
+      avatarEl.classList.remove('bot-avatar');
+      avatarEl.classList.remove('empty');
+    }
     nameEl.textContent = player.name;
     nameEl.classList.remove('empty');
-    avatarEl.classList.remove('empty');
   } else {
     avatarEl.textContent = '?';
     avatarEl.classList.add('empty');
+    avatarEl.classList.remove('bot-avatar');
     nameEl.textContent = 'รอผู้เล่น';
     nameEl.classList.add('empty');
   }

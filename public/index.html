@@ -185,6 +185,24 @@
           <input id="newRoomPassword" placeholder="ปล่อยว่าง = ห้องสาธารณะ" maxlength="40" type="text">
         </div>
 
+        <div class="time-control-row">
+          <span class="tc-label">
+            <label class="bot-toggle-label">
+              <input type="checkbox" id="botEnabled"> 🤖 เล่นกับ Bot (ฝึกซ้อมคนเดียว)
+            </label>
+          </span>
+          <div class="tc-options" id="botOptions" hidden>
+            <button type="button" class="tc-btn" data-bd="easy">😊 ง่าย</button>
+            <button type="button" class="tc-btn active" data-bd="medium">🤔 กลาง</button>
+            <button type="button" class="tc-btn" data-bd="hard">🔥 ยาก</button>
+          </div>
+          <div class="tc-options" id="botColorOptions" hidden>
+            <span class="tc-hint" style="align-self:center;margin-right:6px">คุณเป็นฝ่าย:</span>
+            <button type="button" class="tc-btn active" data-bc="w">⚪ ขาว (เดินก่อน)</button>
+            <button type="button" class="tc-btn" data-bc="b">⚫ ดำ</button>
+          </div>
+        </div>
+
         <button id="createBtn" class="primary">+ เปิดวงเล่นใหม่</button>
       </div>
     </section>

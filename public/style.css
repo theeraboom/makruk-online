@@ -747,6 +747,29 @@ body[data-board-theme="gray"] .dark .sq-label { color: #FFF; }
 }
 
 .thumb-pill.game-type { background: rgba(180, 83, 9, 0.85); }
+.thumb-pill.bot-badge { background: rgba(99, 102, 241, 0.9); }
+
+.bot-toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-2);
+}
+.bot-toggle-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+
+.avatar.bot-avatar {
+  background: linear-gradient(135deg, #6366F1, #4338CA);
+  color: white;
+  font-size: 18px;
+  border: none;
+}
 
 /* ============ Piece sets ============ */
 /* Thai Carved (SVG) — currentColor controlled by .piece-w / .piece-b */
