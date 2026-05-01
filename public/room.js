@@ -418,9 +418,10 @@ document.getElementById('resignBtn').onclick = () => {
 
 document.getElementById('shareBtn').onclick = async () => {
   const url = window.location.href;
-  const text = `มาดูวงหมากรุกไทยของผมที่ ${url}`;
+  const gameLabel = gameType === 'checkers' ? 'หมากฮอส' : 'หมากรุก';
+  const text = `มาดูวง${gameLabel}ไทยที่ ${url}`;
   if (navigator.share) {
-    try { await navigator.share({ title: 'หมากรุกไทยออนไลน์', text, url }); return; } catch (e) {}
+    try { await navigator.share({ title: 'Playmakruk', text, url }); return; } catch (e) {}
   }
   try {
     await navigator.clipboard.writeText(url);
