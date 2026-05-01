@@ -48,44 +48,44 @@
   --bangkok-bg-opacity: 0.8;
 }
 
-/* ============ Royal Night (Thai Heritage Dark) ============ */
+/* ============ Night Market (Dark — navy) ============ */
 html[data-theme="dark"] {
-  --bg: #0F0A06;
+  --bg: #0B1220;
   --bg-gradient:
-    radial-gradient(ellipse at top right, rgba(212, 175, 55, 0.18), transparent 55%),
-    radial-gradient(ellipse at bottom left, rgba(163, 12, 38, 0.12), transparent 55%),
-    linear-gradient(135deg, #0F0A06 0%, #1A1209 55%, #2A1F12 100%);
-  --surface: #1F1610;
-  --surface-glass: rgba(31, 22, 16, 0.78);
-  --surface-2: #2A1F12;
-  --surface-3: #3A2D1B;
-  --border: #4A3A22;
-  --border-strong: #6B5530;
-  --glass-border: rgba(212, 175, 55, 0.25);
+    radial-gradient(ellipse at top right, rgba(212, 175, 55, 0.16), transparent 55%),
+    radial-gradient(ellipse at bottom left, rgba(212, 175, 55, 0.08), transparent 55%),
+    linear-gradient(135deg, #0B1220 0%, #15203A 60%, #1E2B47 100%);
+  --surface: #1A2438;
+  --surface-glass: rgba(26, 36, 56, 0.78);
+  --surface-2: #243150;
+  --surface-3: #2E3D63;
+  --border: #2C3956;
+  --border-strong: #3F5074;
+  --glass-border: rgba(212, 175, 55, 0.22);
 
   --gold: #D4AF37;
   --gold-bright: #FFD700;
-  --gold-deep: #8B6F1F;
+  --gold-deep: #B8860B;
   --gold-gradient: linear-gradient(135deg, #FFD700 0%, #D4AF37 50%, #B8860B 100%);
   --gold-gradient-soft: linear-gradient(135deg, #B8860B 0%, #D4AF37 100%);
-  --gold-glow: 0 0 32px rgba(212, 175, 55, 0.5);
+  --gold-glow: 0 0 28px rgba(212, 175, 55, 0.45);
 
   --primary: #D4AF37;
   --primary-hover: #FFD700;
   --primary-soft: rgba(212, 175, 55, 0.22);
   --primary-dim: rgba(212, 175, 55, 0.10);
 
-  --accent: #E63055;          /* lac red bright */
+  --accent: #E63055;
   --accent-soft: rgba(230, 48, 85, 0.20);
 
-  --text: #F5E9D3;            /* ivory glow */
-  --text-2: #C9B997;
-  --text-muted: #8E8270;
+  --text: #F1F5F9;
+  --text-2: #CBD5E1;
+  --text-muted: #94A3B8;
 
-  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.45);
-  --shadow-sm: 0 4px 14px rgba(0, 0, 0, 0.55);
-  --shadow: 0 14px 40px rgba(0, 0, 0, 0.65);
-  --shadow-lg: 0 30px 90px rgba(0, 0, 0, 0.75);
+  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 4px 14px rgba(0, 0, 0, 0.5);
+  --shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 28px 80px rgba(0, 0, 0, 0.7);
 
   --bangkok-bg-opacity: 0;
 }
@@ -191,7 +191,7 @@ header {
   font-size: 20px;
   font-weight: 700;
   color: var(--text);
-  font-family: 'Charm', 'Sarabun', serif;
+  font-family: 'Prompt', 'Sarabun', sans-serif;
   letter-spacing: 0.01em;
 }
 .logo .logo-text {
@@ -220,7 +220,7 @@ header {
   justify-content: center;
   font-size: 28px;
   color: #FFFFFF;
-  font-family: 'Charm', 'Georgia', serif;
+  font-family: 'Prompt', 'Sarabun', sans-serif;
   text-shadow:
     0 1px 0 rgba(80, 50, 0, 0.5),
     0 2px 4px rgba(80, 50, 0, 0.6);
@@ -274,7 +274,7 @@ html[data-theme="dark"] .logo-mark {
 .info-card h3,
 .viewers-header,
 .chat-header {
-  font-family: 'Charm', 'Sarabun', serif;
+  font-family: 'Prompt', 'Sarabun', sans-serif;
   letter-spacing: 0.01em;
 }
 .seo-card h2,
@@ -438,7 +438,7 @@ main { max-width: 1280px; margin: 0 auto; padding: 24px; }
 .hero-text { position: relative; z-index: 1; }
 
 .hero-title {
-  font-family: 'Charm', 'Sarabun', serif;
+  font-family: 'Prompt', 'Sarabun', sans-serif;
   font-size: 36px;
   font-weight: 700;
   margin: 0 0 10px;
@@ -1502,7 +1502,7 @@ footer {
   line-height: 1.75;
 }
 .rules-content h1 {
-  font-family: 'Charm', 'Sarabun', serif;
+  font-family: 'Prompt', 'Sarabun', sans-serif;
   font-size: 34px;
   font-weight: 700;
   margin: 0 0 8px;
