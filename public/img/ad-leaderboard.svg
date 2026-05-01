@@ -1,38 +1,71 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 728 90" preserveAspectRatio="xMidYMid meet">
   <defs>
-    <linearGradient id="adlbg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FFFCF6"/>
-      <stop offset="100%" stop-color="#FEF3C7"/>
+    <linearGradient id="lbBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0F172A"/>
+      <stop offset="1" stop-color="#1E293B"/>
     </linearGradient>
-    <linearGradient id="adltitle" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#18181B"/>
-      <stop offset="100%" stop-color="#B45309"/>
+    <linearGradient id="lbGold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FCD34D"/>
+      <stop offset="0.5" stop-color="#FBBF24"/>
+      <stop offset="1" stop-color="#D97706"/>
     </linearGradient>
-    <radialGradient id="adlglow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#D97706" stop-opacity="0.25"/>
-      <stop offset="100%" stop-color="#D97706" stop-opacity="0"/>
+    <linearGradient id="lbGoldText" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FDE68A"/>
+      <stop offset="1" stop-color="#FBBF24"/>
+    </linearGradient>
+    <radialGradient id="lbGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#FBBF24" stop-opacity="0.25"/>
+      <stop offset="1" stop-color="#FBBF24" stop-opacity="0"/>
     </radialGradient>
+    <filter id="lbShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000" flood-opacity="0.5"/>
+    </filter>
   </defs>
-  <rect width="728" height="90" rx="8" fill="url(#adlbg)" stroke="#E5E1D5" stroke-width="1"/>
-  <circle cx="60" cy="45" r="60" fill="url(#adlglow)"/>
 
-  <g font-family="Georgia, serif" font-weight="bold" fill="#B45309" opacity="0.07">
-    <text x="490" y="35" font-size="44" transform="rotate(-12 510 35)">♚</text>
-    <text x="640" y="78" font-size="38" transform="rotate(15 660 78)">⛂</text>
-    <text x="200" y="80" font-size="36" transform="rotate(-8 220 80)">♞</text>
+  <!-- Background -->
+  <rect width="728" height="90" rx="10" fill="url(#lbBg)" stroke="#FBBF24" stroke-opacity="0.3" stroke-width="1"/>
+  <ellipse cx="500" cy="45" rx="200" ry="60" fill="url(#lbGlow)"/>
+
+  <!-- Decorative chess pieces -->
+  <g font-family="Georgia, serif" font-weight="bold" fill="#FBBF24" opacity="0.06">
+    <text x="430" y="45" font-size="56" transform="rotate(-12 450 45)">♚</text>
+    <text x="610" y="80" font-size="48" transform="rotate(15 630 80)">♞</text>
   </g>
 
-  <g transform="translate(20, 20)">
-    <rect width="50" height="50" rx="10" fill="#B45309"/>
-    <text x="25" y="38" font-family="Georgia, serif" font-size="34" font-weight="bold" fill="#FFFFFF" text-anchor="middle">♛</text>
+  <!-- Logo -->
+  <g transform="translate(14, 16)" filter="url(#lbShadow)">
+    <rect width="58" height="58" rx="13" fill="url(#lbGold)"/>
+    <text x="29" y="44" font-family="Georgia, serif" font-size="38" font-weight="900" fill="#0F172A" text-anchor="middle">♛</text>
   </g>
 
-  <text x="90" y="40" font-family="'Sarabun', sans-serif" font-size="22" font-weight="700" fill="url(#adltitle)">Playmakruk.com</text>
-  <text x="90" y="62" font-family="'Sarabun', sans-serif" font-size="14" fill="#52525B">เล่นหมากรุก / หมากฮอสไทย ออนไลน์ — ฟรี ไม่ต้องสมัคร</text>
-  <text x="90" y="80" font-family="'Sarabun', sans-serif" font-size="12" fill="#8B7E6B">นั่งเล่น ยืนดู คุยกันสนุกๆ บรรยากาศเป็นกันเอง</text>
+  <!-- Brand + tagline -->
+  <text x="84" y="36" font-family="'Prompt','Sarabun',sans-serif" font-size="20" font-weight="700" fill="#F8FAFC">Playmakruk</text>
+  <text x="84" y="55" font-family="'Prompt','Sarabun',sans-serif" font-size="11" fill="#94A3B8">หมากรุก / หมากฮอส ออนไลน์</text>
+  <g transform="translate(84, 64)">
+    <rect width="42" height="16" rx="8" fill="rgba(34,197,94,0.18)" stroke="#22C55E" stroke-width="0.8"/>
+    <text x="21" y="11.5" font-family="'Prompt','Sarabun',sans-serif" font-size="9" font-weight="700" fill="#86EFAC" text-anchor="middle">FREE</text>
+  </g>
 
-  <g transform="translate(560, 28)">
-    <rect width="148" height="34" rx="17" fill="#B45309"/>
-    <text x="74" y="22" font-family="'Sarabun', sans-serif" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">เข้าเล่นเลย →</text>
+  <!-- Center: AI BOT teaser -->
+  <g transform="translate(300, 22)">
+    <!-- Mini robot -->
+    <g transform="translate(0, 6)">
+      <line x1="18" y1="0" x2="18" y2="6" stroke="url(#lbGold)" stroke-width="2"/>
+      <circle cx="18" cy="2" r="3" fill="url(#lbGold)"/>
+      <rect x="2" y="8" width="32" height="28" rx="6" fill="url(#lbGold)" stroke="#FEF3C7" stroke-width="1"/>
+      <circle cx="11" cy="20" r="3.5" fill="#0F172A"/>
+      <circle cx="25" cy="20" r="3.5" fill="#0F172A"/>
+      <circle cx="11.5" cy="19" r="1" fill="#FCD34D"/>
+      <circle cx="25.5" cy="19" r="1" fill="#FCD34D"/>
+      <rect x="13" y="28" width="10" height="2.5" rx="1" fill="#0F172A"/>
+    </g>
+    <text x="46" y="28" font-family="'Prompt','Sarabun',sans-serif" font-size="22" font-weight="800" fill="url(#lbGoldText)">AI BOT</text>
+    <text x="46" y="48" font-family="'Prompt','Sarabun',sans-serif" font-size="11" font-weight="500" fill="#CBD5E1">3 ระดับ • หรือเล่นกับเพื่อน</text>
+  </g>
+
+  <!-- CTA button -->
+  <g transform="translate(560, 27)" filter="url(#lbShadow)">
+    <rect width="155" height="36" rx="18" fill="url(#lbGold)"/>
+    <text x="77.5" y="23" font-family="'Prompt','Sarabun',sans-serif" font-size="14" font-weight="800" fill="#0F172A" text-anchor="middle">เข้าเล่นเลย ▶</text>
   </g>
 </svg>
