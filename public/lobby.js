@@ -1,6 +1,9 @@
-const PIECE_SYMBOLS = {
+const CHESS_SYMBOLS = {
   'wK': '♔', 'wQ': '♕', 'wB': '♗', 'wN': '♘', 'wR': '♖', 'wP': '♙',
   'bK': '♚', 'bQ': '♛', 'bB': '♝', 'bN': '♞', 'bR': '♜', 'bP': '♟'
+};
+const CHECKERS_SYMBOLS = {
+  'wM': '⛀', 'wK': '⛁', 'bM': '⛂', 'bK': '⛃'
 };
 
 const socket = io();
@@ -27,6 +30,16 @@ const createBtn = document.getElementById('createBtn');
 const incRow = document.getElementById('incRow');
 let selectedTimeBase = null;
 let selectedTimeIncrement = 0;
+let selectedGameType = 'chess';
+
+document.querySelectorAll('#gameTypeOptions .tc-btn').forEach((btn) => {
+  btn.onclick = () => {
+    document.querySelectorAll('#gameTypeOptions .tc-btn').forEach((b) => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedGameType = btn.dataset.gt;
+    newRoomInput.placeholder = selectedGameType === 'checkers' ? 'ตั้งชื่อห้อง (วงหมากฮอส)' : 'ตั้งชื่อห้อง (วงหมากรุก)';
+  };
+});
 
 document.querySelectorAll('#tcBaseOptions .tc-btn').forEach((btn) => {
   btn.onclick = () => {
@@ -52,6 +65,7 @@ function createRoom() {
   const password = newRoomPasswordInput.value.trim();
   socket.emit('create_room', {
     name,
+    gameType: selectedGameType,
     timeBase: selectedTimeBase,
     timeIncrement: selectedTimeIncrement,
     password: password || null,
@@ -122,10 +136,13 @@ function renderRooms(rooms) {
     const tcPill = formatTimeControl(r.timeBase, r.timeIncrement);
     const tcPillHTML = tcPill ? `<span class="thumb-pill">⏱ ${tcPill}</span>` : '';
     const lockBadge = r.isPrivate ? '<span class="thumb-pill private">🔒 ส่วนตัว</span>' : '';
+    const gtBadge = r.gameType === 'checkers'
+      ? '<span class="thumb-pill game-type">⛂ หมากฮอส</span>'
+      : '<span class="thumb-pill game-type">♛ หมากรุก</span>';
 
     card.innerHTML = `
       <div class="room-thumb">
-        ${renderMiniBoard(r.board)}
+        ${renderMiniBoard(r.board, r.gameType)}
         <div class="thumb-overlay">
           <div class="thumb-overlay-top">
             ${statusBadge}
@@ -136,7 +153,10 @@ function renderRooms(rooms) {
             </div>
           </div>
           <div class="thumb-overlay-bottom">
-            ${turnPill}
+            <div style="display:flex;gap:4px;flex-direction:column;align-items:flex-start">
+              ${gtBadge}
+              ${turnPill}
+            </div>
             <span class="thumb-pill">👥 ${r.playerCount}/2</span>
           </div>
         </div>
@@ -169,14 +189,15 @@ function formatTimeControl(base, inc) {
   return inc ? `${baseStr} +${inc}วิ` : baseStr;
 }
 
-function renderMiniBoard(board) {
+function renderMiniBoard(board, gameType) {
   if (!board) return '<div class="mini-board-empty">♟</div>';
+  const symbols = gameType === 'checkers' ? CHECKERS_SYMBOLS : CHESS_SYMBOLS;
   let html = '<div class="mini-board">';
   for (let r = 0; r < 8; r++) {
     for (let c = 0; c < 8; c++) {
       const sqClass = (r + c) % 2 === 0 ? 'mb-light' : 'mb-dark';
       const piece = board[r][c];
-      const sym = piece ? PIECE_SYMBOLS[piece] : '';
+      const sym = piece ? (symbols[piece] || '') : '';
       const colorClass = piece ? (piece[0] === 'w' ? 'mb-w' : 'mb-b') : '';
       html += `<div class="mb-sq ${sqClass} ${colorClass}">${sym}</div>`;
     }

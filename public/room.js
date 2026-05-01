@@ -1,7 +1,12 @@
-const PIECE_SYMBOLS = {
+const CHESS_SYMBOLS = {
   'wK': '♔', 'wQ': '♕', 'wB': '♗', 'wN': '♘', 'wR': '♖', 'wP': '♙',
   'bK': '♚', 'bQ': '♛', 'bB': '♝', 'bN': '♞', 'bR': '♜', 'bP': '♟'
 };
+const CHECKERS_SYMBOLS = {
+  'wM': '⛀', 'wK': '⛁', 'bM': '⛂', 'bK': '⛃'
+};
+function getEngine() { return gameType === 'checkers' ? Checkers : Chess; }
+function getSymbols() { return gameType === 'checkers' ? CHECKERS_SYMBOLS : CHESS_SYMBOLS; }
 
 const params = new URLSearchParams(window.location.search);
 const roomId = params.get('id');
@@ -17,6 +22,8 @@ let selected = null;
 let validMoves = [];
 let flipped = false;
 let chatMsgCount = 0;
+let gameType = 'chess';
+let mustContinueFrom = null;
 let timeBase = null;
 let timeIncrement = 0;
 let whiteTime = null;
@@ -47,12 +54,15 @@ socket.on('joined', ({ role }) => {
 
 socket.on('room_state', (state) => {
   document.getElementById('roomName').textContent = state.name;
-  document.title = state.name + ' — หมากรุกไทยออนไลน์';
+  document.title = state.name + ' — Playmakruk';
   const prevStatus = status;
-  const prevPlayer = currentPlayer;
+  gameType = state.gameType || 'chess';
+  const labelEl = document.getElementById('roomGameTypeLabel');
+  if (labelEl) labelEl.textContent = gameType === 'checkers' ? 'หมากฮอสไทย' : 'หมากรุกไทย';
   board = state.board;
   currentPlayer = state.currentPlayer;
   status = state.status;
+  mustContinueFrom = state.mustContinueFrom || null;
   timeBase = state.timeBase;
   timeIncrement = state.timeIncrement || 0;
   whiteTime = state.whiteTime;
@@ -74,6 +84,14 @@ socket.on('room_state', (state) => {
   renderClocks();
   renderControls();
 
+  if (mustContinueFrom && currentPlayer === myRole) {
+    selected = { r: mustContinueFrom.r, c: mustContinueFrom.c };
+    validMoves = legalMovesFor(mustContinueFrom.r, mustContinueFrom.c);
+  } else if (!mustContinueFrom) {
+    selected = null;
+    validMoves = [];
+  }
+
   updatePlayerSlot('W', state.players.w);
   updatePlayerSlot('B', state.players.b);
 
@@ -84,8 +102,6 @@ socket.on('room_state', (state) => {
   updateViewersList(state.viewers || [], state.viewerCount);
 
   updateStatus();
-  selected = null;
-  validMoves = [];
   render();
 });
 
@@ -207,13 +223,16 @@ function updateStatus() {
     if (endedReason === 'checkmate') label = `🏆 ${endedWinner === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} ชนะ (รุกจน)`;
     else if (endedReason === 'resign') label = `🏳 ${endedWinner === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} ชนะ (อีกฝ่ายยอมแพ้)`;
     else if (endedReason === 'timeout') label = `⏰ ${endedWinner === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} ชนะ (อีกฝ่ายหมดเวลา)`;
-    else if (endedReason === 'draw_agreement') label = '🤝 เสมอ (ตกลงร่วมกัน)';
+    else if (endedReason === 'no_pieces') label = `🏆 ${endedWinner === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} ชนะ — เก็บหมากหมด!`;
+    else if (endedReason === 'no_moves') label = `🏆 ${endedWinner === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} ชนะ — อีกฝ่ายเดินไม่ได้`;
     else if (endedReason === 'stalemate') label = '🤝 เสมอ (อับ)';
     el.textContent = label;
   } else {
-    const inCheck = Chess.isInCheck(board, currentPlayer);
     const turnText = currentPlayer === 'w' ? 'ตาฝ่ายขาว' : 'ตาฝ่ายดำ';
-    if (inCheck) {
+    if (mustContinueFrom && currentPlayer === myRole) {
+      el.textContent = `${turnText} • กินต่อได้!`;
+      el.classList.add('check');
+    } else if (gameType === 'chess' && Chess.isInCheck(board, currentPlayer)) {
       el.textContent = `${turnText} • ถูกรุก!`;
       el.classList.add('check');
     } else {
@@ -294,8 +313,10 @@ function render() {
   boardEl.innerHTML = '';
   if (!board) return;
 
-  const inCheck = Chess.isInCheck(board, currentPlayer);
-  const kingPos = inCheck ? Chess.findKing(board, currentPlayer) : null;
+  const symbols = getSymbols();
+  const engine = getEngine();
+  const inCheck = gameType === 'chess' && engine.isInCheck && engine.isInCheck(board, currentPlayer);
+  const kingPos = inCheck ? engine.findKing(board, currentPlayer) : null;
 
   for (let i = 0; i < 8; i++) {
     for (let j = 0; j < 8; j++) {
@@ -305,14 +326,16 @@ function render() {
       sq.className = 'square ' + ((r + c) % 2 === 0 ? 'light' : 'dark');
 
       if (selected && selected.r === r && selected.c === c) sq.classList.add('selected');
+      if (mustContinueFrom && mustContinueFrom.r === r && mustContinueFrom.c === c) sq.classList.add('selected');
       const vm = validMoves.find((m) => m.r === r && m.c === c);
-      if (vm) sq.classList.add(vm.capture ? 'valid-capture' : 'valid-move');
+      if (vm) sq.classList.add((vm.capture || vm.captured) ? 'valid-capture' : 'valid-move');
       if (kingPos && kingPos.r === r && kingPos.c === c) sq.classList.add('check');
 
       const piece = board[r][c];
       if (piece) {
-        sq.textContent = PIECE_SYMBOLS[piece];
-        sq.classList.add(Chess.pieceColor(piece) === 'w' ? 'piece-w' : 'piece-b');
+        sq.textContent = symbols[piece] || '';
+        sq.classList.add(engine.pieceColor(piece) === 'w' ? 'piece-w' : 'piece-b');
+        if (gameType === 'checkers') sq.classList.add('checker-piece');
       }
 
       sq.onclick = () => handleClick(r, c);
@@ -325,19 +348,20 @@ function handleClick(r, c) {
   if (status !== 'playing') return;
   if (myRole !== currentPlayer) return;
 
+  const engine = getEngine();
   const piece = board[r][c];
   if (selected) {
     const vm = validMoves.find((m) => m.r === r && m.c === c);
     if (vm) {
       socket.emit('move', { from: { r: selected.r, c: selected.c }, to: { r, c } });
-      selected = null;
-      validMoves = [];
+      if (!mustContinueFrom) { selected = null; validMoves = []; }
       render();
       return;
     }
-    if (piece && Chess.pieceColor(piece) === myRole) {
+    if (mustContinueFrom) return;
+    if (piece && engine.pieceColor(piece) === myRole) {
       selected = { r, c };
-      validMoves = Chess.getLegalMoves(board, r, c);
+      validMoves = legalMovesFor(r, c);
       render();
       return;
     }
@@ -346,11 +370,19 @@ function handleClick(r, c) {
     render();
     return;
   }
-  if (piece && Chess.pieceColor(piece) === myRole) {
+  if (piece && engine.pieceColor(piece) === myRole) {
     selected = { r, c };
-    validMoves = Chess.getLegalMoves(board, r, c);
+    validMoves = legalMovesFor(r, c);
     render();
   }
+}
+
+function legalMovesFor(r, c) {
+  const engine = getEngine();
+  if (gameType === 'checkers') {
+    return engine.getLegalMoves(board, r, c, currentPlayer, mustContinueFrom);
+  }
+  return engine.getLegalMoves(board, r, c);
 }
 
 document.getElementById('flipBtn').onclick = () => {

@@ -3,22 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>วงเล่นหมากรุกไทย — หมากรุกไทยออนไลน์</title>
-<meta name="description" content="ห้องเล่นหมากรุกไทยออนไลน์สด พร้อมแชทระหว่างผู้เล่นและผู้ชม">
+<title>วงเล่น — เล่นหมากรุก หมากฮอส ออนไลน์</title>
+<meta name="description" content="ห้องเล่นหมากรุก/หมากฮอสออนไลน์สด พร้อมแชทระหว่างผู้เล่นและผู้ชม">
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#B45309">
 
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="หมากรุกไทยออนไลน์">
-<meta property="og:title" content="มาดูเกมหมากรุกไทยสด — หมากรุกไทยออนไลน์">
-<meta property="og:description" content="เข้าร่วมวงเล่นหมากรุกไทยสด ดูเกมพร้อมแชทกับผู้ชมคนอื่น">
+<meta property="og:site_name" content="Playmakruk">
+<meta property="og:title" content="มาดูเกมหมากรุก/หมากฮอสสด — Playmakruk">
+<meta property="og:description" content="เข้าร่วมวงเล่นหมากรุกไทย/หมากฮอสไทยสด ดูเกมพร้อมแชทกับผู้ชมคนอื่น">
 <meta property="og:image" content="https://playmakruk.com/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:locale" content="th_TH">
 
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="มาดูเกมหมากรุกไทยสด">
+<meta name="twitter:title" content="มาดูเกมหมากรุก/หมากฮอสสด — Playmakruk">
 <meta name="twitter:image" content="https://playmakruk.com/og-image.png">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -33,7 +33,7 @@
       <div class="logo-mark">♛</div>
       <div class="logo-text">
         <span id="roomName">กำลังโหลด...</span>
-        <small>หมากรุกไทยออนไลน์</small>
+        <small id="roomGameTypeLabel">Playmakruk</small>
       </div>
     </a>
     <div class="header-spacer"></div>
@@ -158,11 +158,11 @@
       <div class="footer-row">
         <a href="/">รายการห้อง</a>
         <span class="footer-divider"></span>
-        <a href="/rules.html">กฎหมากรุกไทย</a>
+        <a href="/rules.html">กฎหมากรุก / หมากฮอส</a>
         <span class="footer-divider"></span>
         <span>ติดต่อโฆษณา: <strong>sonic13oom@hotmail.com</strong></span>
       </div>
-      <div class="footer-stats" id="footerStats">© 2026 หมากรุกไทยออนไลน์</div>
+      <div class="footer-stats" id="footerStats">© 2026 Playmakruk.com</div>
     </footer>
   </main>
 
@@ -170,6 +170,7 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="chess.js"></script>
+  <script src="checkers.js"></script>
   <script src="room.js"></script>
 </body>
 </html>
