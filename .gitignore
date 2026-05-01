@@ -1,0 +1,6 @@
+node_modules/
+visits.json
+.DS_Store
+.env
+*.log
+npm-debug.log*

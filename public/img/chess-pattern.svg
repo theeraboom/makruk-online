@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="280" height="280" viewBox="0 0 280 280">
+  <g font-family="Georgia, serif" font-weight="bold" fill="#B45309" opacity="0.07">
+    <text x="20" y="70" font-size="64" transform="rotate(-12 50 50)">♔</text>
+    <text x="160" y="50" font-size="48" transform="rotate(18 185 50)">♘</text>
+    <text x="100" y="130" font-size="56" transform="rotate(-8 130 130)">♕</text>
+    <text x="200" y="160" font-size="44" transform="rotate(22 220 160)">♗</text>
+    <text x="40" y="200" font-size="50" transform="rotate(10 65 200)">♖</text>
+    <text x="160" y="240" font-size="58" transform="rotate(-15 190 240)">♔</text>
+    <text x="240" y="100" font-size="40" transform="rotate(28 255 100)">♟</text>
+    <text x="10" y="260" font-size="42" transform="rotate(-20 30 260)">♟</text>
+  </g>
+</svg>

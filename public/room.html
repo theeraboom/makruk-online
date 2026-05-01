@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>หมากรุกไทยออนไลน์ — วงเล่น</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="room-page">
+  <header>
+    <a href="/" class="back-btn">← กลับ</a>
+    <a href="/" class="logo">
+      <div class="logo-mark">♛</div>
+      <div class="logo-text">
+        <span id="roomName">กำลังโหลด...</span>
+        <small>หมากรุกไทยออนไลน์</small>
+      </div>
+    </a>
+    <div class="header-spacer"></div>
+    <div class="role-badge" id="roleBadge">กำลังเชื่อมต่อ...</div>
+  </header>
+
+  <main>
+    <div class="ad-slot ad-leaderboard">
+      <div>พื้นที่โฆษณา</div>
+      <div class="ad-size">728 × 90</div>
+    </div>
+
+    <div class="room-grid">
+      <section class="game-section">
+        <div class="players-bar">
+          <div class="player-info" id="playerW">
+            <div class="avatar white" id="avatarW">?</div>
+            <span class="player-name empty">รอผู้เล่น</span>
+          </div>
+          <div class="status-pill" id="status">รอผู้เล่น</div>
+          <div class="player-info right" id="playerB">
+            <div class="avatar black" id="avatarB">?</div>
+            <span class="player-name empty">รอผู้เล่น</span>
+          </div>
+        </div>
+
+        <div class="board-wrapper">
+          <div class="board" id="board"></div>
+        </div>
+
+        <div class="game-controls">
+          <button id="resetBtn" class="ghost">🔁 เริ่มเกมใหม่</button>
+          <button id="flipBtn" class="ghost">↕ หมุนกระดาน</button>
+          <span class="viewer-count">👁 <span id="viewerCount">0</span> คนกำลังดู</span>
+        </div>
+
+        <div class="reaction-bar" id="reactionBar">
+          <button class="reaction-btn" data-emoji="👍" title="ดี">👍</button>
+          <button class="reaction-btn" data-emoji="🔥" title="เด็ด">🔥</button>
+          <button class="reaction-btn" data-emoji="👏" title="ปรบมือ">👏</button>
+          <button class="reaction-btn" data-emoji="😱" title="ตกใจ">😱</button>
+          <button class="reaction-btn" data-emoji="🤔" title="คิดหนัก">🤔</button>
+          <button class="reaction-btn" data-emoji="♟" title="หมาก">♟</button>
+          <button class="reaction-btn" data-emoji="❤️" title="ใจ">❤️</button>
+          <button class="reaction-btn" data-emoji="🎉" title="ฉลอง">🎉</button>
+        </div>
+
+        <details class="rules">
+          <summary>📖 กฎการเดินหมาก</summary>
+          <ul>
+            <li><b>♔ ขุน</b> — เดิน 1 ช่องทุกทิศทาง</li>
+            <li><b>♕ เม็ด</b> — เดิน 1 ช่องในแนวทแยง</li>
+            <li><b>♗ โคน</b> — เดิน 1 ช่องในแนวทแยง หรือ 1 ช่องตรงข้างหน้า</li>
+            <li><b>♘ ม้า</b> — เดินรูปตัว L</li>
+            <li><b>♖ เรือ</b> — เดินตรงในแนวนอน/แนวตั้ง ระยะใดก็ได้</li>
+            <li><b>♙ เบี้ย</b> — เดินตรง 1 ช่อง กินทแยง 1 ช่อง — ถึงแถวที่ 6 (ของฝ่ายตน) เลื่อนเป็นเม็ด</li>
+          </ul>
+          <p style="margin-top:12px"><a href="/rules.html">อ่านประวัติและกติกาเต็ม →</a></p>
+        </details>
+
+        <div class="ad-slot ad-leaderboard" style="margin-top: 8px;">
+          <div>พื้นที่โฆษณา</div>
+          <div class="ad-size">728 × 90</div>
+        </div>
+      </section>
+
+      <aside class="room-sidebar">
+        <div class="viewers-card">
+          <div class="viewers-header">
+            <span>👁 <span id="viewersTitle">ผู้ชม (0)</span></span>
+          </div>
+          <div id="viewersList" class="viewers-list">
+            <div class="viewers-empty">ยังไม่มีคนยืนดู</div>
+          </div>
+        </div>
+
+        <div class="chat-area">
+          <div class="chat-header">
+            <span class="chat-live"></span>
+            แชทสด
+            <span class="chat-count" id="chatCount"></span>
+          </div>
+          <div class="chat-messages" id="chatMessages"></div>
+          <form class="chat-form" id="chatForm">
+            <input id="chatInput" placeholder="พิมพ์ข้อความ..." maxlength="300" autocomplete="off">
+            <button type="submit" class="primary">ส่ง</button>
+          </form>
+        </div>
+
+        <div class="ad-slot ad-rectangle">
+          <div>พื้นที่โฆษณา</div>
+          <div class="ad-size">300 × 250</div>
+        </div>
+      </aside>
+    </div>
+
+    <footer>
+      <div class="footer-row">
+        <a href="/">รายการห้อง</a>
+        <span class="footer-divider"></span>
+        <a href="/rules.html">กฎหมากรุกไทย</a>
+        <span class="footer-divider"></span>
+        <span>ติดต่อโฆษณา: <strong>sonic13oom@hotmail.com</strong></span>
+      </div>
+      <div class="footer-stats" id="footerStats">© 2026 หมากรุกไทยออนไลน์</div>
+    </footer>
+  </main>
+
+  <div class="reaction-overlay" id="reactionOverlay"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="chess.js"></script>
+  <script src="room.js"></script>
+</body>
+</html>

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>หมากรุกไทยออนไลน์ — มาเล่น มาดู กันเลย</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="lobby-page">
+  <header>
+    <a href="/" class="logo">
+      <div class="logo-mark">♛</div>
+      <div class="logo-text">
+        หมากรุกไทย
+        <small>ออนไลน์ — มาเล่น มาดู</small>
+      </div>
+    </a>
+    <div class="header-spacer"></div>
+    <div class="user-bar">
+      <input id="nameInput" maxlength="24" placeholder="ตั้งชื่อของคุณ">
+      <button id="saveName" class="ghost">บันทึก</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-text">
+        <h1 class="hero-title">นั่งเล่น ยืนดู คุยกันสนุกๆ</h1>
+        <p class="hero-sub">บรรยากาศเหมือนวงหมากรุกข้างถนน — สองคนนั่งเล่น คนอื่นๆ ยืนดูล้อมวง พูดคุยเชียร์กันได้ทุกเมื่อ</p>
+        <div class="hero-stats">
+          <div class="stat-chip"><span class="live-dot"></span><strong id="statRooms">0</strong> ห้องเปิด</div>
+          <div class="stat-chip">👥 <strong id="statPlayers">0</strong> กำลังเล่น</div>
+          <div class="stat-chip">👁 <strong id="statViewers">0</strong> กำลังดู</div>
+          <div class="stat-chip">🌟 <strong id="statVisits">0</strong> ผู้เข้าชมทั้งหมด</div>
+        </div>
+      </div>
+      <div class="hero-actions">
+        <input id="newRoomName" placeholder="ตั้งชื่อห้อง" maxlength="40">
+        <button id="createBtn" class="primary">+ เปิดวงเล่นใหม่</button>
+      </div>
+    </section>
+
+    <div class="ad-slot ad-leaderboard">
+      <div>พื้นที่โฆษณา</div>
+      <div class="ad-size">728 × 90</div>
+    </div>
+
+    <div class="lobby-grid">
+      <section>
+        <div class="section-header">
+          <h2><span class="live-dot"></span>วงที่กำลังเล่นอยู่</h2>
+        </div>
+        <div id="roomsList" class="rooms-list">
+          <div class="empty">
+            <div class="empty-icon">♟</div>
+            <div>ยังไม่มีวงเปิด — เปิดวงใหม่ได้เลย</div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="lobby-sidebar">
+        <div class="ad-slot ad-rectangle">
+          <div>พื้นที่โฆษณา</div>
+          <div class="ad-size">300 × 250</div>
+        </div>
+
+        <div class="info-card">
+          <h3>📜 วิธีเข้าร่วม</h3>
+          <ol>
+            <li>กดเปิดวงใหม่ หรือเข้าวงที่เปิดอยู่</li>
+            <li>2 คนแรก = ผู้เล่น (ขาว/ดำ)</li>
+            <li>คนถัดไป = ยืนดู + ร่วมพูดคุยในแชท</li>
+          </ol>
+        </div>
+
+        <div class="info-card">
+          <h3>♟ กฎหมากรุกไทยฉบับย่อ</h3>
+          <p>เบี้ยเริ่มแถว 3, ถึงแถว 6 เลื่อนเป็นเม็ด, เม็ดเดินทแยง 1 ช่อง, โคนเดินทแยง 4 ทิศ + ตรงหน้า 1 ช่อง</p>
+          <p><a href="/rules.html">อ่านประวัติและกติกาเต็ม →</a></p>
+        </div>
+
+        <div class="ad-slot ad-rectangle">
+          <div>พื้นที่โฆษณา</div>
+          <div class="ad-size">300 × 250</div>
+        </div>
+      </aside>
+    </div>
+
+    <footer>
+      <div class="footer-row">
+        <a href="/rules.html">กฎหมากรุกไทย</a>
+        <span class="footer-divider"></span>
+        <span>ติดต่อโฆษณา: <strong>sonic13oom@hotmail.com</strong></span>
+      </div>
+      <div class="footer-stats" id="footerStats">© 2026 หมากรุกไทยออนไลน์ — เล่นฟรี ดูฟรี</div>
+    </footer>
+  </main>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="lobby.js"></script>
+</body>
+</html>
