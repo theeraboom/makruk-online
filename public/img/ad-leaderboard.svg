@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 728 90" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <linearGradient id="adlbg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFCF6"/>
+      <stop offset="100%" stop-color="#FEF3C7"/>
+    </linearGradient>
+    <linearGradient id="adltitle" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#18181B"/>
+      <stop offset="100%" stop-color="#B45309"/>
+    </linearGradient>
+    <radialGradient id="adlglow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#D97706" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#D97706" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="728" height="90" rx="8" fill="url(#adlbg)" stroke="#E5E1D5" stroke-width="1"/>
+  <circle cx="60" cy="45" r="60" fill="url(#adlglow)"/>
+
+  <g font-family="Georgia, serif" font-weight="bold" fill="#B45309" opacity="0.07">
+    <text x="490" y="35" font-size="44" transform="rotate(-12 510 35)">♚</text>
+    <text x="640" y="78" font-size="38" transform="rotate(15 660 78)">⛂</text>
+    <text x="200" y="80" font-size="36" transform="rotate(-8 220 80)">♞</text>
+  </g>
+
+  <g transform="translate(20, 20)">
+    <rect width="50" height="50" rx="10" fill="#B45309"/>
+    <text x="25" y="38" font-family="Georgia, serif" font-size="34" font-weight="bold" fill="#FFFFFF" text-anchor="middle">♛</text>
+  </g>
+
+  <text x="90" y="40" font-family="'Sarabun', sans-serif" font-size="22" font-weight="700" fill="url(#adltitle)">Playmakruk.com</text>
+  <text x="90" y="62" font-family="'Sarabun', sans-serif" font-size="14" fill="#52525B">เล่นหมากรุก / หมากฮอสไทย ออนไลน์ — ฟรี ไม่ต้องสมัคร</text>
+  <text x="90" y="80" font-family="'Sarabun', sans-serif" font-size="12" fill="#8B7E6B">นั่งเล่น ยืนดู คุยกันสนุกๆ บรรยากาศเป็นกันเอง</text>
+
+  <g transform="translate(560, 28)">
+    <rect width="148" height="34" rx="17" fill="#B45309"/>
+    <text x="74" y="22" font-family="'Sarabun', sans-serif" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">เข้าเล่นเลย →</text>
+  </g>
+</svg>

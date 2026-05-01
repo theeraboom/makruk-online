@@ -35,6 +35,7 @@ let moves = [];
 let lastMoveCount = 0;
 let soundEnabled = localStorage.getItem('makruk_sound') !== 'off';
 let boardTheme = localStorage.getItem('makruk_theme') || 'wood';
+let pieceSet = localStorage.getItem('makruk_pieceset') || 'classic';
 
 const userName = localStorage.getItem('makruk_name') || '';
 if (userName) socket.emit('set_name', userName);
@@ -65,6 +66,8 @@ socket.on('room_state', (state) => {
     chessRules.hidden = gameType === 'checkers';
     checkersRules.hidden = gameType !== 'checkers';
   }
+  const piecePicker = document.getElementById('piecePicker');
+  if (piecePicker) piecePicker.hidden = gameType === 'checkers';
   board = state.board;
   currentPlayer = state.currentPlayer;
   status = state.status;
@@ -339,9 +342,10 @@ function render() {
 
       const piece = board[r][c];
       if (piece) {
-        sq.textContent = symbols[piece] || '';
+        sq.innerHTML = Pieces.renderPiece(piece, gameType, pieceSet);
         sq.classList.add(engine.pieceColor(piece) === 'w' ? 'piece-w' : 'piece-b');
         if (gameType === 'checkers') sq.classList.add('checker-piece');
+        else sq.classList.add('piece-set-' + pieceSet);
       }
 
       sq.onclick = () => handleClick(r, c);
@@ -408,6 +412,20 @@ applyTheme(boardTheme);
 
 document.querySelectorAll('#themeOptions .theme-btn').forEach((btn) => {
   btn.onclick = () => applyTheme(btn.dataset.theme);
+});
+
+function applyPieceSet(set) {
+  pieceSet = set;
+  localStorage.setItem('makruk_pieceset', set);
+  document.querySelectorAll('#pieceOptions .theme-btn').forEach((b) => {
+    b.classList.toggle('active', b.dataset.pieceset === set);
+  });
+  if (board) render();
+}
+applyPieceSet(pieceSet);
+
+document.querySelectorAll('#pieceOptions .theme-btn').forEach((btn) => {
+  btn.onclick = () => applyPieceSet(btn.dataset.pieceset);
 });
 
 document.getElementById('resetBtn').onclick = () => {

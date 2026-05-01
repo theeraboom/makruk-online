@@ -464,7 +464,7 @@ main { max-width: 1280px; margin: 0 auto; padding: 24px; }
   text-align: center;
   overflow: hidden;
 }
-.ad-slot::before {
+.ad-slot:not(.ad-self)::before {
   content: 'ADVERTISEMENT';
   position: absolute;
   top: 6px;
@@ -475,6 +475,25 @@ main { max-width: 1280px; margin: 0 auto; padding: 24px; }
   opacity: 0.7;
 }
 .ad-slot .ad-size { font-size: 11px; opacity: 0.6; margin-top: 4px; }
+
+.ad-slot.ad-self {
+  border: 1px solid var(--border);
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  text-decoration: none;
+}
+.ad-slot.ad-self:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+.ad-slot.ad-self img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
 
 .ad-leaderboard { width: 100%; max-width: 728px; height: 90px; margin: 0 auto 24px; }
 .ad-rectangle { width: 100%; max-width: 300px; height: 250px; margin: 0 auto; }
@@ -705,6 +724,77 @@ body[data-board-theme="gray"] { --sq-light: #FFFFFF; --sq-dark: #B8B8B8; --sq-se
 }
 
 .thumb-pill.game-type { background: rgba(180, 83, 9, 0.85); }
+
+/* ============ Piece sets ============ */
+/* Thai Carved (SVG) — currentColor controlled by .piece-w / .piece-b */
+.ps-svg {
+  width: 86%;
+  height: 86%;
+  filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.45));
+}
+.square.piece-set-thai-carved.piece-w { color: #F5F2E8; text-shadow: none; }
+.square.piece-set-thai-carved.piece-b { color: #2A2A2A; text-shadow: none; }
+.square.piece-set-thai-carved .ps-svg g { stroke: #1a1a1a; stroke-width: 1.2; }
+.square.piece-set-thai-carved.piece-b .ps-svg g { stroke: #000; }
+
+/* Thai Letters */
+.ps-letter {
+  font-family: 'Sarabun', sans-serif;
+  font-weight: 800;
+  font-size: 14px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 78%;
+  height: 78%;
+  border-radius: 50%;
+  letter-spacing: -0.02em;
+}
+@media (max-width: 600px) { .ps-letter { font-size: 11px; } }
+.square.piece-set-thai-letters.piece-w {
+  color: inherit;
+  text-shadow: none;
+}
+.square.piece-set-thai-letters.piece-w .ps-letter {
+  background: linear-gradient(180deg, #FAFAF7 0%, #D9D2C0 100%);
+  color: #1a1a1a;
+  border: 2px solid #1a1a1a;
+  box-shadow: 0 3px 4px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,255,255,0.5);
+}
+.square.piece-set-thai-letters.piece-b {
+  color: inherit;
+  text-shadow: none;
+}
+.square.piece-set-thai-letters.piece-b .ps-letter {
+  background: linear-gradient(180deg, #2a2a2a 0%, #000 100%);
+  color: #F5F2E8;
+  border: 2px solid #000;
+  box-shadow: 0 3px 4px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.15);
+}
+
+/* Outline classic — softer shadow */
+.square.piece-set-outline.piece-w {
+  text-shadow: 0 2px 2px rgba(0,0,0,0.35);
+  color: #FAFAF7;
+}
+.square.piece-set-outline.piece-b {
+  text-shadow: 0 2px 2px rgba(0,0,0,0.35);
+  color: #1a1a1a;
+}
+
+/* Picker preview swatches */
+.ps-preview {
+  display: inline-flex;
+  width: 22px; height: 22px;
+  align-items: center; justify-content: center;
+  font-size: 18px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  flex-shrink: 0;
+}
+.ps-preview-svg { color: var(--primary-hover); font-size: 14px; }
+.ps-preview-letter { font-family: 'Sarabun'; font-weight: 700; font-size: 12px; }
 
 .game-controls {
   display: flex;

@@ -41,10 +41,9 @@
   </header>
 
   <main>
-    <div class="ad-slot ad-leaderboard">
-      <div>พื้นที่โฆษณา</div>
-      <div class="ad-size">728 × 90</div>
-    </div>
+    <a href="/" class="ad-slot ad-leaderboard ad-self">
+      <img src="img/ad-leaderboard.svg" alt="Playmakruk - หมากรุก หมากฮอส ออนไลน์">
+    </a>
 
     <div class="room-grid">
       <section class="game-section">
@@ -84,6 +83,15 @@
               <button type="button" class="theme-btn" data-theme="blue" title="น้ำเงิน (lichess)"><span class="swatch sw-blue"></span>น้ำเงิน</button>
               <button type="button" class="theme-btn" data-theme="purple" title="ม่วง"><span class="swatch sw-purple"></span>ม่วง</button>
               <button type="button" class="theme-btn" data-theme="gray" title="มินิมอล"><span class="swatch sw-gray"></span>เทา</button>
+            </div>
+          </details>
+          <details class="theme-picker piece-picker" id="piecePicker" hidden>
+            <summary class="ghost">♟ ตัวหมาก</summary>
+            <div class="theme-options" id="pieceOptions">
+              <button type="button" class="theme-btn" data-pieceset="classic" title="หมากรุกสากล (ตัวเต็ม)"><span class="ps-preview">♚</span>คลาสสิก</button>
+              <button type="button" class="theme-btn" data-pieceset="thai-carved" title="ตัวหมากไทย รูปทรงเจดีย์"><span class="ps-preview ps-preview-svg">▲</span>ไทยแกะสลัก</button>
+              <button type="button" class="theme-btn" data-pieceset="thai-letters" title="ตัวอักษรไทย (ขุน, เม็ด, โคน...)"><span class="ps-preview ps-preview-letter">ข</span>อักษรไทย</button>
+              <button type="button" class="theme-btn" data-pieceset="outline" title="แบบโครงเส้น"><span class="ps-preview">♔</span>โครงเส้น</button>
             </div>
           </details>
           <span class="viewer-count">👁 <span id="viewerCount">0</span> คนกำลังดู</span>
@@ -126,10 +134,9 @@
           <p style="margin-top:12px"><a href="/rules.html">อ่านประวัติและกติกาเต็ม →</a></p>
         </details>
 
-        <div class="ad-slot ad-leaderboard" style="margin-top: 8px;">
-          <div>พื้นที่โฆษณา</div>
-          <div class="ad-size">728 × 90</div>
-        </div>
+        <a href="/" class="ad-slot ad-leaderboard ad-self" style="margin-top: 8px;">
+          <img src="img/ad-leaderboard.svg" alt="Playmakruk - หมากรุก หมากฮอส ออนไลน์">
+        </a>
       </section>
 
       <aside class="room-sidebar">
@@ -155,10 +162,9 @@
           </form>
         </div>
 
-        <div class="ad-slot ad-rectangle">
-          <div>พื้นที่โฆษณา</div>
-          <div class="ad-size">300 × 250</div>
-        </div>
+        <a href="/" class="ad-slot ad-rectangle ad-self">
+          <img src="img/ad-rectangle.svg" alt="Playmakruk - หมากรุก หมากฮอส ออนไลน์">
+        </a>
       </aside>
     </div>
 
@@ -179,6 +185,7 @@
   <script src="/socket.io/socket.io.js"></script>
   <script src="chess.js"></script>
   <script src="checkers.js"></script>
+  <script src="pieces.js"></script>
   <script src="room.js"></script>
 </body>
 </html>
