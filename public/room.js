@@ -348,6 +348,19 @@ function render() {
         else sq.classList.add('piece-set-' + pieceSet);
       }
 
+      if (i === 7) {
+        const fileLabel = document.createElement('span');
+        fileLabel.className = 'sq-label sq-label-file';
+        fileLabel.textContent = 'abcdefgh'[c];
+        sq.appendChild(fileLabel);
+      }
+      if (j === 0) {
+        const rankLabel = document.createElement('span');
+        rankLabel.className = 'sq-label sq-label-rank';
+        rankLabel.textContent = String(8 - r);
+        sq.appendChild(rankLabel);
+      }
+
       sq.onclick = () => handleClick(r, c);
       boardEl.appendChild(sq);
     }
