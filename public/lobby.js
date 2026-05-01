@@ -61,7 +61,7 @@ document.querySelectorAll('#tcIncOptions .tc-btn').forEach((btn) => {
 });
 
 function createRoom() {
-  const name = newRoomInput.value.trim() || 'วงหมากรุกไทย';
+  const name = newRoomInput.value.trim();
   const password = newRoomPasswordInput.value.trim();
   socket.emit('create_room', {
     name,
