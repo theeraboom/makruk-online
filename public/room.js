@@ -527,10 +527,10 @@ function playSound(type) {
     const ctx = audioCtx;
     const now = ctx.currentTime;
     if (type === 'move') {
-      glassClick(ctx, now, 0.9);
+      woodTap(ctx, now, 0.9);
     } else if (type === 'capture') {
-      glassClick(ctx, now, 1.1);
-      glassClick(ctx, now + 0.05, 0.7);
+      woodTap(ctx, now, 1.1);
+      woodTap(ctx, now + 0.05, 0.7);
     } else if (type === 'chat') {
       tone(ctx, now, 880, 0.06);
     } else if (type === 'end') {
@@ -541,46 +541,48 @@ function playSound(type) {
   } catch (e) {}
 }
 
-function glassClick(ctx, when, intensity) {
+function woodTap(ctx, when, intensity) {
   intensity = intensity || 1;
-  // Main bright tone — clear bell-like
-  const osc1 = ctx.createOscillator();
-  const g1 = ctx.createGain();
-  osc1.frequency.setValueAtTime(1500, when);
-  osc1.frequency.exponentialRampToValueAtTime(1200, when + 0.18);
-  osc1.type = 'sine';
-  g1.gain.setValueAtTime(0, when);
-  g1.gain.linearRampToValueAtTime(0.32 * intensity, when + 0.002);
-  g1.gain.exponentialRampToValueAtTime(0.001, when + 0.28);
-  osc1.connect(g1).connect(ctx.destination);
-  osc1.start(when);
-  osc1.stop(when + 0.3);
 
-  // Overtone — octave up, adds glass shimmer
-  const osc2 = ctx.createOscillator();
-  const g2 = ctx.createGain();
-  osc2.frequency.setValueAtTime(3000, when);
-  osc2.frequency.exponentialRampToValueAtTime(2400, when + 0.12);
-  osc2.type = 'sine';
-  g2.gain.setValueAtTime(0, when);
-  g2.gain.linearRampToValueAtTime(0.16 * intensity, when + 0.002);
-  g2.gain.exponentialRampToValueAtTime(0.001, when + 0.18);
-  osc2.connect(g2).connect(ctx.destination);
-  osc2.start(when);
-  osc2.stop(when + 0.2);
+  // Mid wood body — bandpass noise burst (the main "tap" character)
+  const noise1 = ctx.createBufferSource();
+  noise1.buffer = getNoiseBuffer(ctx);
+  const filter1 = ctx.createBiquadFilter();
+  filter1.type = 'bandpass';
+  filter1.frequency.value = 900;
+  filter1.Q.value = 1.5;
+  const ng1 = ctx.createGain();
+  ng1.gain.setValueAtTime(0.45 * intensity, when);
+  ng1.gain.exponentialRampToValueAtTime(0.001, when + 0.05);
+  noise1.connect(filter1).connect(ng1).connect(ctx.destination);
+  noise1.start(when);
+  noise1.stop(when + 0.06);
 
-  // Sharp "tink" attack — high noise transient
-  const noise = ctx.createBufferSource();
-  noise.buffer = getNoiseBuffer(ctx);
-  const filter = ctx.createBiquadFilter();
-  filter.type = 'highpass';
-  filter.frequency.value = 4500;
-  const ng = ctx.createGain();
-  ng.gain.setValueAtTime(0.12 * intensity, when);
-  ng.gain.exponentialRampToValueAtTime(0.001, when + 0.022);
-  noise.connect(filter).connect(ng).connect(ctx.destination);
-  noise.start(when);
-  noise.stop(when + 0.03);
+  // Sharp click attack
+  const noise2 = ctx.createBufferSource();
+  noise2.buffer = getNoiseBuffer(ctx);
+  const filter2 = ctx.createBiquadFilter();
+  filter2.type = 'highpass';
+  filter2.frequency.value = 2500;
+  const ng2 = ctx.createGain();
+  ng2.gain.setValueAtTime(0.15 * intensity, when);
+  ng2.gain.exponentialRampToValueAtTime(0.001, when + 0.018);
+  noise2.connect(filter2).connect(ng2).connect(ctx.destination);
+  noise2.start(when);
+  noise2.stop(when + 0.025);
+
+  // Subtle wood resonance — short triangle, no bell sustain
+  const osc = ctx.createOscillator();
+  const og = ctx.createGain();
+  osc.frequency.setValueAtTime(420, when);
+  osc.frequency.exponentialRampToValueAtTime(260, when + 0.04);
+  osc.type = 'triangle';
+  og.gain.setValueAtTime(0, when);
+  og.gain.linearRampToValueAtTime(0.16 * intensity, when + 0.002);
+  og.gain.exponentialRampToValueAtTime(0.001, when + 0.05);
+  osc.connect(og).connect(ctx.destination);
+  osc.start(when);
+  osc.stop(when + 0.06);
 }
 
 function tone(ctx, when, freq, dur) {
