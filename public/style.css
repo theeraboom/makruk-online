@@ -1,16 +1,22 @@
-/* ============ Design tokens — White Art Theme ============ */
+/* ============ Design tokens — Sunset Bangkok (Light) ============ */
 :root {
-  --bg: #FAFAF7;
+  --bg: #FFFCF6;
+  --bg-gradient:
+    radial-gradient(ellipse at top right, rgba(234, 88, 12, 0.10), transparent 55%),
+    radial-gradient(ellipse at bottom left, rgba(244, 114, 182, 0.08), transparent 55%),
+    linear-gradient(135deg, #FFFCF6 0%, #FFE5CC 45%, #FFD4D9 100%);
   --surface: #FFFFFF;
-  --surface-2: #F5F2EC;
-  --surface-3: #EBE6DC;
-  --border: #E5E1D5;
-  --border-strong: #C9C3B5;
+  --surface-glass: rgba(255, 255, 255, 0.65);
+  --surface-2: #FAF3EA;
+  --surface-3: #F2E6D6;
+  --border: #EFE3D2;
+  --border-strong: #D8C7AE;
+  --glass-border: rgba(255, 255, 255, 0.8);
 
-  --primary: #B45309;
-  --primary-hover: #92400E;
-  --primary-soft: #FEF3C7;
-  --primary-dim: rgba(180, 83, 9, 0.08);
+  --primary: #EA580C;
+  --primary-hover: #C2410C;
+  --primary-soft: #FFEDD5;
+  --primary-dim: rgba(234, 88, 12, 0.08);
 
   --emerald: #059669;
   --red: #DC2626;
@@ -21,14 +27,48 @@
   --text-2: #52525B;
   --text-muted: #8B7E6B;
 
-  --shadow-xs: 0 1px 2px rgba(60, 40, 10, 0.05);
-  --shadow-sm: 0 2px 6px rgba(60, 40, 10, 0.07);
-  --shadow: 0 6px 20px rgba(60, 40, 10, 0.1);
-  --shadow-lg: 0 16px 48px rgba(60, 40, 10, 0.14);
+  --shadow-xs: 0 1px 2px rgba(60, 40, 10, 0.06);
+  --shadow-sm: 0 2px 8px rgba(60, 40, 10, 0.08);
+  --shadow: 0 8px 24px rgba(60, 40, 10, 0.12);
+  --shadow-lg: 0 20px 60px rgba(60, 40, 10, 0.18);
 
   --radius: 10px;
   --radius-lg: 16px;
   --radius-pill: 999px;
+
+  --bangkok-bg-opacity: 1;
+}
+
+/* ============ Night Market (Dark) — toggle via [data-theme="dark"] ============ */
+html[data-theme="dark"] {
+  --bg: #0B1220;
+  --bg-gradient:
+    radial-gradient(ellipse at top right, rgba(251, 191, 36, 0.18), transparent 55%),
+    radial-gradient(ellipse at bottom left, rgba(217, 119, 6, 0.12), transparent 55%),
+    linear-gradient(135deg, #0B1220 0%, #15203A 60%, #1E2B47 100%);
+  --surface: #1A2438;
+  --surface-glass: rgba(26, 36, 56, 0.72);
+  --surface-2: #243150;
+  --surface-3: #2E3D63;
+  --border: #2C3956;
+  --border-strong: #3F5074;
+  --glass-border: rgba(255, 255, 255, 0.08);
+
+  --primary: #FBBF24;
+  --primary-hover: #F59E0B;
+  --primary-soft: rgba(251, 191, 36, 0.18);
+  --primary-dim: rgba(251, 191, 36, 0.10);
+
+  --text: #F1F5F9;
+  --text-2: #CBD5E1;
+  --text-muted: #94A3B8;
+
+  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.35);
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 24px 70px rgba(0, 0, 0, 0.6);
+
+  --bangkok-bg-opacity: 0;
 }
 
 * { box-sizing: border-box; }
@@ -46,16 +86,21 @@ html, body {
 }
 
 body {
-  background-color: var(--bg);
-  background-image:
-    radial-gradient(ellipse at top right, rgba(217, 119, 6, 0.06), transparent 55%),
-    radial-gradient(ellipse at bottom left, rgba(180, 83, 9, 0.04), transparent 50%),
-    url('img/bangkok-street.svg');
-  background-repeat: no-repeat, no-repeat, no-repeat;
-  background-position: top right, bottom left, center bottom;
-  background-size: auto, auto, 1400px auto;
-  background-attachment: fixed, fixed, fixed;
+  background: var(--bg-gradient);
+  background-attachment: fixed;
   min-height: 100vh;
+  position: relative;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: url('img/bangkok-street.svg') no-repeat center bottom;
+  background-size: 1400px auto;
+  pointer-events: none;
+  z-index: -1;
+  opacity: var(--bangkok-bg-opacity);
+  transition: opacity 0.4s ease;
 }
 
 a { color: inherit; text-decoration: none; }
@@ -105,10 +150,10 @@ input::placeholder { color: var(--text-muted); }
 
 /* ============ Header ============ */
 header {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border-bottom: 1px solid var(--border);
+  background: var(--surface-glass);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border-bottom: 1px solid var(--glass-border);
   padding: 14px 24px;
   display: flex;
   align-items: center;
@@ -147,11 +192,86 @@ header {
 .user-bar { display: flex; gap: 8px; align-items: center; }
 .user-bar input { width: 180px; }
 
-.lang-toggle {
+.lang-toggle, .dark-toggle {
   font-size: 13px;
   padding: 8px 12px;
   font-weight: 600;
   white-space: nowrap;
+}
+.dark-toggle {
+  font-size: 16px;
+  padding: 6px 10px;
+  line-height: 1;
+}
+
+/* Dark mode tweaks for inherited components */
+html[data-theme="dark"] .room-thumb { background: linear-gradient(135deg, #2A1810, #1A0F08); }
+html[data-theme="dark"] .ad-slot.ad-self { opacity: 0.85; }
+html[data-theme="dark"] .ad-slot.ad-self:hover { opacity: 1; }
+html[data-theme="dark"] .seo-card,
+html[data-theme="dark"] .info-card,
+html[data-theme="dark"] .room-card,
+html[data-theme="dark"] .viewers-card,
+html[data-theme="dark"] .chat-area,
+html[data-theme="dark"] .move-history,
+html[data-theme="dark"] .rules,
+html[data-theme="dark"] .reaction-bar,
+html[data-theme="dark"] .players-bar,
+html[data-theme="dark"] .rules-content {
+  background: var(--surface);
+  border-color: var(--border);
+}
+html[data-theme="dark"] .chat-header { background: var(--surface-2); }
+html[data-theme="dark"] .badge { color: white; }
+html[data-theme="dark"] .badge.waiting { color: #1A1100; }
+
+/* Neon glow on chess pieces in dark mode */
+html[data-theme="dark"] .piece-w {
+  text-shadow:
+    -1px -1px 0 #000, 1px -1px 0 #000,
+    -1px 1px 0 #000, 1px 1px 0 #000,
+    -2px 0 0 #000, 2px 0 0 #000,
+    0 -2px 0 #000, 0 2px 0 #000,
+    0 0 12px rgba(255, 255, 255, 0.35),
+    0 4px 6px rgba(0, 0, 0, 0.6);
+}
+html[data-theme="dark"] .piece-b {
+  text-shadow:
+    -1px -1px 0 #2a2a2a, 1px -1px 0 #2a2a2a,
+    -1px 1px 0 #2a2a2a, 1px 1px 0 #2a2a2a,
+    0 0 10px rgba(251, 191, 36, 0.3),
+    0 4px 6px rgba(0, 0, 0, 0.7);
+}
+
+/* Footer in dark */
+html[data-theme="dark"] footer { background: rgba(11, 18, 32, 0.6); }
+
+/* Inputs in dark */
+html[data-theme="dark"] input {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--text);
+}
+html[data-theme="dark"] input::placeholder { color: var(--text-muted); }
+
+/* Buttons in dark — keep readable */
+html[data-theme="dark"] button.ghost {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--text);
+}
+html[data-theme="dark"] button.ghost:hover { background: var(--surface-3); }
+html[data-theme="dark"] button { color: var(--text); background: var(--surface-2); }
+html[data-theme="dark"] button:hover { background: var(--surface-3); }
+html[data-theme="dark"] button.primary { color: #1A1100; background: var(--primary); }
+html[data-theme="dark"] button.primary:hover { background: var(--primary-hover); }
+
+/* Smooth theme transition */
+html, body, header, footer,
+.hero, .seo-card, .info-card, .room-card, .viewers-card, .chat-area,
+.move-history, .rules, .reaction-bar, .players-bar, .rules-content,
+button, input, .stat-chip, .badge, .thumb-pill, .role-badge, .status-pill {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.2s ease;
 }
 
 /* Lang-based content show/hide */
@@ -176,14 +296,15 @@ main { max-width: 1280px; margin: 0 auto; padding: 24px; }
 
 /* ============ Hero (lobby) ============ */
 .hero {
-  background-color: #FFFCF6;
-  background-image:
-    radial-gradient(circle at 100% 0%, rgba(217, 119, 6, 0.18), transparent 55%),
-    radial-gradient(circle at 0% 100%, rgba(180, 83, 9, 0.1), transparent 50%),
-    url('img/chess-pattern.svg');
-  background-repeat: no-repeat, no-repeat, repeat;
-  background-size: auto, auto, 280px 280px;
-  border: 1px solid var(--border);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(234, 88, 12, 0.18), transparent 55%),
+    radial-gradient(circle at 0% 100%, rgba(244, 114, 182, 0.10), transparent 55%),
+    url('img/chess-pattern.svg') repeat,
+    var(--surface-glass);
+  background-size: auto, auto, 280px 280px, auto;
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
   padding: 36px 40px;
   margin-bottom: 24px;
@@ -191,7 +312,7 @@ main { max-width: 1280px; margin: 0 auto; padding: 24px; }
   grid-template-columns: 1fr auto;
   gap: 28px;
   align-items: center;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow);
   position: relative;
   overflow: hidden;
 }
@@ -230,8 +351,8 @@ main { max-width: 1280px; margin: 0 auto; padding: 24px; }
   flex-wrap: wrap;
 }
 .stat-chip {
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px solid var(--border);
+  background: var(--surface-glass);
+  border: 1px solid var(--glass-border);
   padding: 7px 14px;
   border-radius: var(--radius-pill);
   font-size: 13px;
@@ -239,7 +360,8 @@ main { max-width: 1280px; margin: 0 auto; padding: 24px; }
   display: flex;
   align-items: center;
   gap: 8px;
-  backdrop-filter: blur(6px);
+  backdrop-filter: blur(10px) saturate(140%);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
 }
 .stat-chip strong { color: var(--text); font-weight: 600; }
 .stat-chip .live-dot {
