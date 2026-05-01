@@ -82,7 +82,21 @@ function setBotEnabled(on) {
     document.querySelectorAll('#botOptions .tc-btn, #botColorOptions .tc-btn').forEach((b) => b.classList.remove('active'));
   }
 }
-botEnabledInput.onchange = () => setBotEnabled(botEnabledInput.checked);
+botEnabledInput.onchange = () => {
+  setBotEnabled(botEnabledInput.checked);
+  if (botEnabledInput.checked) {
+    // Always reset defaults when user manually checks: easy difficulty + white color
+    document.querySelectorAll('#botOptions .tc-btn').forEach((b) => b.classList.remove('active'));
+    const easyBtn = document.querySelector('#botOptions .tc-btn[data-bd="easy"]');
+    if (easyBtn) easyBtn.classList.add('active');
+    selectedBotDifficulty = 'easy';
+
+    document.querySelectorAll('#botColorOptions .tc-btn').forEach((b) => b.classList.remove('active'));
+    const whiteBtn = document.querySelector('#botColorOptions .tc-btn[data-bc="w"]');
+    if (whiteBtn) whiteBtn.classList.add('active');
+    selectedBotColor = 'b';
+  }
+};
 
 document.querySelectorAll('#botOptions .tc-btn').forEach((btn) => {
   btn.onclick = () => {
