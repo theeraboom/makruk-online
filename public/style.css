@@ -1,72 +1,91 @@
-/* ============ Design tokens — Sunset Bangkok (Light) ============ */
+/* ============ Design tokens — Royal Ivory (Thai Heritage Light) ============ */
 :root {
-  --bg: #FFFCF6;
+  --bg: #FAF6EC;
   --bg-gradient:
-    radial-gradient(ellipse at top right, rgba(234, 88, 12, 0.10), transparent 55%),
-    radial-gradient(ellipse at bottom left, rgba(244, 114, 182, 0.08), transparent 55%),
-    linear-gradient(135deg, #FFFCF6 0%, #FFE5CC 45%, #FFD4D9 100%);
-  --surface: #FFFFFF;
-  --surface-glass: rgba(255, 255, 255, 0.65);
-  --surface-2: #FAF3EA;
-  --surface-3: #F2E6D6;
-  --border: #EFE3D2;
-  --border-strong: #D8C7AE;
-  --glass-border: rgba(255, 255, 255, 0.8);
+    radial-gradient(ellipse at top right, rgba(201, 162, 39, 0.14), transparent 55%),
+    radial-gradient(ellipse at bottom left, rgba(163, 12, 38, 0.06), transparent 55%),
+    linear-gradient(135deg, #FAF6EC 0%, #F5EDD8 50%, #EFE4C5 100%);
+  --surface: #FFFCF3;
+  --surface-glass: rgba(255, 252, 243, 0.78);
+  --surface-2: #F5EDD8;
+  --surface-3: #EFE4C5;
+  --border: #D4C5A0;
+  --border-strong: #B8A472;
+  --glass-border: rgba(201, 162, 39, 0.30);
 
-  --primary: #EA580C;
-  --primary-hover: #C2410C;
-  --primary-soft: #FFEDD5;
-  --primary-dim: rgba(234, 88, 12, 0.08);
+  --gold: #C9A227;
+  --gold-bright: #D4AF37;
+  --gold-deep: #8B6F1F;
+  --gold-gradient: linear-gradient(135deg, #D4AF37 0%, #C9A227 50%, #8B6F1F 100%);
+  --gold-gradient-soft: linear-gradient(135deg, #F8E9A5 0%, #D4AF37 100%);
+  --gold-glow: 0 0 24px rgba(201, 162, 39, 0.4);
 
-  --emerald: #059669;
-  --red: #DC2626;
-  --blue: #2563EB;
+  --primary: #B8860B;
+  --primary-hover: #8B6F1F;
+  --primary-soft: #F8E9A5;
+  --primary-dim: rgba(184, 134, 11, 0.10);
+
+  --accent: #A30C26;          /* lac red — สีแดงครั่ง */
+  --accent-soft: #FDE5EA;
+  --emerald: #2F5233;
+  --red: #A30C26;
+  --blue: #1E40AF;            /* ขาบ deep */
   --pink: #DB2777;
 
-  --text: #18181B;
-  --text-2: #52525B;
+  --text: #1F1611;            /* น้ำตาลเข้มเกือบดำ */
+  --text-2: #4A3A2A;
   --text-muted: #8B7E6B;
 
-  --shadow-xs: 0 1px 2px rgba(60, 40, 10, 0.06);
-  --shadow-sm: 0 2px 8px rgba(60, 40, 10, 0.08);
-  --shadow: 0 8px 24px rgba(60, 40, 10, 0.12);
-  --shadow-lg: 0 20px 60px rgba(60, 40, 10, 0.18);
+  --shadow-xs: 0 1px 3px rgba(80, 50, 10, 0.10);
+  --shadow-sm: 0 4px 14px rgba(80, 50, 10, 0.13);
+  --shadow: 0 12px 32px rgba(80, 50, 10, 0.18);
+  --shadow-lg: 0 28px 70px rgba(80, 50, 10, 0.25);
 
   --radius: 10px;
   --radius-lg: 16px;
   --radius-pill: 999px;
 
-  --bangkok-bg-opacity: 1;
+  --bangkok-bg-opacity: 0.8;
 }
 
-/* ============ Night Market (Dark) — toggle via [data-theme="dark"] ============ */
+/* ============ Royal Night (Thai Heritage Dark) ============ */
 html[data-theme="dark"] {
-  --bg: #0B1220;
+  --bg: #0F0A06;
   --bg-gradient:
-    radial-gradient(ellipse at top right, rgba(251, 191, 36, 0.18), transparent 55%),
-    radial-gradient(ellipse at bottom left, rgba(217, 119, 6, 0.12), transparent 55%),
-    linear-gradient(135deg, #0B1220 0%, #15203A 60%, #1E2B47 100%);
-  --surface: #1A2438;
-  --surface-glass: rgba(26, 36, 56, 0.72);
-  --surface-2: #243150;
-  --surface-3: #2E3D63;
-  --border: #2C3956;
-  --border-strong: #3F5074;
-  --glass-border: rgba(255, 255, 255, 0.08);
+    radial-gradient(ellipse at top right, rgba(212, 175, 55, 0.18), transparent 55%),
+    radial-gradient(ellipse at bottom left, rgba(163, 12, 38, 0.12), transparent 55%),
+    linear-gradient(135deg, #0F0A06 0%, #1A1209 55%, #2A1F12 100%);
+  --surface: #1F1610;
+  --surface-glass: rgba(31, 22, 16, 0.78);
+  --surface-2: #2A1F12;
+  --surface-3: #3A2D1B;
+  --border: #4A3A22;
+  --border-strong: #6B5530;
+  --glass-border: rgba(212, 175, 55, 0.25);
 
-  --primary: #FBBF24;
-  --primary-hover: #F59E0B;
-  --primary-soft: rgba(251, 191, 36, 0.18);
-  --primary-dim: rgba(251, 191, 36, 0.10);
+  --gold: #D4AF37;
+  --gold-bright: #FFD700;
+  --gold-deep: #8B6F1F;
+  --gold-gradient: linear-gradient(135deg, #FFD700 0%, #D4AF37 50%, #B8860B 100%);
+  --gold-gradient-soft: linear-gradient(135deg, #B8860B 0%, #D4AF37 100%);
+  --gold-glow: 0 0 32px rgba(212, 175, 55, 0.5);
 
-  --text: #F1F5F9;
-  --text-2: #CBD5E1;
-  --text-muted: #94A3B8;
+  --primary: #D4AF37;
+  --primary-hover: #FFD700;
+  --primary-soft: rgba(212, 175, 55, 0.22);
+  --primary-dim: rgba(212, 175, 55, 0.10);
 
-  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.35);
-  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.4);
-  --shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-  --shadow-lg: 0 24px 70px rgba(0, 0, 0, 0.6);
+  --accent: #E63055;          /* lac red bright */
+  --accent-soft: rgba(230, 48, 85, 0.20);
+
+  --text: #F5E9D3;            /* ivory glow */
+  --text-2: #C9B997;
+  --text-muted: #8E8270;
+
+  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.45);
+  --shadow-sm: 0 4px 14px rgba(0, 0, 0, 0.55);
+  --shadow: 0 14px 40px rgba(0, 0, 0, 0.65);
+  --shadow-lg: 0 30px 90px rgba(0, 0, 0, 0.75);
 
   --bangkok-bg-opacity: 0;
 }
@@ -168,21 +187,67 @@ header {
 .logo {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 18px;
+  gap: 12px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--text);
+  font-family: 'Charm', 'Sarabun', serif;
+  letter-spacing: 0.01em;
+}
+.logo .logo-text {
+  background: var(--gold-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: 700;
+}
+.logo .logo-text small {
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  color: var(--text-muted);
+  font-family: 'Sarabun', sans-serif;
+  font-weight: 400;
 }
 .logo-mark {
-  width: 36px; height: 36px;
-  background: linear-gradient(135deg, #D97706, #92400E);
-  border-radius: 8px;
+  width: 46px; height: 46px;
+  background:
+    radial-gradient(circle at 28% 25%, rgba(255, 240, 180, 0.7), transparent 55%),
+    var(--gold-gradient);
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: 28px;
   color: #FFFFFF;
-  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.35);
+  font-family: 'Charm', 'Georgia', serif;
+  text-shadow:
+    0 1px 0 rgba(80, 50, 0, 0.5),
+    0 2px 4px rgba(80, 50, 0, 0.6);
+  box-shadow:
+    0 0 0 1.5px var(--gold-deep),
+    0 6px 18px rgba(201, 162, 39, 0.55),
+    0 0 26px rgba(201, 162, 39, 0.25),
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -2px 4px rgba(80, 50, 0, 0.35);
+  position: relative;
+  flex-shrink: 0;
+}
+.logo-mark::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  pointer-events: none;
+}
+html[data-theme="dark"] .logo-mark {
+  box-shadow:
+    0 0 0 1.5px #5A4520,
+    0 6px 22px rgba(212, 175, 55, 0.55),
+    0 0 32px rgba(212, 175, 55, 0.4),
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.4);
 }
 .logo-text { display: flex; flex-direction: column; line-height: 1.15; }
 .logo-text small { font-size: 11px; color: var(--text-muted); font-weight: 400; }
@@ -202,6 +267,50 @@ header {
   font-size: 16px;
   padding: 6px 10px;
   line-height: 1;
+}
+
+/* Premium heading treatment: gold accent on cards (both themes) */
+.seo-card h2,
+.info-card h3,
+.viewers-header,
+.chat-header {
+  font-family: 'Charm', 'Sarabun', serif;
+  letter-spacing: 0.01em;
+}
+.seo-card h2,
+.rules-content h2,
+.rules-content h3 {
+  color: var(--gold-deep);
+}
+.info-card h3 {
+  color: var(--gold-deep);
+}
+.rules-content h2 {
+  border-bottom: 2px solid var(--gold);
+}
+.rules-content h3 {
+  color: var(--primary);
+}
+
+/* Dark mode: lift heading colors to bright gold for contrast */
+html[data-theme="dark"] .seo-card h2,
+html[data-theme="dark"] .info-card h3,
+html[data-theme="dark"] .rules-content h2 {
+  color: var(--gold-bright);
+  text-shadow: 0 0 14px rgba(212, 175, 55, 0.25);
+}
+html[data-theme="dark"] .rules-content h3 {
+  color: var(--gold);
+}
+html[data-theme="dark"] .chat-header,
+html[data-theme="dark"] .viewers-header {
+  color: var(--gold-bright);
+}
+html[data-theme="dark"] .section-header h2 {
+  color: var(--gold-bright);
+}
+html[data-theme="dark"] .rules-content {
+  color: var(--text);
 }
 
 /* Dark mode tweaks for inherited components */
@@ -329,14 +438,19 @@ main { max-width: 1280px; margin: 0 auto; padding: 24px; }
 .hero-text { position: relative; z-index: 1; }
 
 .hero-title {
-  font-size: 30px;
+  font-family: 'Charm', 'Sarabun', serif;
+  font-size: 36px;
   font-weight: 700;
   margin: 0 0 10px;
-  background: linear-gradient(135deg, #18181B 30%, #B45309);
+  background: var(--gold-gradient);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
+  filter: drop-shadow(0 1px 2px rgba(80, 50, 10, 0.15));
+}
+html[data-theme="dark"] .hero-title {
+  filter: drop-shadow(0 0 12px rgba(212, 175, 55, 0.3));
 }
 .hero-sub {
   color: var(--text-2);
@@ -1388,13 +1502,15 @@ footer {
   line-height: 1.75;
 }
 .rules-content h1 {
-  font-size: 32px;
+  font-family: 'Charm', 'Sarabun', serif;
+  font-size: 34px;
   font-weight: 700;
   margin: 0 0 8px;
-  background: linear-gradient(135deg, var(--text) 30%, var(--primary));
+  background: var(--gold-gradient);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  letter-spacing: -0.01em;
 }
 .rules-content .subtitle {
   color: var(--text-muted);
