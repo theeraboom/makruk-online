@@ -196,7 +196,8 @@ function renderRooms(rooms) {
     const tcPill = formatTimeControl(r.timeBase, r.timeIncrement);
     const tcPillHTML = tcPill ? `<span class="thumb-pill">⏱ ${tcPill}</span>` : '';
     const lockBadge = r.isPrivate ? `<span class="thumb-pill private">${I18N.t('room.private')}</span>` : '';
-    const botBadge = r.hasBot ? `<span class="thumb-pill bot-badge">🤖 ${I18N.t('bot.' + r.botDifficulty).replace(/^[😊🤔🔥]\s/, '')}</span>` : '';
+    const botBadge = r.hasBot ? `<span class="thumb-pill bot-badge">${I18N.t('bot.name.' + r.botDifficulty)}</span>` : '';
+    const displayName = r.hasDefaultName ? I18N.t('default.' + r.gameType) : r.name;
     const gtBadge = `<span class="thumb-pill game-type">${I18N.t('gt.' + r.gameType)}</span>`;
 
     card.innerHTML = `
@@ -222,7 +223,7 @@ function renderRooms(rooms) {
         </div>
       </div>
       <div class="room-card-body">
-        <div class="room-name">${escapeHtml(r.name)}</div>
+        <div class="room-name">${escapeHtml(displayName)}</div>
         <div class="room-meta">
           <span>${r.status === 'waiting' ? I18N.t('room.waiting').replace(/^[⏳]\s/, '') : (r.status === 'playing' ? I18N.t('room.live').replace(/^[🔴]\s/, '') : I18N.t('room.ended').replace(/^[✓]\s/, ''))}</span>
           <span>•</span>
@@ -232,7 +233,7 @@ function renderRooms(rooms) {
     `;
     card.onclick = () => {
       if (r.isPrivate) {
-        const pw = prompt(`"${r.name}" ${I18N.t('prompt.privatePass')}`);
+        const pw = prompt(`"${displayName}" ${I18N.t('prompt.privatePass')}`);
         if (!pw) return;
         window.location.href = `/room.html?id=${r.id}&pw=${encodeURIComponent(pw)}`;
       } else {

@@ -32,11 +32,22 @@ document.addEventListener('langchange', () => {
   // Refresh chat count label
   const cc = document.getElementById('chatCount');
   if (cc && chatMsgCount > 0) cc.textContent = chatMsgCount + ' ' + I18N.t('chat.messages');
+  // Refresh room name if default
+  if (lastHasDefaultName) {
+    const displayName = I18N.t('default.' + (gameType || 'chess'));
+    const el = document.getElementById('roomName');
+    if (el) el.textContent = displayName;
+    document.title = displayName + ' — Playmakruk';
+  }
+  // Refresh chat history (system messages)
+  refreshChatMessages();
 });
 let lastPlayers = { w: null, b: null };
 let lastSiteStats = null;
 let lastViewers = null;
 let lastViewerCount = 0;
+let lastRoomName = '';
+let lastHasDefaultName = false;
 let myRole = null;
 let board = null;
 let currentPlayer = 'w';
@@ -79,8 +90,11 @@ socket.on('joined', ({ role }) => {
 });
 
 socket.on('room_state', (state) => {
-  document.getElementById('roomName').textContent = state.name;
-  document.title = state.name + ' — Playmakruk';
+  lastRoomName = state.name;
+  lastHasDefaultName = !!state.hasDefaultName;
+  const displayName = state.hasDefaultName ? I18N.t('default.' + (state.gameType || 'chess')) : state.name;
+  document.getElementById('roomName').textContent = displayName;
+  document.title = displayName + ' — Playmakruk';
   const prevStatus = status;
   gameType = state.gameType || 'chess';
   const labelEl = document.getElementById('roomGameTypeLabel');
@@ -186,12 +200,13 @@ function updatePlayerSlot(side, player) {
       avatarEl.textContent = '🤖';
       avatarEl.classList.add('bot-avatar');
       avatarEl.classList.remove('empty');
+      nameEl.textContent = player.botDifficulty ? I18N.t('bot.name.' + player.botDifficulty) : '🤖 Bot';
     } else {
       avatarEl.textContent = (player.name || '?').slice(0, 2).toUpperCase();
       avatarEl.classList.remove('bot-avatar');
       avatarEl.classList.remove('empty');
+      nameEl.textContent = player.name;
     }
-    nameEl.textContent = player.name;
     nameEl.classList.remove('empty');
   } else {
     avatarEl.textContent = '?';
@@ -640,12 +655,41 @@ chatForm.onsubmit = (e) => {
   chatInput.value = '';
 };
 
+function formatSystemMessage(msg) {
+  if (msg.key) {
+    let template = I18N.t(msg.key);
+    const params = msg.params || {};
+    return template.replace(/\{(\w+)\}/g, (_, key) => {
+      if (key === 'winner_side') return params.winner ? I18N.t('side.short.' + params.winner) : '';
+      if (key === 'loser_side') return params.loser ? I18N.t('side.short.' + params.loser) : '';
+      if (key === 'player_side') return params.player ? I18N.t('side.short.' + params.player) : '';
+      return params[key] !== undefined ? params[key] : '';
+    });
+  }
+  return msg.text || '';
+}
+
+function refreshChatMessages() {
+  const c = document.getElementById('chatMessages');
+  if (!c) return;
+  c.querySelectorAll('.msg.system[data-key]').forEach((el) => {
+    const key = el.getAttribute('data-key');
+    let params = {};
+    try { params = JSON.parse(el.getAttribute('data-params') || '{}'); } catch (e) {}
+    el.textContent = formatSystemMessage({ key, params });
+  });
+}
+
 function appendChat(msg) {
   const c = document.getElementById('chatMessages');
   const div = document.createElement('div');
   if (msg.type === 'system') {
     div.className = 'msg system';
-    div.textContent = msg.text;
+    div.textContent = formatSystemMessage(msg);
+    if (msg.key) {
+      div.setAttribute('data-key', msg.key);
+      div.setAttribute('data-params', JSON.stringify(msg.params || {}));
+    }
   } else {
     div.className = 'msg ' + (msg.role || 'viewer');
     const roleEmoji = msg.role === 'w' ? '⚪' : msg.role === 'b' ? '⚫' : '👁';

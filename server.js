@@ -18,7 +18,6 @@ const ALLOWED_GAME_TYPES = ['chess', 'checkers', 'chess-intl', 'checkers-intl'];
 const CHECKERS_TYPES = ['checkers', 'checkers-intl'];
 const CHESS_TYPES = ['chess', 'chess-intl'];
 const ALLOWED_BOT_DIFFICULTIES = ['easy', 'medium', 'hard'];
-const BOT_LABELS = { easy: 'Bot 🤖 (ง่าย)', medium: 'Bot 🤖 (กลาง)', hard: 'Bot 🤖 (ยาก)' };
 
 const app = express();
 const server = http.createServer(app);
@@ -88,7 +87,7 @@ function processMove(room, from, to, moveInfo) {
   if (room.timeBase && (room.whiteTime <= 0 || room.blackTime <= 0)) {
     const loser = room.currentPlayer;
     endGame(room, 'timeout', loser === 'w' ? 'b' : 'w');
-    pushSystemMessage(room, `${loser === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} หมดเวลา — ${loser === 'w' ? 'ฝ่ายดำ' : 'ฝ่ายขาว'} ชนะ ⏰`);
+    pushSystemMessage(room, 'sys.timeout', { loser, winner: loser === 'w' ? 'b' : 'w' });
     return;
   }
 
@@ -166,21 +165,17 @@ function processMove(room, from, to, moveInfo) {
   }
   if (status.ended) {
     endGame(room, status.reason, status.winner);
-    let text;
+    let key;
     if (CHECKERS_TYPES.includes(room.gameType)) {
-      text = status.reason === 'no_pieces'
-        ? `🏆 ${status.winner === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} ชนะ — เก็บหมากหมด!`
-        : `🏆 ${status.winner === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} ชนะ — อีกฝ่ายเดินไม่ได้`;
+      key = status.reason === 'no_pieces' ? 'sys.no_pieces' : 'sys.no_moves';
     } else {
-      text = status.reason === 'checkmate'
-        ? `รุกจน! ${status.winner === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} ชนะ 🎉`
-        : 'อับ — เสมอ';
+      key = status.reason === 'checkmate' ? 'sys.checkmate' : 'sys.stalemate';
     }
-    pushSystemMessage(room, text);
+    pushSystemMessage(room, key, { winner: status.winner });
   } else if (switchTurn) {
     startClock(room);
     if (status.inCheck) {
-      pushSystemMessage(room, `${room.currentPlayer === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} กำลังถูกรุก!`);
+      pushSystemMessage(room, 'sys.check', { player: room.currentPlayer });
     }
   }
 }
@@ -288,6 +283,7 @@ function publicRoom(room) {
   return {
     id: room.id,
     name: room.name,
+    hasDefaultName: !!room.hasDefaultName,
     gameType: room.gameType,
     board: room.board,
     playerCount: (room.players.w ? 1 : 0) + (room.players.b ? 1 : 0),
@@ -312,13 +308,14 @@ function broadcastRoomState(roomId) {
   io.to(roomId).emit('room_state', {
     id: room.id,
     name: room.name,
+    hasDefaultName: !!room.hasDefaultName,
     gameType: room.gameType,
     board: room.board,
     currentPlayer: room.currentPlayer,
     status: room.status,
     players: {
-      w: room.players.w ? { name: room.players.w.name, isBot: !!room.players.w.isBot } : null,
-      b: room.players.b ? { name: room.players.b.name, isBot: !!room.players.b.isBot } : null,
+      w: room.players.w ? { name: room.players.w.name, isBot: !!room.players.w.isBot, botDifficulty: room.players.w.botDifficulty || null } : null,
+      b: room.players.b ? { name: room.players.b.name, isBot: !!room.players.b.isBot, botDifficulty: room.players.b.botDifficulty || null } : null,
     },
     viewerCount: room.viewers.size,
     viewers: Array.from(room.viewers.values()),
@@ -340,8 +337,8 @@ function broadcastRoomState(roomId) {
   });
 }
 
-function pushSystemMessage(room, text) {
-  const msg = { type: 'system', text, time: Date.now() };
+function pushSystemMessage(room, key, params) {
+  const msg = { type: 'system', key, params: params || {}, time: Date.now() };
   room.messages.push(msg);
   if (room.messages.length > 200) room.messages.shift();
   io.to(room.id).emit('chat_message', msg);
@@ -372,16 +369,11 @@ io.on('connection', (socket) => {
     const botEnabled = !!p.botEnabled;
     const botDifficulty = ALLOWED_BOT_DIFFICULTIES.includes(p.botDifficulty) ? p.botDifficulty : 'medium';
     const botColor = p.botColor === 'w' ? 'w' : 'b';
-    const defaultNames = {
-      'chess': 'วงหมากรุกไทย',
-      'checkers': 'วงหมากฮอสไทย',
-      'chess-intl': 'วงหมากรุกสากล',
-      'checkers-intl': 'วงหมากฮอสสากล',
-    };
-    const defaultName = defaultNames[gameType] || 'วงหมากรุก';
+    const userName = (typeof p.name === 'string' && p.name.trim()) ? p.name.trim().slice(0, 40) : null;
     const room = {
       id,
-      name: (typeof p.name === 'string' && p.name.trim()) ? p.name.trim().slice(0, 40) : defaultName,
+      name: userName || '',
+      hasDefaultName: !userName,
       password,
       players: { w: null, b: null },
       viewers: new Map(),
@@ -391,7 +383,7 @@ io.on('connection', (socket) => {
       ...buildInitialMatchState(gameType, validBase, validInc),
     };
     if (room.bot) {
-      room.players[botColor] = { id: 'BOT', name: BOT_LABELS[botDifficulty], isBot: true };
+      room.players[botColor] = { id: 'BOT', name: 'Bot', isBot: true, botDifficulty };
     }
     rooms.set(id, room);
     socket.emit('room_created', { id });
@@ -453,8 +445,7 @@ io.on('connection', (socket) => {
     broadcastRoomState(roomId);
     broadcastRoomList();
 
-    const roleText = role === 'viewer' ? 'ผู้ชม' : (role === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ');
-    pushSystemMessage(room, `${socket.data.user.name} เข้าร่วมเป็น${roleText}`);
+    pushSystemMessage(room, 'sys.joined.' + role, { name: socket.data.user.name });
     if (room.bot && room.status === 'playing' && room.currentPlayer === room.bot.color) {
       maybeBotMove(roomId, 800);
     }
@@ -507,7 +498,7 @@ io.on('connection', (socket) => {
     const loser = socket.data.role;
     const winner = loser === 'w' ? 'b' : 'w';
     endGame(room, 'resign', winner);
-    pushSystemMessage(room, `${socket.data.user.name} ยอมแพ้ — ${winner === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} ชนะ 🏳`);
+    pushSystemMessage(room, 'sys.resign', { user: socket.data.user.name, winner });
     broadcastRoomState(socket.data.roomId);
     broadcastRoomList();
   });
@@ -546,11 +537,11 @@ io.on('connection', (socket) => {
     if (socket.data.role !== 'w' && socket.data.role !== 'b') return;
     Object.assign(room, buildInitialMatchState(room.gameType, room.timeBase, room.timeIncrement));
     if (room.bot) {
-      room.players[room.bot.color] = { id: 'BOT', name: BOT_LABELS[room.bot.difficulty], isBot: true };
+      room.players[room.bot.color] = { id: 'BOT', name: 'Bot', isBot: true, botDifficulty: room.bot.difficulty };
     }
     room.status = (room.players.w && room.players.b) ? 'playing' : 'waiting';
     if (room.status === 'playing') startClock(room);
-    pushSystemMessage(room, `${socket.data.user.name} เริ่มเกมใหม่ 🔁`);
+    pushSystemMessage(room, 'sys.reset', { user: socket.data.user.name });
     broadcastRoomState(roomId);
     broadcastRoomList();
     if (room.bot && room.status === 'playing' && room.currentPlayer === room.bot.color) {
@@ -577,7 +568,7 @@ io.on('connection', (socket) => {
     }
 
     if (removed) {
-      pushSystemMessage(room, `${socket.data.user.name} (${role === 'w' ? 'ขาว' : 'ดำ'}) ออกจากห้อง`);
+      pushSystemMessage(room, 'sys.left.' + role, { name: socket.data.user.name });
       if (room.status === 'playing') room.status = 'waiting';
     }
 
@@ -601,7 +592,7 @@ setInterval(() => {
       const loser = room.currentPlayer;
       if (loser === 'w') room.whiteTime = 0; else room.blackTime = 0;
       endGame(room, 'timeout', loser === 'w' ? 'b' : 'w');
-      pushSystemMessage(room, `${loser === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} หมดเวลา — ${loser === 'w' ? 'ฝ่ายดำ' : 'ฝ่ายขาว'} ชนะ ⏰`);
+      pushSystemMessage(room, 'sys.timeout', { loser, winner: loser === 'w' ? 'b' : 'w' });
       broadcastRoomState(room.id);
       broadcastRoomList();
     }

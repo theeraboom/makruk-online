@@ -133,6 +133,38 @@
       'toast.copied': 'คัดลอกลิงก์แล้ว — ส่งให้เพื่อนได้เลย',
       'toast.copyFail': 'คัดลอกไม่ได้ — ',
       'prompt.privatePass': 'เป็นห้องส่วนตัว\nกรุณาใส่รหัสห้อง:',
+
+      // Side names (used in system messages)
+      'side.short.w': 'ฝ่ายขาว',
+      'side.short.b': 'ฝ่ายดำ',
+      'side.shortest.w': 'ขาว',
+      'side.shortest.b': 'ดำ',
+
+      // Default room names per game type
+      'default.chess': 'วงหมากรุกไทย',
+      'default.chess-intl': 'วงหมากรุกสากล',
+      'default.checkers': 'วงหมากฮอสไทย',
+      'default.checkers-intl': 'วงหมากฮอสสากล',
+
+      // Bot display names
+      'bot.name.easy': '🤖 Bot (ง่าย)',
+      'bot.name.medium': '🤖 Bot (กลาง)',
+      'bot.name.hard': '🤖 Bot (ยาก)',
+
+      // System messages (Moderator)
+      'sys.joined.w': '{name} เข้าร่วมเป็นฝ่ายขาว',
+      'sys.joined.b': '{name} เข้าร่วมเป็นฝ่ายดำ',
+      'sys.joined.viewer': '{name} เข้าร่วมเป็นผู้ชม',
+      'sys.left.w': '{name} (ขาว) ออกจากห้อง',
+      'sys.left.b': '{name} (ดำ) ออกจากห้อง',
+      'sys.timeout': '{loser_side} หมดเวลา — {winner_side} ชนะ ⏰',
+      'sys.check': '{player_side} กำลังถูกรุก!',
+      'sys.checkmate': 'รุกจน! {winner_side} ชนะ 🎉',
+      'sys.stalemate': 'อับ — เสมอ',
+      'sys.resign': '{user} ยอมแพ้ — {winner_side} ชนะ 🏳',
+      'sys.reset': '{user} เริ่มเกมใหม่ 🔁',
+      'sys.no_pieces': '🏆 {winner_side} ชนะ — เก็บหมากหมด!',
+      'sys.no_moves': '🏆 {winner_side} ชนะ — อีกฝ่ายเดินไม่ได้',
     },
 
     en: {
@@ -258,6 +290,34 @@
       'toast.copied': 'Link copied — share with friends',
       'toast.copyFail': 'Could not copy — ',
       'prompt.privatePass': 'is a private room\nPlease enter password:',
+
+      'side.short.w': 'White',
+      'side.short.b': 'Black',
+      'side.shortest.w': 'White',
+      'side.shortest.b': 'Black',
+
+      'default.chess': 'Thai Chess Room',
+      'default.chess-intl': 'International Chess Room',
+      'default.checkers': 'Thai Checkers Room',
+      'default.checkers-intl': 'English Checkers Room',
+
+      'bot.name.easy': '🤖 Bot (Easy)',
+      'bot.name.medium': '🤖 Bot (Medium)',
+      'bot.name.hard': '🤖 Bot (Hard)',
+
+      'sys.joined.w': '{name} joined as White',
+      'sys.joined.b': '{name} joined as Black',
+      'sys.joined.viewer': '{name} joined as a viewer',
+      'sys.left.w': '{name} (White) left the room',
+      'sys.left.b': '{name} (Black) left the room',
+      'sys.timeout': '{loser_side} ran out of time — {winner_side} wins ⏰',
+      'sys.check': '{player_side} is in check!',
+      'sys.checkmate': 'Checkmate! {winner_side} wins 🎉',
+      'sys.stalemate': 'Stalemate — draw',
+      'sys.resign': '{user} resigned — {winner_side} wins 🏳',
+      'sys.reset': '{user} started a new game 🔁',
+      'sys.no_pieces': '🏆 {winner_side} wins — captured all pieces!',
+      'sys.no_moves': '🏆 {winner_side} wins — opponent has no moves',
     },
   };
 
