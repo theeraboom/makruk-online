@@ -20,6 +20,17 @@ const initialPw = params.get('pw') || null;
 if (!roomId) window.location.href = '/';
 
 const socket = io();
+document.getElementById('langToggleBtn').onclick = () => I18N.toggleLang();
+document.addEventListener('langchange', () => {
+  updateRoleBadge();
+  updateStatus();
+  if (board) render();
+  updatePlayerSlot('W', lastPlayers.w);
+  updatePlayerSlot('B', lastPlayers.b);
+  if (lastSiteStats) updateFooterStats();
+});
+let lastPlayers = { w: null, b: null };
+let lastSiteStats = null;
 let myRole = null;
 let board = null;
 let currentPlayer = 'w';
@@ -50,7 +61,7 @@ if (userName) socket.emit('set_name', userName);
 socket.emit('join_room', { roomId, password: initialPw });
 
 socket.on('password_required', ({ name }) => {
-  const pw = prompt(`ห้อง "${name}" เป็นห้องส่วนตัว\nกรุณาใส่รหัสห้อง:`);
+  const pw = prompt(`"${name}" ${I18N.t('prompt.privatePass')}`);
   if (!pw) { window.location.href = '/'; return; }
   socket.emit('join_room', { roomId, password: pw });
 });
@@ -117,6 +128,7 @@ socket.on('room_state', (state) => {
     validMoves = [];
   }
 
+  lastPlayers = state.players;
   updatePlayerSlot('W', state.players.w);
   updatePlayerSlot('B', state.players.b);
 
@@ -166,6 +178,7 @@ function escapeHtml(s) {
 
 function updatePlayerSlot(side, player) {
   const slot = document.getElementById('player' + side);
+  if (!slot) return;
   const avatarEl = document.getElementById('avatar' + side);
   const nameEl = slot.querySelector('.player-name');
   if (player) {
@@ -184,7 +197,7 @@ function updatePlayerSlot(side, player) {
     avatarEl.textContent = '?';
     avatarEl.classList.add('empty');
     avatarEl.classList.remove('bot-avatar');
-    nameEl.textContent = 'รอผู้เล่น';
+    nameEl.textContent = I18N.t('player.waiting');
     nameEl.classList.add('empty');
   }
 }
@@ -201,19 +214,34 @@ socket.on('chat_message', (msg) => {
   if (msg.type === 'chat' && msg.user !== userName) playSound('chat');
 });
 
+const ERR_MAP = {
+  'ยังไม่ถึงตาคุณ': 'err.notYourTurn',
+  'ตำแหน่งไม่ถูกต้อง': 'err.invalidPos',
+  'หมากไม่ถูกต้อง': 'err.invalidPiece',
+  'เดินไม่ได้': 'err.cantMove',
+  'ไม่พบห้องนี้': 'err.notFound',
+};
 socket.on('error_msg', (msg) => {
-  showToast(msg);
+  const key = ERR_MAP[msg];
+  showToast(key ? I18N.t(key) : msg);
 });
 
 socket.on('reaction', ({ emoji }) => {
   spawnFloatingReaction(emoji);
 });
 
-socket.on('site_stats', ({ totalVisits, onlineUsers }) => {
+function updateFooterStats() {
   const footer = document.getElementById('footerStats');
-  if (footer) {
-    footer.innerHTML = `© 2026 Playmakruk.com — ผู้เข้าชมทั้งหมด <strong>${totalVisits.toLocaleString('th-TH')}</strong> ครั้ง • ออนไลน์ตอนนี้ <strong>${onlineUsers.toLocaleString('th-TH')}</strong> คน`;
-  }
+  if (!footer || !lastSiteStats) return;
+  const lang = I18N.getLang();
+  const locale = lang === 'th' ? 'th-TH' : 'en-US';
+  const v = lastSiteStats.totalVisits.toLocaleString(locale);
+  const o = lastSiteStats.onlineUsers.toLocaleString(locale);
+  footer.innerHTML = `© 2026 Playmakruk.com — ${I18N.t('footer.visits')} <strong>${v}</strong> ${I18N.t('footer.times')} • ${I18N.t('footer.online')} <strong>${o}</strong> ${I18N.t('footer.people')}`;
+}
+socket.on('site_stats', ({ totalVisits, onlineUsers }) => {
+  lastSiteStats = { totalVisits, onlineUsers };
+  updateFooterStats();
 });
 
 document.querySelectorAll('.reaction-btn').forEach((btn) => {
@@ -240,33 +268,37 @@ function spawnFloatingReaction(emoji) {
 
 function updateRoleBadge() {
   const badge = document.getElementById('roleBadge');
-  if (myRole === 'w') { badge.textContent = '⚪ คุณคือฝ่ายขาว'; badge.className = 'role-badge w'; }
-  else if (myRole === 'b') { badge.textContent = '⚫ คุณคือฝ่ายดำ'; badge.className = 'role-badge b'; }
-  else { badge.textContent = '👁 คุณกำลังดู'; badge.className = 'role-badge viewer'; }
+  if (myRole === 'w') { badge.textContent = I18N.t('role.w'); badge.className = 'role-badge w'; }
+  else if (myRole === 'b') { badge.textContent = I18N.t('role.b'); badge.className = 'role-badge b'; }
+  else if (myRole === 'viewer') { badge.textContent = I18N.t('role.viewer'); badge.className = 'role-badge viewer'; }
+  else { badge.textContent = I18N.t('role.connecting'); badge.className = 'role-badge'; }
 }
 
 function updateStatus() {
   const el = document.getElementById('status');
   el.className = 'status-pill';
+  const lang = I18N.getLang();
+  const sideName = (c) => c === 'w' ? (lang === 'th' ? 'ฝ่ายขาว' : 'White') : (lang === 'th' ? 'ฝ่ายดำ' : 'Black');
   if (status === 'waiting') {
-    el.textContent = '⏳ รอผู้เล่นอีก 1 คน';
+    el.textContent = I18N.t('status.waiting');
     el.classList.add('waiting');
   } else if (status === 'ended') {
-    let label = '🏁 เกมจบ';
-    if (endedReason === 'checkmate') label = `🏆 ${endedWinner === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} ชนะ (รุกจน)`;
-    else if (endedReason === 'resign') label = `🏳 ${endedWinner === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} ชนะ (อีกฝ่ายยอมแพ้)`;
-    else if (endedReason === 'timeout') label = `⏰ ${endedWinner === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} ชนะ (อีกฝ่ายหมดเวลา)`;
-    else if (endedReason === 'no_pieces') label = `🏆 ${endedWinner === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} ชนะ — เก็บหมากหมด!`;
-    else if (endedReason === 'no_moves') label = `🏆 ${endedWinner === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} ชนะ — อีกฝ่ายเดินไม่ได้`;
-    else if (endedReason === 'stalemate') label = '🤝 เสมอ (อับ)';
+    const w = sideName(endedWinner);
+    let label = I18N.t('status.ended');
+    if (endedReason === 'checkmate') label = lang === 'th' ? `🏆 ${w} ชนะ (รุกจน)` : `🏆 ${w} wins (checkmate)`;
+    else if (endedReason === 'resign') label = lang === 'th' ? `🏳 ${w} ชนะ (อีกฝ่ายยอมแพ้)` : `🏳 ${w} wins (opponent resigned)`;
+    else if (endedReason === 'timeout') label = lang === 'th' ? `⏰ ${w} ชนะ (อีกฝ่ายหมดเวลา)` : `⏰ ${w} wins (opponent timed out)`;
+    else if (endedReason === 'no_pieces') label = lang === 'th' ? `🏆 ${w} ชนะ — เก็บหมากหมด!` : `🏆 ${w} wins — captured all pieces!`;
+    else if (endedReason === 'no_moves') label = lang === 'th' ? `🏆 ${w} ชนะ — อีกฝ่ายเดินไม่ได้` : `🏆 ${w} wins — opponent has no moves`;
+    else if (endedReason === 'stalemate') label = lang === 'th' ? '🤝 เสมอ (อับ)' : '🤝 Draw (stalemate)';
     el.textContent = label;
   } else {
-    const turnText = currentPlayer === 'w' ? 'ตาฝ่ายขาว' : 'ตาฝ่ายดำ';
+    const turnText = currentPlayer === 'w' ? I18N.t('status.turnW') : I18N.t('status.turnB');
     if (mustContinueFrom && currentPlayer === myRole) {
-      el.textContent = `${turnText} • กินต่อได้!`;
+      el.textContent = `${turnText} • ${I18N.t('status.continue')}`;
       el.classList.add('check');
     } else if (!isCheckersGame() && getEngine().isInCheck && getEngine().isInCheck(board, currentPlayer)) {
-      el.textContent = `${turnText} • ถูกรุก!`;
+      el.textContent = `${turnText} • ${I18N.t('status.check')}`;
       el.classList.add('check');
     } else {
       el.textContent = turnText;
@@ -470,29 +502,29 @@ document.querySelectorAll('#pieceOptions .theme-btn').forEach((btn) => {
 
 document.getElementById('resetBtn').onclick = () => {
   if (myRole !== 'w' && myRole !== 'b') {
-    showToast('เฉพาะผู้เล่นเท่านั้นที่เริ่มเกมใหม่ได้');
+    showToast(I18N.t('err.playerOnly'));
     return;
   }
-  if (confirm('เริ่มเกมใหม่?')) socket.emit('reset_game');
+  if (confirm(I18N.t('confirm.reset'))) socket.emit('reset_game');
 };
 
 document.getElementById('resignBtn').onclick = () => {
-  if (confirm('ยอมแพ้เกมนี้?')) socket.emit('resign');
+  if (confirm(I18N.t('confirm.resign'))) socket.emit('resign');
 };
 
 document.getElementById('shareBtn').onclick = async () => {
   const url = window.location.href;
-  const gameLabel = isCheckersGame() ? 'หมากฮอส' : 'หมากรุก';
-  const variantLabel = (gameType === 'chess-intl' || gameType === 'checkers-intl') ? 'สากล' : 'ไทย';
-  const text = `มาดูวง${gameLabel}${variantLabel}ที่ ${url}`;
+  const lang = I18N.getLang();
+  const gameTypeName = I18N.t('gt.' + gameType).replace(/^[♛♚⛀⛂]\s/, '');
+  const text = lang === 'th' ? `มาดูวง${gameTypeName}ที่ ${url}` : `Watch this ${gameTypeName} game at ${url}`;
   if (navigator.share) {
     try { await navigator.share({ title: 'Playmakruk', text, url }); return; } catch (e) {}
   }
   try {
     await navigator.clipboard.writeText(url);
-    showToast('คัดลอกลิงก์แล้ว — ส่งให้เพื่อนได้เลย');
+    showToast(I18N.t('toast.copied'));
   } catch (e) {
-    showToast('คัดลอกไม่ได้ — ' + url);
+    showToast(I18N.t('toast.copyFail') + url);
   }
 };
 

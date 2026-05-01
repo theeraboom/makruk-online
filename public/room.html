@@ -28,16 +28,17 @@
 </head>
 <body class="room-page">
   <header>
-    <a href="/" class="back-btn">← กลับ</a>
+    <a href="/" class="back-btn" data-i18n="back">← กลับ</a>
     <a href="/" class="logo">
       <div class="logo-mark">♛</div>
       <div class="logo-text">
-        <span id="roomName">กำลังโหลด...</span>
+        <span id="roomName">…</span>
         <small id="roomGameTypeLabel">Playmakruk</small>
       </div>
     </a>
     <div class="header-spacer"></div>
-    <div class="role-badge" id="roleBadge">กำลังเชื่อมต่อ...</div>
+    <div class="role-badge" id="roleBadge" data-i18n="role.connecting">กำลังเชื่อมต่อ...</div>
+    <button id="langToggleBtn" class="ghost lang-toggle" title="Change language">🌐 EN</button>
   </header>
 
   <main>
@@ -51,15 +52,15 @@
           <div class="player-info" id="playerW">
             <div class="avatar white" id="avatarW">?</div>
             <div class="player-meta">
-              <span class="player-name empty">รอผู้เล่น</span>
+              <span class="player-name empty" data-i18n="player.waiting">รอผู้เล่น</span>
               <span class="clock" id="clockW" hidden>--:--</span>
             </div>
           </div>
-          <div class="status-pill" id="status">รอผู้เล่น</div>
+          <div class="status-pill" id="status" data-i18n="player.waiting">รอผู้เล่น</div>
           <div class="player-info right" id="playerB">
             <div class="avatar black" id="avatarB">?</div>
             <div class="player-meta">
-              <span class="player-name empty">รอผู้เล่น</span>
+              <span class="player-name empty" data-i18n="player.waiting">รอผู้เล่น</span>
               <span class="clock" id="clockB" hidden>--:--</span>
             </div>
           </div>
@@ -70,35 +71,35 @@
         </div>
 
         <div class="game-controls">
-          <button id="resignBtn" class="ghost" hidden>🏳 ยอมแพ้</button>
-          <button id="resetBtn" class="ghost">🔁 เริ่มเกมใหม่</button>
-          <button id="flipBtn" class="ghost">↕ หมุนกระดาน</button>
-          <button id="shareBtn" class="ghost" title="แชร์ลิงก์ห้อง">🔗 แชร์</button>
-          <button id="soundBtn" class="ghost" title="เปิด/ปิดเสียง">🔔</button>
+          <button id="resignBtn" class="ghost" hidden data-i18n="btn.resign">🏳 ยอมแพ้</button>
+          <button id="resetBtn" class="ghost" data-i18n="btn.reset">🔁 เริ่มเกมใหม่</button>
+          <button id="flipBtn" class="ghost" data-i18n="btn.flip">↕ หมุนกระดาน</button>
+          <button id="shareBtn" class="ghost" data-i18n="btn.share">🔗 แชร์</button>
+          <button id="soundBtn" class="ghost" title="Sound">🔔</button>
           <details class="theme-picker">
-            <summary class="ghost">🎨 ธีม</summary>
+            <summary class="ghost" data-i18n="btn.theme">🎨 ธีม</summary>
             <div class="theme-options" id="themeOptions">
-              <button type="button" class="theme-btn" data-theme="wood" title="ไม้ (มาตรฐาน)"><span class="swatch sw-wood"></span>ไม้</button>
-              <button type="button" class="theme-btn" data-theme="green" title="เขียว (chess.com)"><span class="swatch sw-green"></span>เขียว</button>
-              <button type="button" class="theme-btn" data-theme="blue" title="น้ำเงิน (lichess)"><span class="swatch sw-blue"></span>น้ำเงิน</button>
-              <button type="button" class="theme-btn" data-theme="purple" title="ม่วง"><span class="swatch sw-purple"></span>ม่วง</button>
-              <button type="button" class="theme-btn" data-theme="gray" title="มินิมอล"><span class="swatch sw-gray"></span>เทา</button>
+              <button type="button" class="theme-btn" data-theme="wood"><span class="swatch sw-wood"></span><span data-i18n="theme.wood">ไม้</span></button>
+              <button type="button" class="theme-btn" data-theme="green"><span class="swatch sw-green"></span><span data-i18n="theme.green">เขียว</span></button>
+              <button type="button" class="theme-btn" data-theme="blue"><span class="swatch sw-blue"></span><span data-i18n="theme.blue">น้ำเงิน</span></button>
+              <button type="button" class="theme-btn" data-theme="purple"><span class="swatch sw-purple"></span><span data-i18n="theme.purple">ม่วง</span></button>
+              <button type="button" class="theme-btn" data-theme="gray"><span class="swatch sw-gray"></span><span data-i18n="theme.gray">เทา</span></button>
             </div>
           </details>
           <details class="theme-picker piece-picker" id="piecePicker" hidden>
-            <summary class="ghost">♟ ตัวหมาก</summary>
+            <summary class="ghost" data-i18n="btn.pieces">♟ ตัวหมาก</summary>
             <div class="theme-options" id="pieceOptions">
-              <button type="button" class="theme-btn" data-pieceset="classic" title="หมากรุกสากล (ตัวเต็ม)"><span class="ps-preview">♚</span>คลาสสิก</button>
-              <button type="button" class="theme-btn" data-pieceset="thai-carved" title="ตัวหมากไทย รูปทรงเจดีย์"><span class="ps-preview ps-preview-svg">▲</span>ไทยแกะสลัก</button>
-              <button type="button" class="theme-btn" data-pieceset="thai-letters" title="ตัวอักษรไทย (ขุน, เม็ด, โคน...)"><span class="ps-preview ps-preview-letter">ข</span>อักษรไทย</button>
-              <button type="button" class="theme-btn" data-pieceset="outline" title="แบบโครงเส้น"><span class="ps-preview">♔</span>โครงเส้น</button>
+              <button type="button" class="theme-btn" data-pieceset="classic"><span class="ps-preview">♚</span><span data-i18n="pieces.classic">คลาสสิก</span></button>
+              <button type="button" class="theme-btn" data-pieceset="thai-carved"><span class="ps-preview ps-preview-svg">▲</span><span data-i18n="pieces.thai-carved">ไทยแกะสลัก</span></button>
+              <button type="button" class="theme-btn" data-pieceset="thai-letters"><span class="ps-preview ps-preview-letter">ข</span><span data-i18n="pieces.thai-letters">อักษรไทย</span></button>
+              <button type="button" class="theme-btn" data-pieceset="outline"><span class="ps-preview">♔</span><span data-i18n="pieces.outline">โครงเส้น</span></button>
             </div>
           </details>
-          <span class="viewer-count">👁 <span id="viewerCount">0</span> คนกำลังดู</span>
+          <span class="viewer-count">👁 <span id="viewerCount">0</span> <span data-i18n="viewers.count">คนกำลังดู</span></span>
         </div>
 
         <details class="move-history" id="moveHistory">
-          <summary>📜 ประวัติการเดิน <span id="moveCount" class="move-count"></span></summary>
+          <summary><span data-i18n="history.title">📜 ประวัติการเดิน</span> <span id="moveCount" class="move-count"></span></summary>
           <div class="moves-list" id="movesList"></div>
         </details>
 
@@ -114,7 +115,7 @@
         </div>
 
         <details class="rules">
-          <summary>📖 กฎการเดินหมาก</summary>
+          <summary data-i18n="rules.summary">📖 กฎการเดินหมาก</summary>
           <ul id="chessRulesList">
             <li><b>♔ ขุน</b> — เดิน 1 ช่องทุกทิศทาง</li>
             <li><b>♕ เม็ด</b> — เดิน 1 ช่องในแนวทแยง</li>
@@ -147,7 +148,7 @@
             <li><b>บังคับกิน</b> — ถ้ามีโอกาสกินต้องกิน เลือกอันไหนก็ได้</li>
             <li><b>กินติด</b> — กินต่อได้ในตาเดียวกัน หากผ่านแถวสุดท้ายต้องหยุดและกลายเป็น King ทันที</li>
           </ul>
-          <p style="margin-top:12px"><a href="/rules.html">อ่านประวัติและกติกาเต็ม →</a></p>
+          <p style="margin-top:12px"><a href="/rules.html" data-i18n="rules.readFull">อ่านประวัติและกติกาเต็ม →</a></p>
         </details>
 
         <a href="/" class="ad-slot ad-leaderboard ad-self" style="margin-top: 8px;">
@@ -161,20 +162,20 @@
             <span>👁 <span id="viewersTitle">ผู้ชม (0)</span></span>
           </div>
           <div id="viewersList" class="viewers-list">
-            <div class="viewers-empty">ยังไม่มีคนยืนดู</div>
+            <div class="viewers-empty" data-i18n="viewers.empty">ยังไม่มีคนยืนดู</div>
           </div>
         </div>
 
         <div class="chat-area">
           <div class="chat-header">
             <span class="chat-live"></span>
-            แชทสด
+            <span data-i18n="chat.live">แชทสด</span>
             <span class="chat-count" id="chatCount"></span>
           </div>
           <div class="chat-messages" id="chatMessages"></div>
           <form class="chat-form" id="chatForm">
-            <input id="chatInput" placeholder="พิมพ์ข้อความ..." maxlength="300" autocomplete="off">
-            <button type="submit" class="primary">ส่ง</button>
+            <input id="chatInput" data-i18n-placeholder="chat.placeholder" placeholder="พิมพ์ข้อความ..." maxlength="300" autocomplete="off">
+            <button type="submit" class="primary" data-i18n="chat.send">ส่ง</button>
           </form>
         </div>
 
@@ -186,19 +187,20 @@
 
     <footer>
       <div class="footer-row">
-        <a href="/">รายการห้อง</a>
+        <a href="/" data-i18n="footer.roomList">รายการห้อง</a>
         <span class="footer-divider"></span>
-        <a href="/rules.html">กฎหมากรุก / หมากฮอส</a>
+        <a href="/rules.html" data-i18n="footer.rules">กฎหมากรุก / หมากฮอส</a>
         <span class="footer-divider"></span>
-        <span>ติดต่อโฆษณา: <strong>sonic13oom@hotmail.com</strong></span>
+        <span><span data-i18n="footer.contact">ติดต่อโฆษณา:</span> <strong>sonic13oom@hotmail.com</strong></span>
       </div>
-      <div class="footer-stats" id="footerStats">© 2026 Playmakruk.com</div>
+      <div class="footer-stats" id="footerStats" data-i18n="footer.copy">© 2026 Playmakruk.com</div>
     </footer>
   </main>
 
   <div class="reaction-overlay" id="reactionOverlay"></div>
 
   <script src="/socket.io/socket.io.js"></script>
+  <script src="i18n.js"></script>
   <script src="chess.js"></script>
   <script src="chess-intl.js"></script>
   <script src="checkers.js"></script>

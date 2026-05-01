@@ -117,93 +117,94 @@
       <div class="logo-mark">♛</div>
       <div class="logo-text">
         Playmakruk
-        <small>หมากรุก / หมากฮอส ออนไลน์</small>
+        <small data-i18n="logo.tagline">หมากรุก / หมากฮอส ออนไลน์</small>
       </div>
     </a>
     <div class="header-spacer"></div>
     <div class="user-bar">
-      <input id="nameInput" maxlength="24" placeholder="ตั้งชื่อของคุณ">
-      <button id="saveName" class="ghost">บันทึก</button>
+      <input id="nameInput" maxlength="24" data-i18n-placeholder="name.placeholder" placeholder="ตั้งชื่อของคุณ">
+      <button id="saveName" class="ghost" data-i18n="name.save">บันทึก</button>
+      <button id="langToggleBtn" class="ghost lang-toggle" title="Change language">🌐 EN</button>
     </div>
   </header>
 
   <main>
     <section class="hero">
       <div class="hero-text">
-        <h1 class="hero-title">เล่นหมากรุก หมากฮอส ออนไลน์</h1>
-        <p class="hero-sub">นั่งเล่น ยืนดู คุยกันสนุกๆ บรรยากาศเป็นกันเอง — สองคนเล่น คนอื่นๆ ยืนดูล้อมวง พูดคุยเชียร์กันได้ทุกเมื่อ</p>
+        <h1 class="hero-title" data-i18n="hero.title">เล่นหมากรุก หมากฮอส ออนไลน์</h1>
+        <p class="hero-sub" data-i18n="hero.sub">นั่งเล่น ยืนดู คุยกันสนุกๆ บรรยากาศเป็นกันเอง — สองคนเล่น คนอื่นๆ ยืนดูล้อมวง พูดคุยเชียร์กันได้ทุกเมื่อ</p>
         <div class="hero-stats">
-          <div class="stat-chip"><span class="live-dot"></span><strong id="statRooms">0</strong> ห้องเปิด</div>
-          <div class="stat-chip">👥 <strong id="statPlayers">0</strong> กำลังเล่น</div>
-          <div class="stat-chip">👁 <strong id="statViewers">0</strong> กำลังดู</div>
-          <div class="stat-chip">🌟 <strong id="statVisits">0</strong> ผู้เข้าชมทั้งหมด</div>
+          <div class="stat-chip"><span class="live-dot"></span><strong id="statRooms">0</strong> <span data-i18n="stat.rooms">ห้องเปิด</span></div>
+          <div class="stat-chip">👥 <strong id="statPlayers">0</strong> <span data-i18n="stat.players">กำลังเล่น</span></div>
+          <div class="stat-chip">👁 <strong id="statViewers">0</strong> <span data-i18n="stat.viewers">กำลังดู</span></div>
+          <div class="stat-chip">🌟 <strong id="statVisits">0</strong> <span data-i18n="stat.visits">ผู้เข้าชมทั้งหมด</span></div>
         </div>
       </div>
       <div class="hero-actions">
         <div class="time-control-row">
-          <span class="tc-label">🎲 ประเภทเกม</span>
+          <span class="tc-label" data-i18n="create.gameType">🎲 ประเภทเกม</span>
           <div class="tc-options" id="gameTypeOptions">
-            <button type="button" class="tc-btn active" data-gt="chess">♛ หมากรุกไทย</button>
-            <button type="button" class="tc-btn" data-gt="chess-intl">♚ หมากรุกสากล</button>
-            <button type="button" class="tc-btn" data-gt="checkers">⛂ หมากฮอสไทย</button>
-            <button type="button" class="tc-btn" data-gt="checkers-intl">⛀ หมากฮอสสากล</button>
+            <button type="button" class="tc-btn active" data-gt="chess" data-i18n="gt.chess">♛ หมากรุกไทย</button>
+            <button type="button" class="tc-btn" data-gt="chess-intl" data-i18n="gt.chess-intl">♚ หมากรุกสากล</button>
+            <button type="button" class="tc-btn" data-gt="checkers" data-i18n="gt.checkers">⛂ หมากฮอสไทย</button>
+            <button type="button" class="tc-btn" data-gt="checkers-intl" data-i18n="gt.checkers-intl">⛀ หมากฮอสสากล</button>
           </div>
         </div>
 
-        <input id="newRoomName" placeholder="ตั้งชื่อห้อง" maxlength="40">
+        <input id="newRoomName" data-i18n-placeholder="create.roomName" placeholder="ตั้งชื่อห้อง" maxlength="40">
 
         <div class="time-control-row">
-          <span class="tc-label">⏱ เวลารวมต่อฝ่าย</span>
+          <span class="tc-label" data-i18n="create.timeBase">⏱ เวลารวมต่อฝ่าย</span>
           <div class="tc-options" id="tcBaseOptions">
-            <button type="button" class="tc-btn active" data-tc="">ไม่จับ</button>
-            <button type="button" class="tc-btn" data-tc="1">1น.</button>
-            <button type="button" class="tc-btn" data-tc="3">3น.</button>
-            <button type="button" class="tc-btn" data-tc="5">5น.</button>
-            <button type="button" class="tc-btn" data-tc="10">10น.</button>
-            <button type="button" class="tc-btn" data-tc="15">15น.</button>
-            <button type="button" class="tc-btn" data-tc="30">30น.</button>
-            <button type="button" class="tc-btn" data-tc="60">1ชม.</button>
-            <button type="button" class="tc-btn" data-tc="90">90น.</button>
+            <button type="button" class="tc-btn active" data-tc="" data-i18n="tc.none">ไม่จับ</button>
+            <button type="button" class="tc-btn" data-tc="1">1m</button>
+            <button type="button" class="tc-btn" data-tc="3">3m</button>
+            <button type="button" class="tc-btn" data-tc="5">5m</button>
+            <button type="button" class="tc-btn" data-tc="10">10m</button>
+            <button type="button" class="tc-btn" data-tc="15">15m</button>
+            <button type="button" class="tc-btn" data-tc="30">30m</button>
+            <button type="button" class="tc-btn" data-tc="60">1h</button>
+            <button type="button" class="tc-btn" data-tc="90">90m</button>
           </div>
         </div>
 
         <div class="time-control-row" id="incRow" hidden>
-          <span class="tc-label">➕ เพิ่มต่อตา</span>
+          <span class="tc-label" data-i18n="create.timeIncrement">➕ เพิ่มต่อตา</span>
           <div class="tc-options" id="tcIncOptions">
-            <button type="button" class="tc-btn active" data-tc="0">ไม่เพิ่ม</button>
-            <button type="button" class="tc-btn" data-tc="2">+2 วิ</button>
-            <button type="button" class="tc-btn" data-tc="3">+3 วิ</button>
-            <button type="button" class="tc-btn" data-tc="5">+5 วิ</button>
-            <button type="button" class="tc-btn" data-tc="10">+10 วิ</button>
-            <button type="button" class="tc-btn" data-tc="15">+15 วิ</button>
-            <button type="button" class="tc-btn" data-tc="30">+30 วิ</button>
+            <button type="button" class="tc-btn active" data-tc="0" data-i18n="tc.noinc">ไม่เพิ่ม</button>
+            <button type="button" class="tc-btn" data-tc="2">+2s</button>
+            <button type="button" class="tc-btn" data-tc="3">+3s</button>
+            <button type="button" class="tc-btn" data-tc="5">+5s</button>
+            <button type="button" class="tc-btn" data-tc="10">+10s</button>
+            <button type="button" class="tc-btn" data-tc="15">+15s</button>
+            <button type="button" class="tc-btn" data-tc="30">+30s</button>
           </div>
         </div>
 
         <div class="time-control-row">
-          <span class="tc-label">🔒 รหัสห้อง <span class="tc-hint">(ใส่ถ้าอยากให้เป็นห้องส่วนตัว)</span></span>
-          <input id="newRoomPassword" placeholder="ปล่อยว่าง = ห้องสาธารณะ" maxlength="40" type="text">
+          <span class="tc-label"><span data-i18n="create.password">🔒 รหัสห้อง</span> <span class="tc-hint" data-i18n="create.password.hint">(ใส่ถ้าอยากให้เป็นห้องส่วนตัว)</span></span>
+          <input id="newRoomPassword" data-i18n-placeholder="create.password.placeholder" placeholder="ปล่อยว่าง = ห้องสาธารณะ" maxlength="40" type="text">
         </div>
 
         <div class="time-control-row">
           <span class="tc-label">
             <label class="bot-toggle-label">
-              <input type="checkbox" id="botEnabled"> 🤖 เล่นกับ Bot (ฝึกซ้อมคนเดียว)
+              <input type="checkbox" id="botEnabled"> <span data-i18n="create.bot">🤖 เล่นกับ Bot (ฝึกซ้อมคนเดียว)</span>
             </label>
           </span>
           <div class="tc-options" id="botOptions" hidden>
-            <button type="button" class="tc-btn" data-bd="easy">😊 ง่าย</button>
-            <button type="button" class="tc-btn active" data-bd="medium">🤔 กลาง</button>
-            <button type="button" class="tc-btn" data-bd="hard">🔥 ยาก</button>
+            <button type="button" class="tc-btn" data-bd="easy" data-i18n="bot.easy">😊 ง่าย</button>
+            <button type="button" class="tc-btn active" data-bd="medium" data-i18n="bot.medium">🤔 กลาง</button>
+            <button type="button" class="tc-btn" data-bd="hard" data-i18n="bot.hard">🔥 ยาก</button>
           </div>
           <div class="tc-options" id="botColorOptions" hidden>
-            <span class="tc-hint" style="align-self:center;margin-right:6px">คุณเป็นฝ่าย:</span>
-            <button type="button" class="tc-btn active" data-bc="w">⚪ ขาว (เดินก่อน)</button>
-            <button type="button" class="tc-btn" data-bc="b">⚫ ดำ</button>
+            <span class="tc-hint" style="align-self:center;margin-right:6px" data-i18n="create.botColor">คุณเป็นฝ่าย:</span>
+            <button type="button" class="tc-btn active" data-bc="w" data-i18n="side.white">⚪ ขาว (เดินก่อน)</button>
+            <button type="button" class="tc-btn" data-bc="b" data-i18n="side.black">⚫ ดำ</button>
           </div>
         </div>
 
-        <button id="createBtn" class="primary">+ เปิดวงเล่นใหม่</button>
+        <button id="createBtn" class="primary" data-i18n="create.button">+ เปิดวงเล่นใหม่</button>
       </div>
     </section>
 
@@ -214,12 +215,12 @@
     <div class="lobby-grid">
       <section>
         <div class="section-header">
-          <h2><span class="live-dot"></span>วงที่กำลังเล่นอยู่</h2>
+          <h2><span class="live-dot"></span><span data-i18n="rooms.heading">วงที่กำลังเล่นอยู่</span></h2>
         </div>
         <div id="roomsList" class="rooms-list">
           <div class="empty">
             <div class="empty-icon">♟</div>
-            <div>ยังไม่มีวงเปิด — เปิดวงใหม่ได้เลย</div>
+            <div data-i18n="rooms.empty">ยังไม่มีวงเปิด — เปิดวงใหม่ได้เลย</div>
           </div>
         </div>
       </section>
@@ -230,11 +231,11 @@
         </a>
 
         <div class="info-card">
-          <h3>📜 วิธีเข้าร่วม</h3>
+          <h3 data-i18n="how.title">📜 วิธีเข้าร่วม</h3>
           <ol>
-            <li>กดเปิดวงใหม่ หรือเข้าวงที่เปิดอยู่</li>
-            <li>2 คนแรก = ผู้เล่น (ขาว/ดำ)</li>
-            <li>คนถัดไป = ยืนดู + ร่วมพูดคุยในแชท</li>
+            <li data-i18n="how.1">กดเปิดวงใหม่ หรือเข้าวงที่เปิดอยู่</li>
+            <li data-i18n="how.2">2 คนแรก = ผู้เล่น (ขาว/ดำ)</li>
+            <li data-i18n="how.3">คนถัดไป = ยืนดู + ร่วมพูดคุยในแชท</li>
           </ol>
         </div>
 
@@ -295,15 +296,16 @@
 
     <footer>
       <div class="footer-row">
-        <a href="/rules.html">กฎหมากรุก / หมากฮอส</a>
+        <a href="/rules.html" data-i18n="footer.rules">กฎหมากรุก / หมากฮอส</a>
         <span class="footer-divider"></span>
-        <span>ติดต่อโฆษณา: <strong>sonic13oom@hotmail.com</strong></span>
+        <span><span data-i18n="footer.contact">ติดต่อโฆษณา:</span> <strong>sonic13oom@hotmail.com</strong></span>
       </div>
-      <div class="footer-stats" id="footerStats">© 2026 Playmakruk.com — เล่นฟรี ดูฟรี</div>
+      <div class="footer-stats" id="footerStats" data-i18n="footer.copyFree">© 2026 Playmakruk.com — เล่นฟรี ดูฟรี</div>
     </footer>
   </main>
 
   <script src="/socket.io/socket.io.js"></script>
+  <script src="i18n.js"></script>
   <script src="lobby.js"></script>
 </body>
 </html>

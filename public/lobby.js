@@ -7,6 +7,9 @@ const CHECKERS_SYMBOLS = {
 };
 
 const socket = io();
+
+document.getElementById('langToggleBtn').onclick = () => I18N.toggleLang();
+document.addEventListener('langchange', () => { socket.emit('list_rooms'); });
 const nameInput = document.getElementById('nameInput');
 const saveNameBtn = document.getElementById('saveName');
 
@@ -19,8 +22,8 @@ saveNameBtn.onclick = () => {
   if (name) {
     localStorage.setItem('makruk_name', name);
     socket.emit('set_name', name);
-    saveNameBtn.textContent = '✓ บันทึก';
-    setTimeout(() => (saveNameBtn.textContent = 'บันทึก'), 1500);
+    saveNameBtn.textContent = I18N.t('name.saved');
+    setTimeout(() => (saveNameBtn.textContent = I18N.t('name.save')), 1500);
   }
 };
 
@@ -43,7 +46,7 @@ document.querySelectorAll('#gameTypeOptions .tc-btn').forEach((btn) => {
     document.querySelectorAll('#gameTypeOptions .tc-btn').forEach((b) => b.classList.remove('active'));
     btn.classList.add('active');
     selectedGameType = btn.dataset.gt;
-    newRoomInput.placeholder = 'ตั้งชื่อห้อง (' + GAME_TYPE_LABELS[selectedGameType] + ')';
+    newRoomInput.placeholder = I18N.t('create.roomName') + ' (' + I18N.t('gt.' + selectedGameType) + ')';
   };
 });
 
@@ -124,12 +127,33 @@ socket.on('rooms_list', (rooms) => {
   renderRooms(rooms);
 });
 
+let lastSiteStats = null;
+function fmtFooterLobby(totalVisits, onlineUsers) {
+  const lang = I18N.getLang();
+  const locale = lang === 'th' ? 'th-TH' : 'en-US';
+  const v = totalVisits.toLocaleString(locale);
+  const o = onlineUsers.toLocaleString(locale);
+  return `© 2026 Playmakruk.com — ${I18N.t('footer.visits')} <strong>${v}</strong> ${I18N.t('footer.times')} • ${I18N.t('footer.online')} <strong>${o}</strong> ${I18N.t('footer.people')}`;
+}
 socket.on('site_stats', ({ totalVisits, onlineUsers }) => {
+  lastSiteStats = { totalVisits, onlineUsers };
   const visitsEl = document.getElementById('statVisits');
-  if (visitsEl) visitsEl.textContent = totalVisits.toLocaleString('th-TH');
+  if (visitsEl) visitsEl.textContent = totalVisits.toLocaleString(I18N.getLang() === 'th' ? 'th-TH' : 'en-US');
   const footer = document.getElementById('footerStats');
-  if (footer) {
-    footer.innerHTML = `© 2026 Playmakruk.com — ผู้เข้าชมทั้งหมด <strong>${totalVisits.toLocaleString('th-TH')}</strong> ครั้ง • ออนไลน์ตอนนี้ <strong>${onlineUsers.toLocaleString('th-TH')}</strong> คน`;
+  if (footer) footer.innerHTML = fmtFooterLobby(totalVisits, onlineUsers);
+});
+document.addEventListener('langchange', () => {
+  if (lastSiteStats) {
+    const f = document.getElementById('footerStats');
+    if (f) f.innerHTML = fmtFooterLobby(lastSiteStats.totalVisits, lastSiteStats.onlineUsers);
+    const v = document.getElementById('statVisits');
+    if (v) v.textContent = lastSiteStats.totalVisits.toLocaleString(I18N.getLang() === 'th' ? 'th-TH' : 'en-US');
+  }
+  // Update placeholder when active button selected
+  const activeBtn = document.querySelector('#gameTypeOptions .tc-btn.active');
+  if (activeBtn) {
+    selectedGameType = activeBtn.dataset.gt;
+    newRoomInput.placeholder = I18N.t('create.roomName') + ' (' + I18N.t('gt.' + selectedGameType) + ')';
   }
 });
 
@@ -147,7 +171,7 @@ function renderRooms(rooms) {
     list.innerHTML = `
       <div class="empty">
         <div class="empty-icon">♟</div>
-        <div>ยังไม่มีวงเปิด — เปิดวงใหม่ได้เลย</div>
+        <div>${I18N.t('rooms.empty')}</div>
       </div>`;
     return;
   }
@@ -158,29 +182,22 @@ function renderRooms(rooms) {
 
     let statusBadge = '';
     if (r.status === 'waiting') {
-      statusBadge = '<span class="badge waiting">⏳ รอผู้เล่น</span>';
+      statusBadge = `<span class="badge waiting">${I18N.t('room.waiting')}</span>`;
     } else if (r.status === 'playing') {
-      statusBadge = '<span class="badge live"><span class="live-dot"></span>LIVE</span>';
+      statusBadge = `<span class="badge live"><span class="live-dot"></span>${I18N.t('room.live').replace('🔴 ', '')}</span>`;
     } else {
-      statusBadge = '<span class="badge ended">✓ จบเกม</span>';
+      statusBadge = `<span class="badge ended">${I18N.t('room.ended')}</span>`;
     }
 
     const turnIcon = r.currentPlayer === 'w' ? '⚪' : '⚫';
     const turnPill = r.status === 'playing'
-      ? `<span class="thumb-pill">${turnIcon} ตา${r.currentPlayer === 'w' ? 'ขาว' : 'ดำ'}</span>`
+      ? `<span class="thumb-pill">${turnIcon} ${r.currentPlayer === 'w' ? I18N.t('room.turnW') : I18N.t('room.turnB')}</span>`
       : '';
     const tcPill = formatTimeControl(r.timeBase, r.timeIncrement);
     const tcPillHTML = tcPill ? `<span class="thumb-pill">⏱ ${tcPill}</span>` : '';
-    const lockBadge = r.isPrivate ? '<span class="thumb-pill private">🔒 ส่วนตัว</span>' : '';
-    const botLabels = { easy: 'Bot ง่าย', medium: 'Bot กลาง', hard: 'Bot ยาก' };
-    const botBadge = r.hasBot ? `<span class="thumb-pill bot-badge">🤖 ${botLabels[r.botDifficulty] || 'Bot'}</span>` : '';
-    const gtBadgeMap = {
-      'chess': '♛ หมากรุกไทย',
-      'chess-intl': '♚ หมากรุกสากล',
-      'checkers': '⛂ หมากฮอสไทย',
-      'checkers-intl': '⛀ หมากฮอสสากล',
-    };
-    const gtBadge = `<span class="thumb-pill game-type">${gtBadgeMap[r.gameType] || gtBadgeMap.chess}</span>`;
+    const lockBadge = r.isPrivate ? `<span class="thumb-pill private">${I18N.t('room.private')}</span>` : '';
+    const botBadge = r.hasBot ? `<span class="thumb-pill bot-badge">🤖 ${I18N.t('bot.' + r.botDifficulty).replace(/^[😊🤔🔥]\s/, '')}</span>` : '';
+    const gtBadge = `<span class="thumb-pill game-type">${I18N.t('gt.' + r.gameType)}</span>`;
 
     card.innerHTML = `
       <div class="room-thumb">
@@ -207,15 +224,15 @@ function renderRooms(rooms) {
       <div class="room-card-body">
         <div class="room-name">${escapeHtml(r.name)}</div>
         <div class="room-meta">
-          <span>${r.status === 'waiting' ? 'รอคู่แข่ง' : (r.status === 'playing' ? 'กำลังเล่น' : 'จบแล้ว')}</span>
+          <span>${r.status === 'waiting' ? I18N.t('room.waiting').replace(/^[⏳]\s/, '') : (r.status === 'playing' ? I18N.t('room.live').replace(/^[🔴]\s/, '') : I18N.t('room.ended').replace(/^[✓]\s/, ''))}</span>
           <span>•</span>
-          <span>${r.viewerCount} คนดู</span>
+          <span>${r.viewerCount} ${I18N.t('room.viewers')}</span>
         </div>
       </div>
     `;
     card.onclick = () => {
       if (r.isPrivate) {
-        const pw = prompt(`ห้อง "${r.name}" เป็นห้องส่วนตัว\nกรุณาใส่รหัสห้อง:`);
+        const pw = prompt(`"${r.name}" ${I18N.t('prompt.privatePass')}`);
         if (!pw) return;
         window.location.href = `/room.html?id=${r.id}&pw=${encodeURIComponent(pw)}`;
       } else {
@@ -228,8 +245,8 @@ function renderRooms(rooms) {
 
 function formatTimeControl(base, inc) {
   if (!base) return null;
-  const baseStr = base >= 60 ? `${base / 60}ชม.` : `${base}น.`;
-  return inc ? `${baseStr} +${inc}วิ` : baseStr;
+  const baseStr = base >= 60 ? `${base / 60}${I18N.t('tc.hour')}` : `${base}${I18N.t('tc.min')}`;
+  return inc ? `${baseStr} +${inc}${I18N.t('tc.sec')}` : baseStr;
 }
 
 function renderMiniBoard(board, gameType) {

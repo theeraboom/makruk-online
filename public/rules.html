@@ -99,15 +99,16 @@
 </head>
 <body>
   <header>
-    <a href="/" class="back-btn">← กลับ</a>
+    <a href="/" class="back-btn" data-i18n="back">← กลับ</a>
     <a href="/" class="logo">
       <div class="logo-mark">♛</div>
       <div class="logo-text">
         Playmakruk
-        <small>ประวัติและกติกา</small>
+        <small data-i18n="logo.tagline.rules">ประวัติและกติกา</small>
       </div>
     </a>
     <div class="header-spacer"></div>
+    <button id="langToggleBtn" class="ghost lang-toggle" title="Change language">🌐 EN</button>
   </header>
 
   <main>
@@ -543,20 +544,34 @@
 
     <footer>
       <div class="footer-row">
-        <a href="/">รายการห้อง</a>
+        <a href="/" data-i18n="footer.roomList">รายการห้อง</a>
         <span class="footer-divider"></span>
-        <span>ติดต่อโฆษณา: <strong>sonic13oom@hotmail.com</strong></span>
+        <span><span data-i18n="footer.contact">ติดต่อโฆษณา:</span> <strong>sonic13oom@hotmail.com</strong></span>
       </div>
-      <div class="footer-stats" id="footerStats">© 2026 Playmakruk.com</div>
+      <div class="footer-stats" id="footerStats" data-i18n="footer.copy">© 2026 Playmakruk.com</div>
     </footer>
   </main>
 
   <script src="/socket.io/socket.io.js"></script>
+  <script src="i18n.js"></script>
   <script>
     const socket = io();
-    socket.on('site_stats', ({ totalVisits, onlineUsers }) => {
-      document.getElementById('footerStats').innerHTML =
-        `© 2026 Playmakruk.com — ผู้เข้าชมทั้งหมด <strong>${totalVisits.toLocaleString('th-TH')}</strong> ครั้ง • ออนไลน์ตอนนี้ <strong>${onlineUsers.toLocaleString('th-TH')}</strong> คน`;
+    document.getElementById('langToggleBtn').onclick = () => I18N.toggleLang();
+    function fmtFooter(totalVisits, onlineUsers) {
+      const lang = I18N.getLang();
+      const locale = lang === 'th' ? 'th-TH' : 'en-US';
+      const v = totalVisits.toLocaleString(locale);
+      const o = onlineUsers.toLocaleString(locale);
+      const sep = lang === 'th' ? ' — ' : ' — ';
+      return `© 2026 Playmakruk.com${sep}${I18N.t('footer.visits')} <strong>${v}</strong> ${I18N.t('footer.times')} • ${I18N.t('footer.online')} <strong>${o}</strong> ${I18N.t('footer.people')}`;
+    }
+    let lastStats = null;
+    socket.on('site_stats', (s) => {
+      lastStats = s;
+      document.getElementById('footerStats').innerHTML = fmtFooter(s.totalVisits, s.onlineUsers);
+    });
+    document.addEventListener('langchange', () => {
+      if (lastStats) document.getElementById('footerStats').innerHTML = fmtFooter(lastStats.totalVisits, lastStats.onlineUsers);
     });
   </script>
 </body>
