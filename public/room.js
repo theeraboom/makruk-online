@@ -69,12 +69,17 @@ socket.on('room_state', (state) => {
   const labelEl = document.getElementById('roomGameTypeLabel');
   const gameLabels = { 'chess': 'หมากรุกไทย', 'chess-intl': 'หมากรุกสากล', 'checkers': 'หมากฮอสไทย', 'checkers-intl': 'หมากฮอสสากล' };
   if (labelEl) labelEl.textContent = gameLabels[gameType] || 'Playmakruk';
-  const chessRules = document.getElementById('chessRulesList');
-  const checkersRules = document.getElementById('checkersRulesList');
-  if (chessRules && checkersRules) {
-    chessRules.hidden = isCheckersGame();
-    checkersRules.hidden = !isCheckersGame();
-  }
+  const ruleListIds = {
+    'chess': 'chessRulesList',
+    'chess-intl': 'chessIntlRulesList',
+    'checkers': 'checkersRulesList',
+    'checkers-intl': 'checkersIntlRulesList',
+  };
+  const activeListId = ruleListIds[gameType] || 'chessRulesList';
+  Object.values(ruleListIds).forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.hidden = (id !== activeListId);
+  });
   const piecePicker = document.getElementById('piecePicker');
   if (piecePicker) piecePicker.hidden = isCheckersGame();
   board = state.board;
