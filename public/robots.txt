@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /room.html
 
-Sitemap: https://makrukthai.onrender.com/sitemap.xml
+Sitemap: https://playmakruk.com/sitemap.xml
