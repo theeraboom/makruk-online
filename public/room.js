@@ -5,6 +5,7 @@ const PIECE_SYMBOLS = {
 
 const params = new URLSearchParams(window.location.search);
 const roomId = params.get('id');
+const initialPw = params.get('pw') || null;
 if (!roomId) window.location.href = '/';
 
 const socket = io();
@@ -16,20 +17,27 @@ let selected = null;
 let validMoves = [];
 let flipped = false;
 let chatMsgCount = 0;
-let timeControl = null;
+let timeBase = null;
+let timeIncrement = 0;
 let whiteTime = null;
 let blackTime = null;
 let runningSince = null;
-let drawOfferBy = null;
 let endedReason = null;
 let endedWinner = null;
 let moves = [];
 let lastMoveCount = 0;
 let soundEnabled = localStorage.getItem('makruk_sound') !== 'off';
+let boardTheme = localStorage.getItem('makruk_theme') || 'wood';
 
 const userName = localStorage.getItem('makruk_name') || '';
 if (userName) socket.emit('set_name', userName);
-socket.emit('join_room', { roomId });
+socket.emit('join_room', { roomId, password: initialPw });
+
+socket.on('password_required', ({ name }) => {
+  const pw = prompt(`ห้อง "${name}" เป็นห้องส่วนตัว\nกรุณาใส่รหัสห้อง:`);
+  if (!pw) { window.location.href = '/'; return; }
+  socket.emit('join_room', { roomId, password: pw });
+});
 
 socket.on('joined', ({ role }) => {
   myRole = role;
@@ -45,11 +53,11 @@ socket.on('room_state', (state) => {
   board = state.board;
   currentPlayer = state.currentPlayer;
   status = state.status;
-  timeControl = state.timeControl;
+  timeBase = state.timeBase;
+  timeIncrement = state.timeIncrement || 0;
   whiteTime = state.whiteTime;
   blackTime = state.blackTime;
   runningSince = state.runningSince;
-  drawOfferBy = state.drawOfferBy;
   endedReason = state.endedReason;
   endedWinner = state.endedWinner;
   moves = state.moves || [];
@@ -64,7 +72,6 @@ socket.on('room_state', (state) => {
 
   renderMoves();
   renderClocks();
-  renderDrawOffer();
   renderControls();
 
   updatePlayerSlot('W', state.players.w);
@@ -229,7 +236,7 @@ function fmtClock(ms) {
 function renderClocks() {
   const cw = document.getElementById('clockW');
   const cb = document.getElementById('clockB');
-  if (!timeControl) {
+  if (!timeBase) {
     cw.hidden = true; cb.hidden = true;
     return;
   }
@@ -253,24 +260,12 @@ function renderClocks() {
   cb.classList.toggle('active', status === 'playing' && currentPlayer === 'b');
 }
 
-setInterval(() => { if (timeControl) renderClocks(); }, 200);
-
-function renderDrawOffer() {
-  const banner = document.getElementById('drawOfferBanner');
-  if (drawOfferBy && status === 'playing' && (myRole === 'w' || myRole === 'b') && drawOfferBy !== myRole) {
-    banner.hidden = false;
-    document.getElementById('drawOfferText').textContent = `${drawOfferBy === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} ขอเสมอ`;
-  } else {
-    banner.hidden = true;
-  }
-}
+setInterval(() => { if (timeBase) renderClocks(); }, 200);
 
 function renderControls() {
   const isPlayer = myRole === 'w' || myRole === 'b';
   const playing = status === 'playing';
   document.getElementById('resignBtn').hidden = !(isPlayer && playing);
-  document.getElementById('drawBtn').hidden = !(isPlayer && playing);
-  document.getElementById('drawBtn').disabled = !!drawOfferBy;
 }
 
 function renderMoves() {
@@ -363,6 +358,20 @@ document.getElementById('flipBtn').onclick = () => {
   render();
 };
 
+function applyTheme(theme) {
+  boardTheme = theme;
+  localStorage.setItem('makruk_theme', theme);
+  document.body.dataset.boardTheme = theme;
+  document.querySelectorAll('#themeOptions .theme-btn').forEach((b) => {
+    b.classList.toggle('active', b.dataset.theme === theme);
+  });
+}
+applyTheme(boardTheme);
+
+document.querySelectorAll('#themeOptions .theme-btn').forEach((btn) => {
+  btn.onclick = () => applyTheme(btn.dataset.theme);
+});
+
 document.getElementById('resetBtn').onclick = () => {
   if (myRole !== 'w' && myRole !== 'b') {
     showToast('เฉพาะผู้เล่นเท่านั้นที่เริ่มเกมใหม่ได้');
@@ -374,14 +383,6 @@ document.getElementById('resetBtn').onclick = () => {
 document.getElementById('resignBtn').onclick = () => {
   if (confirm('ยอมแพ้เกมนี้?')) socket.emit('resign');
 };
-
-document.getElementById('drawBtn').onclick = () => {
-  socket.emit('offer_draw');
-  showToast('ส่งคำขอเสมอแล้ว');
-};
-
-document.getElementById('acceptDrawBtn').onclick = () => socket.emit('respond_draw', true);
-document.getElementById('declineDrawBtn').onclick = () => socket.emit('respond_draw', false);
 
 document.getElementById('shareBtn').onclick = async () => {
   const url = window.location.href;

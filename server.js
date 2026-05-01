@@ -11,34 +11,42 @@ const io = new Server(server);
 
 const rooms = new Map();
 const ALLOWED_REACTIONS = ['👍', '👏', '🔥', '😱', '♟', '🎉', '❤️', '🤔'];
-const ALLOWED_TIME_CONTROLS = [null, 1, 3, 5, 10, 15];
+const ALLOWED_TIME_BASE = [null, 1, 3, 5, 10, 15, 30, 60, 90];
+const ALLOWED_TIME_INCREMENT = [0, 2, 3, 5, 10, 15, 30];
 
-function buildInitialMatchState(timeControl) {
-  const ms = timeControl ? timeControl * 60 * 1000 : null;
+function buildInitialMatchState(timeBase, timeIncrement) {
+  const ms = timeBase ? timeBase * 60 * 1000 : null;
   return {
     board: Chess.initialBoard(),
     currentPlayer: 'w',
     moves: [],
-    timeControl,
+    timeBase,
+    timeIncrement: timeIncrement || 0,
     whiteTime: ms,
     blackTime: ms,
     runningSince: null,
-    drawOfferBy: null,
     endedReason: null,
     endedWinner: null,
   };
 }
 
 function deductTime(room) {
-  if (!room.timeControl || !room.runningSince) return;
+  if (!room.timeBase || !room.runningSince) return;
   const elapsed = Date.now() - room.runningSince;
   if (room.currentPlayer === 'w') room.whiteTime = Math.max(0, room.whiteTime - elapsed);
   else room.blackTime = Math.max(0, room.blackTime - elapsed);
   room.runningSince = null;
 }
 
+function addIncrement(room) {
+  if (!room.timeBase || !room.timeIncrement) return;
+  const incMs = room.timeIncrement * 1000;
+  if (room.currentPlayer === 'w') room.whiteTime += incMs;
+  else room.blackTime += incMs;
+}
+
 function startClock(room) {
-  if (room.timeControl) room.runningSince = Date.now();
+  if (room.timeBase) room.runningSince = Date.now();
 }
 
 function endGame(room, reason, winner) {
@@ -46,7 +54,6 @@ function endGame(room, reason, winner) {
   room.endedReason = reason;
   room.endedWinner = winner;
   room.runningSince = null;
-  room.drawOfferBy = null;
 }
 
 const VISITS_FILE = path.join(__dirname, 'visits.json');
@@ -92,7 +99,9 @@ function publicRoom(room) {
     viewerCount: room.viewers.size,
     status: room.status,
     currentPlayer: room.currentPlayer,
-    timeControl: room.timeControl,
+    timeBase: room.timeBase,
+    timeIncrement: room.timeIncrement,
+    isPrivate: !!room.password,
   };
 }
 
@@ -116,13 +125,14 @@ function broadcastRoomState(roomId) {
     viewerCount: room.viewers.size,
     viewers: Array.from(room.viewers.values()),
     moves: room.moves,
-    timeControl: room.timeControl,
+    timeBase: room.timeBase,
+    timeIncrement: room.timeIncrement,
     whiteTime: room.whiteTime,
     blackTime: room.blackTime,
     runningSince: room.runningSince,
-    drawOfferBy: room.drawOfferBy,
     endedReason: room.endedReason,
     endedWinner: room.endedWinner,
+    isPrivate: !!room.password,
   });
 }
 
@@ -150,26 +160,33 @@ io.on('connection', (socket) => {
 
   socket.on('create_room', (payload) => {
     const id = makeRoomId();
-    const name = (payload && typeof payload === 'object') ? payload.name : payload;
-    const tc = (payload && typeof payload === 'object') ? payload.timeControl : null;
-    const validatedTc = ALLOWED_TIME_CONTROLS.includes(tc) ? tc : null;
+    const p = (payload && typeof payload === 'object') ? payload : { name: payload };
+    const validBase = ALLOWED_TIME_BASE.includes(p.timeBase) ? p.timeBase : null;
+    const validInc = ALLOWED_TIME_INCREMENT.includes(p.timeIncrement) ? p.timeIncrement : 0;
+    const password = (typeof p.password === 'string' && p.password.trim()) ? p.password.trim().slice(0, 40) : null;
     const room = {
       id,
-      name: (typeof name === 'string' && name.trim()) ? name.trim().slice(0, 40) : 'วงหมากรุกไทย',
+      name: (typeof p.name === 'string' && p.name.trim()) ? p.name.trim().slice(0, 40) : 'วงหมากรุกไทย',
+      password,
       players: { w: null, b: null },
       viewers: new Map(),
       messages: [],
       status: 'waiting',
-      ...buildInitialMatchState(validatedTc),
+      ...buildInitialMatchState(validBase, validInc),
     };
     rooms.set(id, room);
     socket.emit('room_created', { id });
     broadcastRoomList();
   });
 
-  socket.on('join_room', ({ roomId }) => {
+  socket.on('join_room', ({ roomId, password }) => {
     const room = rooms.get(roomId);
     if (!room) { socket.emit('error_msg', 'ไม่พบห้องนี้'); return; }
+
+    if (room.password && room.password !== password) {
+      socket.emit('password_required', { roomId, name: room.name });
+      return;
+    }
 
     socket.join(roomId);
     socket.data.roomId = roomId;
@@ -220,7 +237,7 @@ io.on('connection', (socket) => {
     }
 
     deductTime(room);
-    if (room.timeControl && (room.whiteTime <= 0 || room.blackTime <= 0)) {
+    if (room.timeBase && (room.whiteTime <= 0 || room.blackTime <= 0)) {
       const loser = room.currentPlayer;
       endGame(room, 'timeout', loser === 'w' ? 'b' : 'w');
       pushSystemMessage(room, `${loser === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} หมดเวลา — ${loser === 'w' ? 'ฝ่ายดำ' : 'ฝ่ายขาว'} ชนะ ⏰`);
@@ -228,6 +245,7 @@ io.on('connection', (socket) => {
       broadcastRoomList();
       return;
     }
+    addIncrement(room);
 
     const movingPiece = piece;
     const targetBefore = room.board[to.r][to.c];
@@ -243,7 +261,6 @@ io.on('connection', (socket) => {
       time: Date.now(),
     });
     room.currentPlayer = room.currentPlayer === 'w' ? 'b' : 'w';
-    room.drawOfferBy = null;
 
     const status = Chess.gameStatus(room.board, room.currentPlayer);
     if (status.ended) {
@@ -271,34 +288,6 @@ io.on('connection', (socket) => {
     const winner = loser === 'w' ? 'b' : 'w';
     endGame(room, 'resign', winner);
     pushSystemMessage(room, `${socket.data.user.name} ยอมแพ้ — ${winner === 'w' ? 'ฝ่ายขาว' : 'ฝ่ายดำ'} ชนะ 🏳`);
-    broadcastRoomState(socket.data.roomId);
-    broadcastRoomList();
-  });
-
-  socket.on('offer_draw', () => {
-    const room = rooms.get(socket.data.roomId);
-    if (!room || room.status !== 'playing') return;
-    if (socket.data.role !== 'w' && socket.data.role !== 'b') return;
-    if (room.drawOfferBy) return;
-    room.drawOfferBy = socket.data.role;
-    pushSystemMessage(room, `${socket.data.user.name} ขอเสมอ — รอฝ่ายตรงข้ามตอบ`);
-    broadcastRoomState(socket.data.roomId);
-  });
-
-  socket.on('respond_draw', (accept) => {
-    const room = rooms.get(socket.data.roomId);
-    if (!room || room.status !== 'playing') return;
-    if (!room.drawOfferBy) return;
-    if (socket.data.role === room.drawOfferBy) return;
-    if (socket.data.role !== 'w' && socket.data.role !== 'b') return;
-    if (accept) {
-      deductTime(room);
-      endGame(room, 'draw_agreement', null);
-      pushSystemMessage(room, 'ทั้งสองฝ่ายตกลงเสมอ 🤝');
-    } else {
-      room.drawOfferBy = null;
-      pushSystemMessage(room, `${socket.data.user.name} ปฏิเสธการเสมอ`);
-    }
     broadcastRoomState(socket.data.roomId);
     broadcastRoomList();
   });
@@ -335,7 +324,7 @@ io.on('connection', (socket) => {
     const room = rooms.get(roomId);
     if (!room) return;
     if (socket.data.role !== 'w' && socket.data.role !== 'b') return;
-    Object.assign(room, buildInitialMatchState(room.timeControl));
+    Object.assign(room, buildInitialMatchState(room.timeBase, room.timeIncrement));
     room.status = (room.players.w && room.players.b) ? 'playing' : 'waiting';
     if (room.status === 'playing') startClock(room);
     pushSystemMessage(room, `${socket.data.user.name} เริ่มเกมใหม่ 🔁`);
@@ -377,7 +366,7 @@ io.on('connection', (socket) => {
 
 setInterval(() => {
   for (const room of rooms.values()) {
-    if (room.status !== 'playing' || !room.timeControl || !room.runningSince) continue;
+    if (room.status !== 'playing' || !room.timeBase || !room.runningSince) continue;
     const elapsed = Date.now() - room.runningSince;
     const remaining = (room.currentPlayer === 'w' ? room.whiteTime : room.blackTime) - elapsed;
     if (remaining <= 0) {

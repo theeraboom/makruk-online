@@ -602,9 +602,17 @@ main { max-width: 1280px; margin: 0 auto; padding: 24px; }
   user-select: none;
   transition: background 0.1s;
 }
-.light { background: #F0D9B5; }
-.dark { background: #B58863; }
-.selected { background: #F7D774 !important; box-shadow: inset 0 0 0 3px #D49A00; }
+.light { background: var(--sq-light, #F0D9B5); }
+.dark { background: var(--sq-dark, #B58863); }
+.selected { background: var(--sq-sel, #F7D774) !important; box-shadow: inset 0 0 0 3px var(--sq-sel-edge, #D49A00); }
+
+/* Board themes — applied via body[data-board-theme] */
+body[data-board-theme="wood"] { --sq-light: #F0D9B5; --sq-dark: #B58863; --sq-sel: #F7D774; --sq-sel-edge: #D49A00; --board-frame: linear-gradient(135deg, #5A3A1A, #3E2A12); }
+body[data-board-theme="green"] { --sq-light: #EEEED2; --sq-dark: #769656; --sq-sel: #F7EC74; --sq-sel-edge: #BABA00; --board-frame: linear-gradient(135deg, #4F6B36, #2F4520); }
+body[data-board-theme="blue"] { --sq-light: #DEE3E6; --sq-dark: #8CA2AD; --sq-sel: #C7E6FF; --sq-sel-edge: #5BA3D9; --board-frame: linear-gradient(135deg, #495860, #2E3A40); }
+body[data-board-theme="purple"] { --sq-light: #F0E0F5; --sq-dark: #9F84BF; --sq-sel: #FBD3FF; --sq-sel-edge: #B05FCC; --board-frame: linear-gradient(135deg, #5A3D74, #3A2350); }
+body[data-board-theme="gray"] { --sq-light: #FFFFFF; --sq-dark: #B8B8B8; --sq-sel: #FFE48A; --sq-sel-edge: #C9A300; --board-frame: linear-gradient(135deg, #555, #2A2A2A); }
+.board-wrapper { background: var(--board-frame, linear-gradient(135deg, #5A3A1A, #3E2A12)) !important; }
 .valid-move::after {
   content: ''; position: absolute;
   width: 22px; height: 22px;
@@ -1073,32 +1081,74 @@ footer {
   animation: pulse 1s ease-in-out infinite;
 }
 
-/* ============ Draw offer banner ============ */
-.draw-offer-banner {
-  width: 100%;
-  max-width: 520px;
-  background: var(--primary-soft);
-  border: 1px solid var(--primary);
-  border-radius: var(--radius-lg);
-  padding: 12px 16px;
+/* ============ Theme picker (room) ============ */
+.theme-picker {
+  position: relative;
+  display: inline-block;
+}
+.theme-picker summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 10px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 14px;
+  color: var(--text);
+  user-select: none;
+}
+.theme-picker summary::-webkit-details-marker { display: none; }
+.theme-picker summary:hover { background: var(--surface-2); border-color: var(--border-strong); }
+.theme-picker[open] summary { background: var(--primary-soft); border-color: var(--primary); }
+.theme-options {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 6px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 140px;
+}
+.theme-btn {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-.draw-offer-banner span {
-  font-weight: 600;
-  color: var(--primary-hover);
-}
-.draw-offer-actions {
-  display: flex;
   gap: 8px;
-}
-.draw-offer-actions button {
-  padding: 6px 14px;
+  padding: 8px 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
   font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
 }
+.theme-btn:hover { background: var(--surface-2); }
+.theme-btn.active { background: var(--primary-soft); border-color: var(--primary); color: var(--primary-hover); font-weight: 600; }
+.swatch {
+  display: inline-block;
+  width: 24px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1px solid var(--border-strong);
+  flex-shrink: 0;
+}
+.sw-wood { background: linear-gradient(135deg, #F0D9B5 50%, #B58863 50%); }
+.sw-green { background: linear-gradient(135deg, #EEEED2 50%, #769656 50%); }
+.sw-blue { background: linear-gradient(135deg, #DEE3E6 50%, #8CA2AD 50%); }
+.sw-purple { background: linear-gradient(135deg, #F0E0F5 50%, #9F84BF 50%); }
+.sw-gray { background: linear-gradient(135deg, #FFFFFF 50%, #B8B8B8 50%); }
+
+/* ============ Time control hint ============ */
+.tc-hint { color: var(--text-muted); font-weight: 400; font-size: 12px; }
+.thumb-pill.private { background: rgba(180, 83, 9, 0.85); }
 
 /* ============ Move history ============ */
 .move-history {

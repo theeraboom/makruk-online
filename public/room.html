@@ -66,25 +66,26 @@
           </div>
         </div>
 
-        <div class="draw-offer-banner" id="drawOfferBanner" hidden>
-          <span id="drawOfferText">ฝ่ายตรงข้ามขอเสมอ</span>
-          <div class="draw-offer-actions">
-            <button class="primary" id="acceptDrawBtn">ตกลงเสมอ</button>
-            <button class="ghost" id="declineDrawBtn">ปฏิเสธ</button>
-          </div>
-        </div>
-
-        <div class="board-wrapper">
+        <div class="board-wrapper" id="boardWrapper">
           <div class="board" id="board"></div>
         </div>
 
         <div class="game-controls">
           <button id="resignBtn" class="ghost" hidden>🏳 ยอมแพ้</button>
-          <button id="drawBtn" class="ghost" hidden>🤝 ขอเสมอ</button>
           <button id="resetBtn" class="ghost">🔁 เริ่มเกมใหม่</button>
           <button id="flipBtn" class="ghost">↕ หมุนกระดาน</button>
           <button id="shareBtn" class="ghost" title="แชร์ลิงก์ห้อง">🔗 แชร์</button>
           <button id="soundBtn" class="ghost" title="เปิด/ปิดเสียง">🔔</button>
+          <details class="theme-picker">
+            <summary class="ghost">🎨 ธีม</summary>
+            <div class="theme-options" id="themeOptions">
+              <button type="button" class="theme-btn" data-theme="wood" title="ไม้ (มาตรฐาน)"><span class="swatch sw-wood"></span>ไม้</button>
+              <button type="button" class="theme-btn" data-theme="green" title="เขียว (chess.com)"><span class="swatch sw-green"></span>เขียว</button>
+              <button type="button" class="theme-btn" data-theme="blue" title="น้ำเงิน (lichess)"><span class="swatch sw-blue"></span>น้ำเงิน</button>
+              <button type="button" class="theme-btn" data-theme="purple" title="ม่วง"><span class="swatch sw-purple"></span>ม่วง</button>
+              <button type="button" class="theme-btn" data-theme="gray" title="มินิมอล"><span class="swatch sw-gray"></span>เทา</button>
+            </div>
+          </details>
           <span class="viewer-count">👁 <span id="viewerCount">0</span> คนกำลังดู</span>
         </div>
 

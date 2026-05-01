@@ -72,17 +72,40 @@
       </div>
       <div class="hero-actions">
         <input id="newRoomName" placeholder="ตั้งชื่อห้อง" maxlength="40">
+
         <div class="time-control-row">
-          <span class="tc-label">⏱ เวลาต่อฝ่าย:</span>
-          <div class="tc-options" id="tcOptions">
-            <button type="button" class="tc-btn active" data-tc="">ไม่จับเวลา</button>
-            <button type="button" class="tc-btn" data-tc="1">1 นาที</button>
-            <button type="button" class="tc-btn" data-tc="3">3 นาที</button>
-            <button type="button" class="tc-btn" data-tc="5">5 นาที</button>
-            <button type="button" class="tc-btn" data-tc="10">10 นาที</button>
-            <button type="button" class="tc-btn" data-tc="15">15 นาที</button>
+          <span class="tc-label">⏱ เวลารวมต่อฝ่าย</span>
+          <div class="tc-options" id="tcBaseOptions">
+            <button type="button" class="tc-btn active" data-tc="">ไม่จับ</button>
+            <button type="button" class="tc-btn" data-tc="1">1น.</button>
+            <button type="button" class="tc-btn" data-tc="3">3น.</button>
+            <button type="button" class="tc-btn" data-tc="5">5น.</button>
+            <button type="button" class="tc-btn" data-tc="10">10น.</button>
+            <button type="button" class="tc-btn" data-tc="15">15น.</button>
+            <button type="button" class="tc-btn" data-tc="30">30น.</button>
+            <button type="button" class="tc-btn" data-tc="60">1ชม.</button>
+            <button type="button" class="tc-btn" data-tc="90">90น.</button>
           </div>
         </div>
+
+        <div class="time-control-row" id="incRow" hidden>
+          <span class="tc-label">➕ เพิ่มต่อตา</span>
+          <div class="tc-options" id="tcIncOptions">
+            <button type="button" class="tc-btn active" data-tc="0">ไม่เพิ่ม</button>
+            <button type="button" class="tc-btn" data-tc="2">+2 วิ</button>
+            <button type="button" class="tc-btn" data-tc="3">+3 วิ</button>
+            <button type="button" class="tc-btn" data-tc="5">+5 วิ</button>
+            <button type="button" class="tc-btn" data-tc="10">+10 วิ</button>
+            <button type="button" class="tc-btn" data-tc="15">+15 วิ</button>
+            <button type="button" class="tc-btn" data-tc="30">+30 วิ</button>
+          </div>
+        </div>
+
+        <div class="time-control-row">
+          <span class="tc-label">🔒 รหัสห้อง <span class="tc-hint">(ใส่ถ้าอยากให้เป็นห้องส่วนตัว)</span></span>
+          <input id="newRoomPassword" placeholder="ปล่อยว่าง = ห้องสาธารณะ" maxlength="40" type="text">
+        </div>
+
         <button id="createBtn" class="primary">+ เปิดวงเล่นใหม่</button>
       </div>
     </section>

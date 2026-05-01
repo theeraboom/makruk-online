@@ -22,24 +22,46 @@ saveNameBtn.onclick = () => {
 };
 
 const newRoomInput = document.getElementById('newRoomName');
+const newRoomPasswordInput = document.getElementById('newRoomPassword');
 const createBtn = document.getElementById('createBtn');
-let selectedTimeControl = null;
+const incRow = document.getElementById('incRow');
+let selectedTimeBase = null;
+let selectedTimeIncrement = 0;
 
-document.querySelectorAll('#tcOptions .tc-btn').forEach((btn) => {
+document.querySelectorAll('#tcBaseOptions .tc-btn').forEach((btn) => {
   btn.onclick = () => {
-    document.querySelectorAll('#tcOptions .tc-btn').forEach((b) => b.classList.remove('active'));
+    document.querySelectorAll('#tcBaseOptions .tc-btn').forEach((b) => b.classList.remove('active'));
     btn.classList.add('active');
     const tc = btn.dataset.tc;
-    selectedTimeControl = tc ? Number(tc) : null;
+    selectedTimeBase = tc ? Number(tc) : null;
+    incRow.hidden = !selectedTimeBase;
+    if (!selectedTimeBase) selectedTimeIncrement = 0;
+  };
+});
+
+document.querySelectorAll('#tcIncOptions .tc-btn').forEach((btn) => {
+  btn.onclick = () => {
+    document.querySelectorAll('#tcIncOptions .tc-btn').forEach((b) => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedTimeIncrement = Number(btn.dataset.tc);
   };
 });
 
 function createRoom() {
   const name = newRoomInput.value.trim() || 'วงหมากรุกไทย';
-  socket.emit('create_room', { name, timeControl: selectedTimeControl });
+  const password = newRoomPasswordInput.value.trim();
+  socket.emit('create_room', {
+    name,
+    timeBase: selectedTimeBase,
+    timeIncrement: selectedTimeIncrement,
+    password: password || null,
+  });
 }
 createBtn.onclick = createRoom;
 newRoomInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') createRoom();
+});
+newRoomPasswordInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') createRoom();
 });
 
@@ -97,9 +119,9 @@ function renderRooms(rooms) {
     const turnPill = r.status === 'playing'
       ? `<span class="thumb-pill">${turnIcon} ตา${r.currentPlayer === 'w' ? 'ขาว' : 'ดำ'}</span>`
       : '';
-    const tcPill = r.timeControl
-      ? `<span class="thumb-pill">⏱ ${r.timeControl}น.</span>`
-      : '';
+    const tcPill = formatTimeControl(r.timeBase, r.timeIncrement);
+    const tcPillHTML = tcPill ? `<span class="thumb-pill">⏱ ${tcPill}</span>` : '';
+    const lockBadge = r.isPrivate ? '<span class="thumb-pill private">🔒 ส่วนตัว</span>' : '';
 
     card.innerHTML = `
       <div class="room-thumb">
@@ -109,7 +131,8 @@ function renderRooms(rooms) {
             ${statusBadge}
             <div style="display:flex;gap:4px;flex-direction:column;align-items:flex-end">
               <span class="thumb-pill">👁 ${r.viewerCount}</span>
-              ${tcPill}
+              ${tcPillHTML}
+              ${lockBadge}
             </div>
           </div>
           <div class="thumb-overlay-bottom">
@@ -128,10 +151,22 @@ function renderRooms(rooms) {
       </div>
     `;
     card.onclick = () => {
-      window.location.href = `/room.html?id=${r.id}`;
+      if (r.isPrivate) {
+        const pw = prompt(`ห้อง "${r.name}" เป็นห้องส่วนตัว\nกรุณาใส่รหัสห้อง:`);
+        if (!pw) return;
+        window.location.href = `/room.html?id=${r.id}&pw=${encodeURIComponent(pw)}`;
+      } else {
+        window.location.href = `/room.html?id=${r.id}`;
+      }
     };
     list.appendChild(card);
   });
+}
+
+function formatTimeControl(base, inc) {
+  if (!base) return null;
+  const baseStr = base >= 60 ? `${base / 60}ชม.` : `${base}น.`;
+  return inc ? `${baseStr} +${inc}วิ` : baseStr;
 }
 
 function renderMiniBoard(board) {
