@@ -116,38 +116,74 @@
 
         <details class="rules">
           <summary data-i18n="rules.summary">📖 กฎการเดินหมาก</summary>
-          <ul id="chessRulesList">
-            <li><b>♔ ขุน</b> — เดิน 1 ช่องทุกทิศทาง</li>
-            <li><b>♕ เม็ด</b> — เดิน 1 ช่องในแนวทแยง</li>
-            <li><b>♗ โคน</b> — เดิน 1 ช่องในแนวทแยง หรือ 1 ช่องตรงข้างหน้า</li>
-            <li><b>♘ ม้า</b> — เดินรูปตัว L</li>
-            <li><b>♖ เรือ</b> — เดินตรงในแนวนอน/แนวตั้ง ระยะใดก็ได้</li>
-            <li><b>♙ เบี้ย</b> — เดินตรง 1 ช่อง กินทแยง 1 ช่อง — ถึงแถวที่ 6 (ของฝ่ายตน) เลื่อนเป็นเม็ด</li>
-          </ul>
-          <ul id="chessIntlRulesList" hidden>
-            <li><b>♔ King</b> — เดิน 1 ช่องทุกทิศ + ทำ <b>Castling</b> ได้ (O-O / O-O-O)</li>
-            <li><b>♕ Queen</b> — เดินไกลได้ทั้ง 8 ทิศ (ตรง + ทแยง)</li>
-            <li><b>♗ Bishop</b> — เดินทแยงไกลได้ตลอดแนว</li>
-            <li><b>♘ Knight</b> — เดินรูปตัว L กระโดดข้ามตัวอื่นได้</li>
-            <li><b>♖ Rook</b> — เดินตรงในแนวนอน/แนวตั้ง ระยะใดก็ได้</li>
-            <li><b>♙ Pawn</b> — เดินตรง 1 (หรือ 2 ในตาแรก) กินทแยง 1 — มี <b>En Passant</b> + เลื่อนถึงแถว 8 → Queen</li>
-          </ul>
-          <ul id="checkersRulesList" hidden>
-            <li><b>⛀ หมากธรรมดา</b> — เดิน/กินทแยง<b>ไปข้างหน้า</b>เท่านั้น (ถอยหลังกินไม่ได้)</li>
-            <li><b>เข้าฮอส</b> — เดินถึงแถวสุดท้ายของฝ่ายตรงข้าม → หงายเป็น <b>⛁ ขุน</b></li>
-            <li><b>⛁ ขุน</b> — เดินทแยง<b>ไกลแค่ไหนก็ได้</b>ทั้ง 4 ทิศ + กินได้ทุกทิศ (Flying king)</li>
-            <li><b>กิน</b> — กระโดดข้ามหมากฝ่ายตรงข้าม ลงในช่องว่าง</li>
-            <li><b>บังคับกิน</b> — ถ้ามีโอกาสกินต้องกิน ห้ามเดินตาธรรมดา</li>
-            <li><b>กินติด</b> — หลังกินถ้ากินต่อได้อีก ต้องกินต่อในตาเดียวกัน</li>
-          </ul>
-          <ul id="checkersIntlRulesList" hidden>
-            <li><b>⛀ Man</b> — เดิน/กินทแยง<b>ไปข้างหน้า</b>เท่านั้น (ถอยหลังกินไม่ได้)</li>
-            <li><b>เลื่อนเป็น King</b> — เดินถึงแถวสุดท้ายของฝ่ายตรงข้าม → กลายเป็น <b>⛁ King</b></li>
-            <li><b>⛁ King</b> — เดินทแยง <b>1 ช่อง</b> ทั้ง 4 ทิศ (ไม่บินไกลแบบหมากฮอสไทย)</li>
-            <li><b>กิน</b> — กระโดดข้ามหมากฝ่ายตรงข้าม ลงในช่องว่างถัดไป — King กินได้ 4 ทิศ</li>
-            <li><b>บังคับกิน</b> — ถ้ามีโอกาสกินต้องกิน เลือกอันไหนก็ได้</li>
-            <li><b>กินติด</b> — กินต่อได้ในตาเดียวกัน หากผ่านแถวสุดท้ายต้องหยุดและกลายเป็น King ทันที</li>
-          </ul>
+          <div data-only="th">
+            <ul class="rule-list rl-chess">
+              <li><b>♔ ขุน</b> — เดิน 1 ช่องทุกทิศทาง</li>
+              <li><b>♕ เม็ด</b> — เดิน 1 ช่องในแนวทแยง</li>
+              <li><b>♗ โคน</b> — เดิน 1 ช่องในแนวทแยง หรือ 1 ช่องตรงข้างหน้า</li>
+              <li><b>♘ ม้า</b> — เดินรูปตัว L</li>
+              <li><b>♖ เรือ</b> — เดินตรงในแนวนอน/แนวตั้ง ระยะใดก็ได้</li>
+              <li><b>♙ เบี้ย</b> — เดินตรง 1 ช่อง กินทแยง 1 ช่อง — ถึงแถวที่ 6 (ของฝ่ายตน) เลื่อนเป็นเม็ด</li>
+            </ul>
+            <ul class="rule-list rl-chess-intl" hidden>
+              <li><b>♔ King</b> — เดิน 1 ช่องทุกทิศ + ทำ <b>Castling</b> ได้ (O-O / O-O-O)</li>
+              <li><b>♕ Queen</b> — เดินไกลได้ทั้ง 8 ทิศ (ตรง + ทแยง)</li>
+              <li><b>♗ Bishop</b> — เดินทแยงไกลได้ตลอดแนว</li>
+              <li><b>♘ Knight</b> — เดินรูปตัว L กระโดดข้ามตัวอื่นได้</li>
+              <li><b>♖ Rook</b> — เดินตรงในแนวนอน/แนวตั้ง ระยะใดก็ได้</li>
+              <li><b>♙ Pawn</b> — เดินตรง 1 (หรือ 2 ในตาแรก) กินทแยง 1 — มี <b>En Passant</b> + เลื่อนถึงแถว 8 → Queen</li>
+            </ul>
+            <ul class="rule-list rl-checkers" hidden>
+              <li><b>⛀ หมากธรรมดา</b> — เดิน/กินทแยง<b>ไปข้างหน้า</b>เท่านั้น (ถอยหลังกินไม่ได้)</li>
+              <li><b>เข้าฮอส</b> — เดินถึงแถวสุดท้ายของฝ่ายตรงข้าม → หงายเป็น <b>⛁ ขุน</b></li>
+              <li><b>⛁ ขุน</b> — เดินทแยง<b>ไกลแค่ไหนก็ได้</b>ทั้ง 4 ทิศ + กินได้ทุกทิศ (Flying king)</li>
+              <li><b>กิน</b> — กระโดดข้ามหมากฝ่ายตรงข้าม ลงในช่องว่าง</li>
+              <li><b>บังคับกิน</b> — ถ้ามีโอกาสกินต้องกิน ห้ามเดินตาธรรมดา</li>
+              <li><b>กินติด</b> — หลังกินถ้ากินต่อได้อีก ต้องกินต่อในตาเดียวกัน</li>
+            </ul>
+            <ul class="rule-list rl-checkers-intl" hidden>
+              <li><b>⛀ Man</b> — เดิน/กินทแยง<b>ไปข้างหน้า</b>เท่านั้น (ถอยหลังกินไม่ได้)</li>
+              <li><b>เลื่อนเป็น King</b> — เดินถึงแถวสุดท้ายของฝ่ายตรงข้าม → กลายเป็น <b>⛁ King</b></li>
+              <li><b>⛁ King</b> — เดินทแยง <b>1 ช่อง</b> ทั้ง 4 ทิศ (ไม่บินไกลแบบหมากฮอสไทย)</li>
+              <li><b>กิน</b> — กระโดดข้ามหมากฝ่ายตรงข้าม ลงในช่องว่างถัดไป — King กินได้ 4 ทิศ</li>
+              <li><b>บังคับกิน</b> — ถ้ามีโอกาสกินต้องกิน เลือกอันไหนก็ได้</li>
+              <li><b>กินติด</b> — กินต่อได้ในตาเดียวกัน หากผ่านแถวสุดท้ายต้องหยุดและกลายเป็น King ทันที</li>
+            </ul>
+          </div>
+          <div data-only="en">
+            <ul class="rule-list rl-chess">
+              <li><b>♔ Khun (King)</b> — moves 1 square in any direction</li>
+              <li><b>♕ Met (Queen)</b> — moves only 1 square diagonally</li>
+              <li><b>♗ Khon (Bishop)</b> — moves 1 square diagonally or 1 square forward</li>
+              <li><b>♘ Ma (Knight)</b> — moves in an L-shape (jumps over pieces)</li>
+              <li><b>♖ Ruea (Rook)</b> — moves any number of squares horizontally/vertically</li>
+              <li><b>♙ Bia (Pawn)</b> — moves 1 forward, captures 1 diagonally — promotes to Met on rank 6 (own side)</li>
+            </ul>
+            <ul class="rule-list rl-chess-intl" hidden>
+              <li><b>♔ King</b> — moves 1 square in any direction + <b>Castling</b> (O-O / O-O-O)</li>
+              <li><b>♕ Queen</b> — moves any distance in all 8 directions (straight + diagonal)</li>
+              <li><b>♗ Bishop</b> — moves any distance diagonally</li>
+              <li><b>♘ Knight</b> — moves in an L-shape, jumps over pieces</li>
+              <li><b>♖ Rook</b> — moves any distance horizontally/vertically</li>
+              <li><b>♙ Pawn</b> — moves 1 forward (or 2 on first move), captures 1 diagonally — has <b>En Passant</b> + promotes to Queen on rank 8</li>
+            </ul>
+            <ul class="rule-list rl-checkers" hidden>
+              <li><b>⛀ Man</b> — moves and captures <b>diagonally forward only</b> (cannot capture backward)</li>
+              <li><b>"Ker hos"</b> — reaching the last rank → promotes to <b>⛁ King</b></li>
+              <li><b>⛁ King</b> — moves <b>any distance</b> diagonally in all 4 directions + captures in all directions (Flying king)</li>
+              <li><b>Capture</b> — jump over an opponent's piece into the empty square beyond</li>
+              <li><b>Forced capture</b> — if a capture is available, you must take it (no regular moves)</li>
+              <li><b>Multi-jump</b> — after a capture, if more captures are possible, you must continue in the same turn</li>
+            </ul>
+            <ul class="rule-list rl-checkers-intl" hidden>
+              <li><b>⛀ Man</b> — moves and captures <b>diagonally forward only</b> (cannot capture backward)</li>
+              <li><b>Promotion to King</b> — reaching the last rank → becomes <b>⛁ King</b></li>
+              <li><b>⛁ King</b> — moves <b>1 square</b> diagonally in all 4 directions (NOT a flying king)</li>
+              <li><b>Capture</b> — jump over an opponent's piece into the next empty square — King captures all 4 directions</li>
+              <li><b>Forced capture</b> — if a capture is available, you must take it (any choice)</li>
+              <li><b>Multi-jump</b> — continue capturing in same turn; if you pass through the last rank you must stop and become a King immediately</li>
+            </ul>
+          </div>
           <p style="margin-top:12px"><a href="/rules.html" data-i18n="rules.readFull">อ่านประวัติและกติกาเต็ม →</a></p>
         </details>
 

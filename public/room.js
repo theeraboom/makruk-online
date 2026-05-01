@@ -28,9 +28,15 @@ document.addEventListener('langchange', () => {
   updatePlayerSlot('W', lastPlayers.w);
   updatePlayerSlot('B', lastPlayers.b);
   if (lastSiteStats) updateFooterStats();
+  if (lastViewers !== null) updateViewersList(lastViewers, lastViewerCount);
+  // Refresh chat count label
+  const cc = document.getElementById('chatCount');
+  if (cc && chatMsgCount > 0) cc.textContent = chatMsgCount + ' ' + I18N.t('chat.messages');
 });
 let lastPlayers = { w: null, b: null };
 let lastSiteStats = null;
+let lastViewers = null;
+let lastViewerCount = 0;
 let myRole = null;
 let board = null;
 let currentPlayer = 'w';
@@ -80,16 +86,8 @@ socket.on('room_state', (state) => {
   const labelEl = document.getElementById('roomGameTypeLabel');
   const gameLabels = { 'chess': 'หมากรุกไทย', 'chess-intl': 'หมากรุกสากล', 'checkers': 'หมากฮอสไทย', 'checkers-intl': 'หมากฮอสสากล' };
   if (labelEl) labelEl.textContent = gameLabels[gameType] || 'Playmakruk';
-  const ruleListIds = {
-    'chess': 'chessRulesList',
-    'chess-intl': 'chessIntlRulesList',
-    'checkers': 'checkersRulesList',
-    'checkers-intl': 'checkersIntlRulesList',
-  };
-  const activeListId = ruleListIds[gameType] || 'chessRulesList';
-  Object.values(ruleListIds).forEach((id) => {
-    const el = document.getElementById(id);
-    if (el) el.hidden = (id !== activeListId);
+  document.querySelectorAll('.rule-list').forEach((el) => {
+    el.hidden = !el.classList.contains('rl-' + gameType);
   });
   const piecePicker = document.getElementById('piecePicker');
   if (piecePicker) piecePicker.hidden = isCheckersGame();
@@ -143,10 +141,12 @@ socket.on('room_state', (state) => {
 });
 
 function updateViewersList(viewers, count) {
+  lastViewers = viewers;
+  lastViewerCount = count;
   const list = document.getElementById('viewersList');
-  document.getElementById('viewersTitle').textContent = `ผู้ชม (${count})`;
+  document.getElementById('viewersTitle').textContent = `${I18N.t('viewers.title')} (${count})`;
   if (!viewers.length) {
-    list.innerHTML = '<div class="viewers-empty">ยังไม่มีคนยืนดู</div>';
+    list.innerHTML = `<div class="viewers-empty">${I18N.t('viewers.empty')}</div>`;
     return;
   }
   list.innerHTML = '';
@@ -661,7 +661,7 @@ function appendChat(msg) {
   c.appendChild(div);
   c.scrollTop = c.scrollHeight;
   chatMsgCount++;
-  document.getElementById('chatCount').textContent = chatMsgCount + ' ข้อความ';
+  document.getElementById('chatCount').textContent = chatMsgCount + ' ' + I18N.t('chat.messages');
 }
 
 function showToast(text) {
