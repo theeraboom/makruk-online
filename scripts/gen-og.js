@@ -54,7 +54,7 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" v
   <rect x="60" y="50" width="78" height="78" rx="18" fill="url(#gold)" filter="url(#softShadow)"/>
   <text x="99" y="110" font-family="serif" font-size="54" fill="#0F172A" text-anchor="middle" font-weight="900">♛</text>
 
-  <text x="158" y="90" font-family="'Prompt','Sarabun','Helvetica Neue',sans-serif" font-size="38" font-weight="700" fill="#F8FAFC">Playmakruk</text>
+  <text x="158" y="90" font-family="'Prompt','Sarabun','Helvetica Neue',sans-serif" font-size="38" font-weight="700" fill="#F8FAFC">Playmakruk.com</text>
   <text x="158" y="120" font-family="'Prompt','Sarabun','Helvetica Neue',sans-serif" font-size="18" fill="#94A3B8">หมากรุก / หมากฮอส ออนไลน์ — ฟรี ไม่ต้องสมัคร</text>
 
   <!-- "NEW" burst badge top-right -->

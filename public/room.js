@@ -37,7 +37,7 @@ document.addEventListener('langchange', () => {
     const displayName = I18N.t('default.' + (gameType || 'chess'));
     const el = document.getElementById('roomName');
     if (el) el.textContent = displayName;
-    document.title = displayName + ' — Playmakruk';
+    document.title = displayName + ' — Playmakruk.com';
   }
   // Refresh chat history (system messages)
   refreshChatMessages();
@@ -94,12 +94,12 @@ socket.on('room_state', (state) => {
   lastHasDefaultName = !!state.hasDefaultName;
   const displayName = state.hasDefaultName ? I18N.t('default.' + (state.gameType || 'chess')) : state.name;
   document.getElementById('roomName').textContent = displayName;
-  document.title = displayName + ' — Playmakruk';
+  document.title = displayName + ' — Playmakruk.com';
   const prevStatus = status;
   gameType = state.gameType || 'chess';
   const labelEl = document.getElementById('roomGameTypeLabel');
   const gameLabels = { 'chess': 'หมากรุกไทย', 'chess-intl': 'หมากรุกสากล', 'checkers': 'หมากฮอสไทย', 'checkers-intl': 'หมากฮอสสากล' };
-  if (labelEl) labelEl.textContent = gameLabels[gameType] || 'Playmakruk';
+  if (labelEl) labelEl.textContent = gameLabels[gameType] || 'Playmakruk.com';
   document.querySelectorAll('.rule-list').forEach((el) => {
     el.hidden = !el.classList.contains('rl-' + gameType);
   });
@@ -533,7 +533,7 @@ document.getElementById('shareBtn').onclick = async () => {
   const gameTypeName = I18N.t('gt.' + gameType).replace(/^[♛♚⛀⛂]\s/, '');
   const text = lang === 'th' ? `มาดูวง${gameTypeName}ที่ ${url}` : `Watch this ${gameTypeName} game at ${url}`;
   if (navigator.share) {
-    try { await navigator.share({ title: 'Playmakruk', text, url }); return; } catch (e) {}
+    try { await navigator.share({ title: 'Playmakruk.com', text, url }); return; } catch (e) {}
   }
   try {
     await navigator.clipboard.writeText(url);
