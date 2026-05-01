@@ -97,8 +97,8 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" v
     })()}
   </g>
 
-  <!-- Footer URL -->
-  <text x="80" y="610" font-family="'Inter','Helvetica Neue',sans-serif" font-size="22" font-weight="600" fill="#FBBF24">playmakruk.com</text>
+  <!-- Footer URL — under chess board, bottom-right -->
+  <text x="896" y="580" font-family="'Inter','Helvetica Neue',sans-serif" font-size="22" font-weight="600" fill="#FBBF24" text-anchor="middle">playmakruk.com</text>
 </svg>`;
 
 (async () => {
