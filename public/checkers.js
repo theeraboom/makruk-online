@@ -5,8 +5,10 @@
 
   function initialBoard() {
     const board = Array(8).fill(null).map(() => Array(8).fill(null));
-    for (const c of [1, 3, 5, 7]) { board[0][c] = 'bM'; board[2][c] = 'bM'; }
-    for (const c of [0, 2, 4, 6]) { board[5][c] = 'wM'; board[7][c] = 'wM'; }
+    for (let c = 0; c < 8; c++) {
+      board[1][c] = 'bM';
+      board[6][c] = 'wM';
+    }
     return board;
   }
 
