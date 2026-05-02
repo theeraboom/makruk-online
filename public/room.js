@@ -638,9 +638,26 @@ function getNoiseBuffer(ctx) {
 }
 
 let audioUnlocked = false;
+let audioOutput = null; // master output node — all sounds connect here, NOT to ctx.destination
 function ensureAudioCtx() {
   if (!audioCtx) {
     try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; }
+    // Master chain: sources → compressor → gain → destination
+    // Compressor prevents clipping when boosting volume; gain makes it loud enough on mobile
+    try {
+      const compressor = audioCtx.createDynamicsCompressor();
+      compressor.threshold.value = -10;
+      compressor.knee.value = 8;
+      compressor.ratio.value = 4;
+      compressor.attack.value = 0.001;
+      compressor.release.value = 0.05;
+      const masterGain = audioCtx.createGain();
+      masterGain.gain.value = 3.0; // 3x boost — needed for mobile speakers
+      compressor.connect(masterGain).connect(audioCtx.destination);
+      audioOutput = compressor;
+    } catch (e) {
+      audioOutput = audioCtx.destination;
+    }
   }
   if (audioCtx.state === 'suspended') {
     audioCtx.resume().catch(() => {});
@@ -658,7 +675,7 @@ function tryUnlockAudio() {
     const buf = ctx.createBuffer(1, 1, 22050);
     const src = ctx.createBufferSource();
     src.buffer = buf;
-    src.connect(ctx.destination);
+    src.connect(audioOutput || ctx.destination);
     src.start(0);
   } catch (e) {}
   // Resume returns a Promise — when it resolves, mark unlocked + remove listeners
@@ -710,7 +727,7 @@ function woodClick(ctx, when, intensity) {
   oscGain.gain.setValueAtTime(0, when);
   oscGain.gain.linearRampToValueAtTime(0.35 * intensity, when + 0.003);
   oscGain.gain.exponentialRampToValueAtTime(0.001, when + 0.15);
-  osc.connect(oscGain).connect(ctx.destination);
+  osc.connect(oscGain).connect(audioOutput || ctx.destination);
   osc.start(when);
   osc.stop(when + 0.16);
 
@@ -725,7 +742,7 @@ function woodClick(ctx, when, intensity) {
   noiseGain.gain.setValueAtTime(0, when);
   noiseGain.gain.linearRampToValueAtTime(0.18 * intensity, when + 0.002);
   noiseGain.gain.exponentialRampToValueAtTime(0.001, when + 0.06);
-  noise.connect(filter).connect(noiseGain).connect(ctx.destination);
+  noise.connect(filter).connect(noiseGain).connect(audioOutput || ctx.destination);
   noise.start(when);
   noise.stop(when + 0.08);
 
@@ -738,7 +755,7 @@ function woodClick(ctx, when, intensity) {
   const noise2Gain = ctx.createGain();
   noise2Gain.gain.setValueAtTime(0.08 * intensity, when);
   noise2Gain.gain.exponentialRampToValueAtTime(0.001, when + 0.025);
-  noise2.connect(filter2).connect(noise2Gain).connect(ctx.destination);
+  noise2.connect(filter2).connect(noise2Gain).connect(audioOutput || ctx.destination);
   noise2.start(when);
   noise2.stop(when + 0.03);
 }
@@ -751,7 +768,7 @@ function tone(ctx, when, freq, dur) {
   gain.gain.setValueAtTime(0, when);
   gain.gain.linearRampToValueAtTime(0.15, when + 0.01);
   gain.gain.exponentialRampToValueAtTime(0.001, when + dur);
-  osc.connect(gain).connect(ctx.destination);
+  osc.connect(gain).connect(audioOutput || ctx.destination);
   osc.start(when);
   osc.stop(when + dur);
 }
