@@ -20,7 +20,6 @@
   const CACHE_TS_KEY = 'mk_radio_stations_ts';
   const CACHE_TTL = 24 * 60 * 60 * 1000; // 24h
   const LS_OPEN = 'mk_radio_open';
-  const LS_VOLUME = 'mk_radio_volume';
   const LS_STATION = 'mk_radio_station_uuid';
   const LS_PLAYING = 'mk_radio_playing'; // '1' = was playing, auto-resume on next page
   const LS_FAVORITES = 'mk_radio_favorites'; // JSON array of station uuids
@@ -97,14 +96,6 @@
     }
     #radioPlayBtn:hover { background: #92400E; }
     #radioPlayBtn:disabled { opacity: 0.4; cursor: not-allowed; }
-    #radioVolume {
-      padding: 8px 12px; display: flex; align-items: center; gap: 10px;
-      border-bottom: 1px solid #D4C5A0; font-size: 12px;
-    }
-    html[data-theme="dark"] #radioVolume { border-color: #2C3956; }
-    #radioVolume input[type="range"] {
-      flex: 1; accent-color: #B45309; height: 4px;
-    }
     #radioList {
       flex: 1; overflow-y: auto; padding: 4px 0;
       -webkit-overflow-scrolling: touch;
@@ -119,9 +110,17 @@
     html[data-theme="dark"] .radio-station { border-color: rgba(44, 57, 86, 0.6); }
     .radio-station:hover { background: rgba(251, 191, 36, 0.1); }
     .radio-station.playing {
-      background: rgba(251, 191, 36, 0.18);
-      border-left: 3px solid #B45309;
+      background: rgba(34, 197, 94, 0.16);
+      border-left: 3px solid #22C55E;
       padding-left: 11px;
+    }
+    html[data-theme="dark"] .radio-station.playing { background: rgba(34, 197, 94, 0.18); }
+    .radio-station.playing .name::before {
+      content: '●';
+      color: #22C55E;
+      margin-right: 6px;
+      animation: rPulse 1.4s ease-in-out infinite;
+      display: inline-block;
     }
     .radio-station .body { flex: 1; min-width: 0; }
     .radio-station .name { font-weight: 600; font-size: 13px; }
@@ -188,11 +187,6 @@
       <span class="np-name" id="radioNowName">— เลือกสถานี —</span>
       <button id="radioPlayBtn" disabled>▶</button>
     </div>
-    <div id="radioVolume">
-      <span>🔈</span>
-      <input type="range" id="radioVol" min="0" max="100" step="1" value="60">
-      <span id="radioVolLabel">60</span>
-    </div>
     <div class="radio-search">
       <input type="text" id="radioSearchInput" placeholder="ค้นหาสถานี / ใส่ Stream URL...">
       <button id="radioAddBtn" title="Add custom URL">➕</button>
@@ -203,31 +197,11 @@
 
   // ---- Audio element ----
   // No crossOrigin → maximum stream compatibility (most stations don't send CORS headers)
+  // Volume is controlled by hardware/system (iOS doesn't allow JS volume control anyway)
   const audio = new Audio();
   audio.preload = 'none';
   let currentStation = null;
   let isPlaying = false;
-
-  // ---- Web Audio gain node (allows volume boost beyond 100% + works on iOS) ----
-  // iOS Safari ignores audio.volume, but GainNode.gain is software-controlled and works.
-  // Try to route the audio element through Web Audio. Falls back to audio.volume if blocked.
-  let waCtx = null, waGain = null, waSource = null;
-  function tryWebAudio() {
-    if (waCtx) return waCtx;
-    const Ctor = window.AudioContext || window.webkitAudioContext;
-    if (!Ctor) return null;
-    try {
-      waCtx = new Ctor();
-      waSource = waCtx.createMediaElementSource(audio);
-      waGain = waCtx.createGain();
-      waSource.connect(waGain).connect(waCtx.destination);
-      return waCtx;
-    } catch (e) {
-      // CORS or already connected — fall back to audio.volume
-      waCtx = null; waGain = null; waSource = null;
-      return null;
-    }
-  }
 
   // ---- Refs ----
   const closeBtn = document.getElementById('radioCloseBtn');
@@ -236,8 +210,6 @@
   const playBtn = document.getElementById('radioPlayBtn');
   const list = document.getElementById('radioList');
   const status = document.getElementById('radioStatus');
-  const volSlider = document.getElementById('radioVol');
-  const volLabel = document.getElementById('radioVolLabel');
   const searchInput = document.getElementById('radioSearchInput');
   const addBtn = document.getElementById('radioAddBtn');
   const pulseDot = document.createElement('span');
@@ -245,27 +217,7 @@
   pulseDot.hidden = true;
   btn.appendChild(pulseDot);
 
-  // ---- Volume ----
-  // Slider 0-100 maps to 0..2.0 gain (so '100' = 2x boost above unity)
-  // Both audio.volume (capped at 1) AND waGain.gain.value are set together
-  function applyVolume(sliderVal) {
-    const slider = Math.max(0, Math.min(100, sliderVal));
-    const gain = (slider / 100) * 2.0; // 0..2.0
-    // Always set audio.volume (works on Android/desktop)
-    audio.volume = Math.min(1, gain);
-    // Also set GainNode (works on iOS, allows boost above 1)
-    if (waGain) {
-      try { waGain.gain.setTargetAtTime(gain, waCtx.currentTime, 0.01); } catch (e) {}
-    }
-    volLabel.textContent = String(slider);
-    localStorage.setItem(LS_VOLUME, String(slider));
-  }
-  const savedVolume = parseInt(localStorage.getItem(LS_VOLUME), 10);
-  const initialSlider = isFinite(savedVolume) && savedVolume >= 0 && savedVolume <= 100 ? savedVolume : 60;
-  volSlider.value = String(initialSlider);
-  audio.volume = Math.min(1, (initialSlider / 100) * 2.0);
-  volLabel.textContent = String(initialSlider);
-  volSlider.oninput = () => applyVolume(parseInt(volSlider.value, 10));
+  audio.volume = 1.0; // max — system volume controls actual loudness
 
   // ---- Open / close ----
   let panelOpen = false;
@@ -467,13 +419,6 @@
     nowName.textContent = s.name;
     audio.src = s.url;
     localStorage.setItem(LS_STATION, s.uuid);
-    // First user gesture → set up Web Audio routing for iOS-friendly volume control
-    tryWebAudio();
-    if (waCtx && waCtx.state === 'suspended') waCtx.resume().catch(() => {});
-    if (waGain) {
-      const slider = parseInt(volSlider.value, 10) || 60;
-      waGain.gain.value = (slider / 100) * 2.0;
-    }
     audio.play().then(() => {
       playBtn.disabled = false;
       setPlayingState(true);
@@ -493,8 +438,6 @@
       audio.pause();
       setPlayingState(false);
     } else {
-      tryWebAudio();
-      if (waCtx && waCtx.state === 'suspended') waCtx.resume().catch(() => {});
       audio.play().then(() => setPlayingState(true)).catch(() => {});
     }
   };
