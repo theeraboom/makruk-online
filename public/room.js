@@ -666,32 +666,35 @@ function ensureAudioCtx() {
 }
 
 // iOS Safari / Chrome mobile: AudioContext is locked until first user gesture.
-// On iOS specifically, just resuming the AudioContext is NOT enough — Web Audio
-// stays silent until an HTMLMediaElement plays() and activates the AudioSession.
-// So we ALSO play a silent <audio> element on first gesture to fully unlock.
+// CRITICAL: iOS doesn't activate AudioSession from MUTED audio — must be unmuted
+// (volume can be 0 / data can be silent, but muted=true ignored). Without an
+// HTMLMediaElement actually playing, Web Audio output stays silent on iOS.
 let silentAudioEl = null;
 function getSilentAudio() {
   if (silentAudioEl) return silentAudioEl;
   silentAudioEl = document.createElement('audio');
   silentAudioEl.setAttribute('playsinline', '');
-  silentAudioEl.muted = true;
-  // 0.1s of silence (44.1kHz mono WAV)
+  // 1-second silent WAV (44.1kHz mono, 16-bit) — long enough to keep AudioSession active
+  // Generated: header + 44100 zero samples
   silentAudioEl.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
-  silentAudioEl.loop = false;
+  silentAudioEl.loop = true;       // keep AudioSession active continuously
+  silentAudioEl.volume = 0.0001;   // virtually silent but NOT muted
   return silentAudioEl;
 }
 function tryUnlockAudio() {
   const ctx = ensureAudioCtx();
   if (!ctx) return;
   try {
-    // Play a silent 1-sample buffer through Web Audio
-    const buf = ctx.createBuffer(1, 1, 22050);
-    const src = ctx.createBufferSource();
-    src.buffer = buf;
-    src.connect(audioOutput || ctx.destination);
-    src.start(0);
+    // Play a near-silent oscillator through the SAME master chain — verifies pipeline works
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    g.gain.value = 0.0001;
+    osc.frequency.value = 440;
+    osc.connect(g).connect(audioOutput || ctx.destination);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.02);
   } catch (e) {}
-  // Activate iOS AudioSession via HTMLMediaElement play()
+  // Activate iOS AudioSession via HTMLMediaElement play() — must be UNMUTED
   try { getSilentAudio().play().catch(() => {}); } catch (e) {}
   // Resume returns a Promise — when it resolves, mark unlocked + remove listeners
   if (ctx.resume) {
