@@ -702,10 +702,11 @@ function playSound(type) {
     if (!ctx) return;
     const now = ctx.currentTime;
     if (type === 'move') {
-      woodClick(ctx, now, 1.8);
+      glassClink(ctx, now, 1.0, 2400);
     } else if (type === 'capture') {
-      woodClick(ctx, now, 2.4);
-      woodClick(ctx, now + 0.04, 1.4);
+      // Two glasses, slightly different pitch
+      glassClink(ctx, now, 1.2, 2000);
+      glassClink(ctx, now + 0.05, 0.8, 2800);
     } else if (type === 'chat') {
       tone(ctx, now, 880, 0.06);
     } else if (type === 'end') {
@@ -716,48 +717,45 @@ function playSound(type) {
   } catch (e) {}
 }
 
-function woodClick(ctx, when, intensity) {
+// Glass clink: sharp impact + ringing harmonics (high-freq → great on mobile speakers)
+function glassClink(ctx, when, intensity, fundamental) {
   intensity = intensity || 1;
-  // Low "thud" — deep wood resonance
-  const osc = ctx.createOscillator();
-  const oscGain = ctx.createGain();
-  osc.frequency.setValueAtTime(150, when);
-  osc.frequency.exponentialRampToValueAtTime(60, when + 0.08);
-  osc.type = 'triangle';
-  oscGain.gain.setValueAtTime(0, when);
-  oscGain.gain.linearRampToValueAtTime(0.35 * intensity, when + 0.003);
-  oscGain.gain.exponentialRampToValueAtTime(0.001, when + 0.15);
-  osc.connect(oscGain).connect(audioOutput || ctx.destination);
-  osc.start(when);
-  osc.stop(when + 0.16);
+  fundamental = fundamental || 2400;
+  const out = audioOutput || ctx.destination;
 
-  // Mid "click" — sharp attack via filtered noise
+  // 1. Initial impact transient — short noise burst
   const noise = ctx.createBufferSource();
   noise.buffer = getNoiseBuffer(ctx);
-  const filter = ctx.createBiquadFilter();
-  filter.type = 'bandpass';
-  filter.frequency.value = 1200;
-  filter.Q.value = 3;
+  const noiseFilter = ctx.createBiquadFilter();
+  noiseFilter.type = 'highpass';
+  noiseFilter.frequency.value = 2500;
   const noiseGain = ctx.createGain();
-  noiseGain.gain.setValueAtTime(0, when);
-  noiseGain.gain.linearRampToValueAtTime(0.18 * intensity, when + 0.002);
-  noiseGain.gain.exponentialRampToValueAtTime(0.001, when + 0.06);
-  noise.connect(filter).connect(noiseGain).connect(audioOutput || ctx.destination);
+  noiseGain.gain.setValueAtTime(0.5 * intensity, when);
+  noiseGain.gain.exponentialRampToValueAtTime(0.001, when + 0.018);
+  noise.connect(noiseFilter).connect(noiseGain).connect(out);
   noise.start(when);
-  noise.stop(when + 0.08);
+  noise.stop(when + 0.02);
 
-  // High-end snap (click sharpness)
-  const noise2 = ctx.createBufferSource();
-  noise2.buffer = getNoiseBuffer(ctx);
-  const filter2 = ctx.createBiquadFilter();
-  filter2.type = 'highpass';
-  filter2.frequency.value = 3000;
-  const noise2Gain = ctx.createGain();
-  noise2Gain.gain.setValueAtTime(0.08 * intensity, when);
-  noise2Gain.gain.exponentialRampToValueAtTime(0.001, when + 0.025);
-  noise2.connect(filter2).connect(noise2Gain).connect(audioOutput || ctx.destination);
-  noise2.start(when);
-  noise2.stop(when + 0.03);
+  // 2. Ringing harmonics (sine waves: clean, glass-like)
+  // Slight detuning between harmonics for natural shimmer
+  const harmonics = [
+    { mult: 1.0,  gain: 0.45, decay: 0.45 }, // fundamental — strongest
+    { mult: 2.01, gain: 0.22, decay: 0.35 }, // 2nd harmonic (slightly sharp)
+    { mult: 3.04, gain: 0.12, decay: 0.25 }, // 3rd harmonic
+    { mult: 4.97, gain: 0.06, decay: 0.18 }, // sparkle
+  ];
+  for (const h of harmonics) {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = fundamental * h.mult;
+    gain.gain.setValueAtTime(0, when);
+    gain.gain.linearRampToValueAtTime(h.gain * intensity, when + 0.002);
+    gain.gain.exponentialRampToValueAtTime(0.001, when + h.decay);
+    osc.connect(gain).connect(out);
+    osc.start(when);
+    osc.stop(when + h.decay + 0.05);
+  }
 }
 
 function tone(ctx, when, freq, dur) {
