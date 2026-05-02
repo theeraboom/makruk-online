@@ -666,18 +666,33 @@ function ensureAudioCtx() {
 }
 
 // iOS Safari / Chrome mobile: AudioContext is locked until first user gesture.
-// Keep retrying unlock on EVERY interaction until state === 'running'.
+// On iOS specifically, just resuming the AudioContext is NOT enough — Web Audio
+// stays silent until an HTMLMediaElement plays() and activates the AudioSession.
+// So we ALSO play a silent <audio> element on first gesture to fully unlock.
+let silentAudioEl = null;
+function getSilentAudio() {
+  if (silentAudioEl) return silentAudioEl;
+  silentAudioEl = document.createElement('audio');
+  silentAudioEl.setAttribute('playsinline', '');
+  silentAudioEl.muted = true;
+  // 0.1s of silence (44.1kHz mono WAV)
+  silentAudioEl.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
+  silentAudioEl.loop = false;
+  return silentAudioEl;
+}
 function tryUnlockAudio() {
   const ctx = ensureAudioCtx();
   if (!ctx) return;
   try {
-    // Play a silent 1-sample buffer — iOS unlock trick
+    // Play a silent 1-sample buffer through Web Audio
     const buf = ctx.createBuffer(1, 1, 22050);
     const src = ctx.createBufferSource();
     src.buffer = buf;
     src.connect(audioOutput || ctx.destination);
     src.start(0);
   } catch (e) {}
+  // Activate iOS AudioSession via HTMLMediaElement play()
+  try { getSilentAudio().play().catch(() => {}); } catch (e) {}
   // Resume returns a Promise — when it resolves, mark unlocked + remove listeners
   if (ctx.resume) {
     ctx.resume().then(() => {

@@ -126,15 +126,6 @@
     .radio-station .name { font-weight: 600; font-size: 13px; }
     .radio-station .meta { font-size: 11px; color: #6B5B45; margin-top: 2px; }
     html[data-theme="dark"] .radio-station .meta { color: #94A3B8; }
-    .fm-badge {
-      flex-shrink: 0; font-size: 10px; font-weight: 700;
-      padding: 3px 6px; border-radius: 4px;
-      background: rgba(180, 83, 9, 0.15); color: #B45309;
-      letter-spacing: 0.02em;
-    }
-    html[data-theme="dark"] .fm-badge {
-      background: rgba(251, 191, 36, 0.15); color: #FBBF24;
-    }
     .radio-fav {
       background: transparent; border: none; cursor: pointer;
       font-size: 18px; padding: 4px 6px; opacity: 0.4;
@@ -386,19 +377,11 @@
     const tags = s.tags ? s.tags.split(',').slice(0, 3).join(' • ') : '';
     const bitrate = s.bitrate ? s.bitrate + 'k' : '';
     const isCustom = s.uuid.startsWith('custom-');
-    // Extract freq from cached data (set during fetch) OR from name as fallback
-    let freq = s.freq;
-    if (!freq) {
-      const m = (s.name || '').match(/\b(\d{2,3}(?:\.\d)?)\b/);
-      if (m) freq = m[1];
-    }
-    const fmBadge = freq ? `<span class="fm-badge">FM ${freq}</span>` : '';
     item.innerHTML = `
       <div class="body">
         <div class="name"></div>
         <div class="meta"></div>
       </div>
-      ${fmBadge}
       <button class="radio-fav ${isFav ? 'on' : ''}" title="Favorite">${isFav ? '★' : '☆'}</button>
       ${isCustom ? '<button class="radio-fav" title="Remove" data-remove="1">✕</button>' : ''}
     `;
@@ -541,6 +524,7 @@
 
   // Auto-resume: if user was playing radio before navigating, resume the same station
   let autoResumeTried = false;
+  let pendingResume = null; // station to resume on next user gesture if autoplay blocked
   function maybeAutoResume() {
     if (autoResumeTried) return;
     autoResumeTried = true;
@@ -560,13 +544,31 @@
         el.classList.toggle('playing', stations[i] && stations[i].uuid === s.uuid);
       });
     }).catch(() => {
-      // Browser blocked autoplay — show resume hint on the button
+      // Browser blocked autoplay — schedule retry on first user gesture
       playBtn.disabled = false;
-      nowName.textContent = '▶ แตะที่ 📻 เพื่อเล่นต่อ';
+      nowName.textContent = s.name + ' (รอ tap เพื่อเล่นต่อ)';
       pulseDot.hidden = false;
       pulseDot.style.background = '#FBBF24'; // amber = needs gesture
+      pendingResume = s;
     });
   }
+  // First user gesture after page load → retry the blocked auto-resume
+  function gestureRetryResume() {
+    if (!pendingResume) return;
+    const s = pendingResume;
+    pendingResume = null;
+    audio.play().then(() => {
+      setPlayingState(true);
+      nowName.textContent = s.name;
+      pulseDot.style.background = '#22C55E';
+      list.querySelectorAll('.radio-station').forEach((el, i) => {
+        el.classList.toggle('playing', stations[i] && stations[i].uuid === s.uuid);
+      });
+    }).catch(() => {});
+  }
+  ['touchstart', 'touchend', 'pointerdown', 'mousedown', 'click'].forEach((ev) => {
+    document.addEventListener(ev, gestureRetryResume, { capture: true, passive: true });
+  });
 
   // ---- Restore open state on load ----
   // If user was playing, attempt early auto-resume from customs (without waiting for API)
