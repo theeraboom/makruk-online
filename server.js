@@ -368,13 +368,20 @@ io.on('connection', (socket) => {
     const password = (typeof p.password === 'string' && p.password.trim()) ? p.password.trim().slice(0, 40) : null;
     const botEnabled = !!p.botEnabled;
     const botDifficulty = ALLOWED_BOT_DIFFICULTIES.includes(p.botDifficulty) ? p.botDifficulty : 'medium';
-    const botColor = p.botColor === 'w' ? 'w' : 'b';
+    // creator's preferred side ('w' or 'b'); falls back to 'w' if unset
+    // backward-compat: legacy clients sent botColor (= bot's side); userColor is the inverse
+    let creatorColor;
+    if (p.userColor === 'w' || p.userColor === 'b') creatorColor = p.userColor;
+    else if (p.botColor === 'w' || p.botColor === 'b') creatorColor = p.botColor === 'w' ? 'b' : 'w';
+    else creatorColor = 'w';
+    const botColor = creatorColor === 'w' ? 'b' : 'w';
     const userName = (typeof p.name === 'string' && p.name.trim()) ? p.name.trim().slice(0, 40) : null;
     const room = {
       id,
       name: userName || '',
       hasDefaultName: !userName,
       password,
+      creatorColor,
       players: { w: null, b: null },
       viewers: new Map(),
       messages: [],
@@ -402,41 +409,33 @@ io.on('connection', (socket) => {
     socket.join(roomId);
     socket.data.roomId = roomId;
 
+    // Side priority: respect creator's preferred color first, then the other slot, else viewer
+    const preferred = room.creatorColor || 'w';
+    const other = preferred === 'w' ? 'b' : 'w';
+    const slotEmpty = (c) => !room.players[c] || room.players[c].isBot;
+
     let role;
-    if (!room.players.w || (room.players.w && room.players.w.isBot)) {
-      if (!room.players.w) {
-        room.players.w = { id: socket.id, name: socket.data.user.name };
-        role = 'w';
-        if (room.bot && room.bot.color === 'b' && room.status === 'waiting') {
-          room.status = 'playing';
-          startClock(room);
-        }
-      } else if (!room.players.b) {
-        room.players.b = { id: socket.id, name: socket.data.user.name };
-        role = 'b';
-        if (room.status === 'waiting') {
-          room.status = 'playing';
-          startClock(room);
-        }
-      } else {
-        room.viewers.set(socket.id, { name: socket.data.user.name });
-        role = 'viewer';
-      }
-    } else if (!room.players.b || (room.players.b && room.players.b.isBot)) {
-      if (!room.players.b) {
-        room.players.b = { id: socket.id, name: socket.data.user.name };
-        role = 'b';
-        if (room.status === 'waiting') {
-          room.status = 'playing';
-          startClock(room);
-        }
-      } else {
-        room.viewers.set(socket.id, { name: socket.data.user.name });
-        role = 'viewer';
-      }
+    if (slotEmpty(preferred)) {
+      room.players[preferred] = { id: socket.id, name: socket.data.user.name };
+      role = preferred;
+    } else if (slotEmpty(other)) {
+      room.players[other] = { id: socket.id, name: socket.data.user.name };
+      role = other;
     } else {
       room.viewers.set(socket.id, { name: socket.data.user.name });
       role = 'viewer';
+    }
+
+    if (role !== 'viewer' && room.status === 'waiting') {
+      const wHuman = room.players.w && !room.players.w.isBot;
+      const bHuman = room.players.b && !room.players.b.isBot;
+      const wFilled = !!room.players.w;
+      const bFilled = !!room.players.b;
+      // Start when both slots are filled (either both human, or human + bot)
+      if (wFilled && bFilled && (wHuman || bHuman)) {
+        room.status = 'playing';
+        startClock(room);
+      }
     }
     socket.data.role = role;
 

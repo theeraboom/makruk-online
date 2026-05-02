@@ -69,32 +69,35 @@ document.querySelectorAll('#tcIncOptions .tc-btn').forEach((btn) => {
   };
 });
 
+// Side selection — independent from bot mode
+let selectedUserColor = null; // 'w' | 'b' | null (server defaults to 'w')
+document.querySelectorAll('#userColorOptions .tc-btn').forEach((btn) => {
+  btn.onclick = () => {
+    document.querySelectorAll('#userColorOptions .tc-btn').forEach((b) => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedUserColor = btn.dataset.uc;
+  };
+});
+
 let botEnabled = false;
 let selectedBotDifficulty = 'medium';
-let selectedBotColor = 'b';
 const botEnabledInput = document.getElementById('botEnabled');
 const botOptions = document.getElementById('botOptions');
-const botColorOptions = document.getElementById('botColorOptions');
 function setBotEnabled(on) {
   botEnabled = on;
   botEnabledInput.checked = on;
   if (!on) {
-    document.querySelectorAll('#botOptions .tc-btn, #botColorOptions .tc-btn').forEach((b) => b.classList.remove('active'));
+    document.querySelectorAll('#botOptions .tc-btn').forEach((b) => b.classList.remove('active'));
   }
 }
 botEnabledInput.onchange = () => {
   setBotEnabled(botEnabledInput.checked);
   if (botEnabledInput.checked) {
-    // Always reset defaults when user manually checks: easy difficulty + white color
+    // Reset difficulty default to easy when user manually checks
     document.querySelectorAll('#botOptions .tc-btn').forEach((b) => b.classList.remove('active'));
     const easyBtn = document.querySelector('#botOptions .tc-btn[data-bd="easy"]');
     if (easyBtn) easyBtn.classList.add('active');
     selectedBotDifficulty = 'easy';
-
-    document.querySelectorAll('#botColorOptions .tc-btn').forEach((b) => b.classList.remove('active'));
-    const whiteBtn = document.querySelector('#botColorOptions .tc-btn[data-bc="w"]');
-    if (whiteBtn) whiteBtn.classList.add('active');
-    selectedBotColor = 'b';
   }
 };
 
@@ -103,14 +106,6 @@ document.querySelectorAll('#botOptions .tc-btn').forEach((btn) => {
     document.querySelectorAll('#botOptions .tc-btn').forEach((b) => b.classList.remove('active'));
     btn.classList.add('active');
     selectedBotDifficulty = btn.dataset.bd;
-    setBotEnabled(true);
-  };
-});
-document.querySelectorAll('#botColorOptions .tc-btn').forEach((btn) => {
-  btn.onclick = () => {
-    document.querySelectorAll('#botColorOptions .tc-btn').forEach((b) => b.classList.remove('active'));
-    btn.classList.add('active');
-    selectedBotColor = btn.dataset.bc === 'w' ? 'b' : 'w';
     setBotEnabled(true);
   };
 });
@@ -126,7 +121,7 @@ function createRoom() {
     password: password || null,
     botEnabled,
     botDifficulty: selectedBotDifficulty,
-    botColor: selectedBotColor,
+    userColor: selectedUserColor,
   });
 }
 createBtn.onclick = createRoom;
