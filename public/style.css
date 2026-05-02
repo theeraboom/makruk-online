@@ -807,7 +807,7 @@ html[data-theme="dark"] .info-card:hover::after { opacity: 0.35; }
   gap: 6px;
   border: 1px solid var(--border);
 }
-.role-badge.w { background: #FFFFFF; color: var(--text); }
+.role-badge.w { background: #FFFFFF; color: #1F1611; }
 .role-badge.b { background: #18181B; color: #FFFFFF; }
 .role-badge.viewer { background: var(--primary-soft); color: var(--primary-hover); border-color: #FCD34D; }
 
@@ -862,7 +862,7 @@ html[data-theme="dark"] .info-card:hover::after { opacity: 0.35; }
   font-weight: 700;
   flex-shrink: 0;
 }
-.avatar.white { background: #F8F6F1; color: var(--text); border: 1px solid var(--border-strong); }
+.avatar.white { background: #F8F6F1; color: #1F1611; border: 1px solid var(--border-strong); }
 .avatar.black { background: #18181B; color: white; }
 .avatar.empty { background: var(--surface-2); color: var(--text-muted); border: 1px dashed var(--border-strong); }
 
