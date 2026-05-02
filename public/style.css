@@ -682,7 +682,25 @@ html[data-theme="dark"] .hero-title {
   border-radius: var(--radius-lg);
   padding: 20px;
   box-shadow: var(--shadow-xs);
+  position: relative;
+  overflow: hidden;
 }
+.info-card::after {
+  content: '';
+  position: absolute;
+  right: -28px;
+  bottom: -28px;
+  width: 130px;
+  height: 130px;
+  background: url('img/chess-board-deco.svg') no-repeat center / contain;
+  opacity: 0.18;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.info-card:hover::after { opacity: 0.28; }
+html[data-theme="dark"] .info-card::after { opacity: 0.22; }
+html[data-theme="dark"] .info-card:hover::after { opacity: 0.35; }
+.info-card > * { position: relative; z-index: 1; }
 .info-card h3 {
   margin: 0 0 12px;
   font-size: 15px;
@@ -1356,7 +1374,25 @@ body[data-board-theme="gray"] .dark .sq-label { color: #FFF; }
   border-radius: var(--radius-lg);
   padding: 24px 28px;
   box-shadow: var(--shadow-xs);
+  position: relative;
+  overflow: hidden;
 }
+.seo-card::after {
+  content: '';
+  position: absolute;
+  right: -36px;
+  bottom: -36px;
+  width: 180px;
+  height: 180px;
+  background: url('img/chess-board-deco.svg') no-repeat center / contain;
+  opacity: 0.16;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.seo-card:hover::after { opacity: 0.26; }
+html[data-theme="dark"] .seo-card::after { opacity: 0.2; }
+html[data-theme="dark"] .seo-card:hover::after { opacity: 0.32; }
+.seo-card > * { position: relative; z-index: 1; }
 .seo-card h2 {
   margin: 0 0 12px;
   font-size: 20px;
