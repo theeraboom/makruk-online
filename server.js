@@ -312,6 +312,19 @@ async function deletePersistedRoom(roomId) {
   try { await upstashExec(['DEL', ROOM_KEY_PREFIX + roomId]); } catch (e) { /* ignore */ }
 }
 
+// Room is "abandoned" when no live humans (connected or within reclaim window) remain
+function isRoomAbandoned(room) {
+  const now = Date.now();
+  const liveHuman = (slot) => {
+    const p = room.players[slot];
+    if (!p || p.isBot) return false;
+    if (p.id) return true;
+    if (p.disconnectedAt && (now - p.disconnectedAt < RECLAIM_WINDOW_MS)) return true;
+    return false;
+  };
+  return !liveHuman('w') && !liveHuman('b') && room.viewers.size === 0;
+}
+
 async function restoreRooms() {
   if (!UPSTASH_URL || !UPSTASH_TOKEN) return 0;
   try {
@@ -556,9 +569,17 @@ io.on('connection', (socket) => {
     };
 
     // Side priority: respect creator's preferred color first, then the other slot, else viewer
+    // Bot slots are NEVER considered empty (active bot stays) — but a HUMAN slot that
+    // was abandoned past the reclaim window IS considered free again
     const preferred = room.creatorColor || 'w';
     const other = preferred === 'w' ? 'b' : 'w';
-    const slotEmpty = (c) => !room.players[c] || room.players[c].isBot;
+    const slotEmpty = (c) => {
+      const p = room.players[c];
+      if (!p) return true;
+      if (p.isBot) return false;
+      if (!p.id && p.disconnectedAt && (now - p.disconnectedAt > RECLAIM_WINDOW_MS)) return true;
+      return false;
+    };
 
     let role;
     if (isReclaimable('w')) {
@@ -731,10 +752,9 @@ io.on('connection', (socket) => {
       if (room.status === 'playing') room.status = 'waiting';
     }
 
-    // Delete room if NO sockets left (both human slots gone or bot-only) and no viewers
-    const wActive = room.players.w && (room.players.w.isBot || room.players.w.id);
-    const bActive = room.players.b && (room.players.b.isBot || room.players.b.id);
-    if (!wActive && !bActive && room.viewers.size === 0) {
+    // Delete room when no live humans care anymore (bot doesn't count — bot games
+    // exist for humans). A "live" human is connected OR disconnected within reclaim window.
+    if (isRoomAbandoned(room)) {
       rooms.delete(roomId);
       deletePersistedRoom(roomId);
     } else {
@@ -760,6 +780,22 @@ setInterval(() => {
     }
   }
 }, 1000);
+
+// Periodic cleanup: remove rooms whose humans abandoned past the reclaim window
+setInterval(() => {
+  let removed = 0;
+  for (const [id, room] of rooms.entries()) {
+    if (isRoomAbandoned(room)) {
+      rooms.delete(id);
+      deletePersistedRoom(id);
+      removed++;
+    }
+  }
+  if (removed > 0) {
+    console.log(`[cleanup] removed ${removed} abandoned room(s)`);
+    broadcastRoomList();
+  }
+}, 60 * 1000); // every 60s
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
