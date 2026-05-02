@@ -16,7 +16,7 @@
     'https://at1.api.radio-browser.info',
     'https://fr1.api.radio-browser.info',
   ];
-  const CACHE_KEY = 'mk_radio_stations_v2'; // bumped: dedup + freq + blocked list
+  const CACHE_KEY = 'mk_radio_stations_v3'; // v3: more blocked + improved freq regex
   const CACHE_TS_KEY = 'mk_radio_stations_ts';
   const CACHE_TTL = 24 * 60 * 60 * 1000; // 24h
   const LS_OPEN = 'mk_radio_open';
@@ -288,15 +288,27 @@
 
     try {
       const raw = await fetchFromApi();
-      // Stations known to be dead (timeout / 404 / unstable) — keep updating as we find more
+      // Stations known to be dead (timeout / 404 / unstable) — verified with audit
       const BLOCKED_NAMES = new Set([
         'mcot radio buriram 92.0 fm',
         'radio samui online',
         'mcot อุดรธานี',
         'top news (mobile stream)',
+        'flex 104.5',
+        'thairadio 96.5 thinking',
+        'mcot radio chiangmai fm100.75',
+        'top news',
+        'mcot 100.5',
+        'top news (live1 - low 240p)',
+        'mcot chumphon (amphoe lang suan) fm 104.75',
+        'mcot loei fm 100.00',
+        'dpradio',
+        'dpcloudev',
       ]);
       // Normalize name for dedup (strip whitespace, dashes, punctuation, lowercase)
       const norm = (s) => (s || '').toLowerCase().replace(/[\s\-_.,()]/g, '');
+      // Convert Thai numerals to Arabic (๐๑๒๓๔๕๖๗๘๙ → 0123456789)
+      const thaiToArabic = (s) => (s || '').replace(/[๐-๙]/g, c => '๐๑๒๓๔๕๖๗๘๙'.indexOf(c).toString());
 
       const seen = new Set();
       stations = raw
@@ -309,9 +321,16 @@
           return true;
         })
         .map(s => {
-          // Extract FM frequency from name (e.g., "Cool 93 FM" → "93", "Smooth 105.5" → "105.5")
-          const freqMatch = (s.name || '').match(/\b(\d{2,3}(?:\.\d)?)\b/);
-          const freq = freqMatch ? freqMatch[1] : null;
+          // Extract FM frequency from name (handles Arabic + Thai numerals; e.g.,
+          // "Cool 93 FM" → 93, "Smooth 105.5" → 105.5, "97qfm" → 97, "ลูกทุ่ง ๙๐" → 90)
+          const nameNum = thaiToArabic(s.name || '');
+          const freqMatch = nameNum.match(/\b(\d{2,3}(?:\.\d)?)/); // no trailing \b — works with "97qfm"
+          let freq = freqMatch ? freqMatch[1] : null;
+          // Sanity range: FM is 87.5-108 MHz typically
+          if (freq) {
+            const f = parseFloat(freq);
+            if (f < 80 || f > 110) freq = null;
+          }
           return {
             uuid: s.stationuuid,
             name: s.name,
