@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 360" preserveAspectRatio="xMidYMid meet" shape-rendering="geometricPrecision" text-rendering="geometricPrecision">
+  <defs>
+    <linearGradient id="hbBoardEdge" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8B5A2B"/>
+      <stop offset="1" stop-color="#3E2418"/>
+    </linearGradient>
+    <linearGradient id="hbGoldFrame" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FCD34D"/>
+      <stop offset="1" stop-color="#B45309"/>
+    </linearGradient>
+    <radialGradient id="hbSpotlight" cx="0.5" cy="0.4" r="0.6">
+      <stop offset="0" stop-color="#FBBF24" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#FBBF24" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="hbPieceShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="6" stdDeviation="3" flood-color="#000" flood-opacity="0.45"/>
+    </filter>
+    <filter id="hbFloatShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="12" stdDeviation="5" flood-color="#000" flood-opacity="0.55"/>
+    </filter>
+    <filter id="hbBoardShadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#000" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <!-- Ambient glow behind everything -->
+  <ellipse cx="240" cy="200" rx="240" ry="160" fill="url(#hbSpotlight)"/>
+
+  <!-- 3D perspective board: skewed with vanishing point -->
+  <g filter="url(#hbBoardShadow)">
+    <!-- Side edge of board (depth) -->
+    <path d="M 60 275 L 420 275 L 410 295 L 70 295 Z" fill="url(#hbBoardEdge)"/>
+    <!-- Front edge -->
+    <path d="M 70 295 L 410 295 L 405 305 L 75 305 Z" fill="#2A1810"/>
+
+    <!-- Board surface with perspective skew (top is narrower, bottom wider) -->
+    <g transform="matrix(1, 0, -0.18, 0.62, 102, 110)">
+      <!-- 8x8 board -->
+      <g>
+        <rect x="0"   y="0"   width="36" height="36" fill="#F5E6C8"/><rect x="36"  y="0"   width="36" height="36" fill="#A0763E"/><rect x="72"  y="0"   width="36" height="36" fill="#F5E6C8"/><rect x="108" y="0"   width="36" height="36" fill="#A0763E"/><rect x="144" y="0"   width="36" height="36" fill="#F5E6C8"/><rect x="180" y="0"   width="36" height="36" fill="#A0763E"/><rect x="216" y="0"   width="36" height="36" fill="#F5E6C8"/><rect x="252" y="0"   width="36" height="36" fill="#A0763E"/>
+        <rect x="0"   y="36"  width="36" height="36" fill="#A0763E"/><rect x="36"  y="36"  width="36" height="36" fill="#F5E6C8"/><rect x="72"  y="36"  width="36" height="36" fill="#A0763E"/><rect x="108" y="36"  width="36" height="36" fill="#F5E6C8"/><rect x="144" y="36"  width="36" height="36" fill="#A0763E"/><rect x="180" y="36"  width="36" height="36" fill="#F5E6C8"/><rect x="216" y="36"  width="36" height="36" fill="#A0763E"/><rect x="252" y="36"  width="36" height="36" fill="#F5E6C8"/>
+        <rect x="0"   y="72"  width="36" height="36" fill="#F5E6C8"/><rect x="36"  y="72"  width="36" height="36" fill="#A0763E"/><rect x="72"  y="72"  width="36" height="36" fill="#F5E6C8"/><rect x="108" y="72"  width="36" height="36" fill="#A0763E"/><rect x="144" y="72"  width="36" height="36" fill="#F5E6C8"/><rect x="180" y="72"  width="36" height="36" fill="#A0763E"/><rect x="216" y="72"  width="36" height="36" fill="#F5E6C8"/><rect x="252" y="72"  width="36" height="36" fill="#A0763E"/>
+        <rect x="0"   y="108" width="36" height="36" fill="#A0763E"/><rect x="36"  y="108" width="36" height="36" fill="#F5E6C8"/><rect x="72"  y="108" width="36" height="36" fill="#A0763E"/><rect x="108" y="108" width="36" height="36" fill="#F5E6C8"/><rect x="144" y="108" width="36" height="36" fill="#A0763E"/><rect x="180" y="108" width="36" height="36" fill="#F5E6C8"/><rect x="216" y="108" width="36" height="36" fill="#A0763E"/><rect x="252" y="108" width="36" height="36" fill="#F5E6C8"/>
+        <rect x="0"   y="144" width="36" height="36" fill="#F5E6C8"/><rect x="36"  y="144" width="36" height="36" fill="#A0763E"/><rect x="72"  y="144" width="36" height="36" fill="#F5E6C8"/><rect x="108" y="144" width="36" height="36" fill="#A0763E"/><rect x="144" y="144" width="36" height="36" fill="#F5E6C8"/><rect x="180" y="144" width="36" height="36" fill="#A0763E"/><rect x="216" y="144" width="36" height="36" fill="#F5E6C8"/><rect x="252" y="144" width="36" height="36" fill="#A0763E"/>
+        <rect x="0"   y="180" width="36" height="36" fill="#A0763E"/><rect x="36"  y="180" width="36" height="36" fill="#F5E6C8"/><rect x="72"  y="180" width="36" height="36" fill="#A0763E"/><rect x="108" y="180" width="36" height="36" fill="#F5E6C8"/><rect x="144" y="180" width="36" height="36" fill="#A0763E"/><rect x="180" y="180" width="36" height="36" fill="#F5E6C8"/><rect x="216" y="180" width="36" height="36" fill="#A0763E"/><rect x="252" y="180" width="36" height="36" fill="#F5E6C8"/>
+        <rect x="0"   y="216" width="36" height="36" fill="#F5E6C8"/><rect x="36"  y="216" width="36" height="36" fill="#A0763E"/><rect x="72"  y="216" width="36" height="36" fill="#F5E6C8"/><rect x="108" y="216" width="36" height="36" fill="#A0763E"/><rect x="144" y="216" width="36" height="36" fill="#F5E6C8"/><rect x="180" y="216" width="36" height="36" fill="#A0763E"/><rect x="216" y="216" width="36" height="36" fill="#F5E6C8"/><rect x="252" y="216" width="36" height="36" fill="#A0763E"/>
+        <rect x="0"   y="252" width="36" height="36" fill="#A0763E"/><rect x="36"  y="252" width="36" height="36" fill="#F5E6C8"/><rect x="72"  y="252" width="36" height="36" fill="#A0763E"/><rect x="108" y="252" width="36" height="36" fill="#F5E6C8"/><rect x="144" y="252" width="36" height="36" fill="#A0763E"/><rect x="180" y="252" width="36" height="36" fill="#F5E6C8"/><rect x="216" y="252" width="36" height="36" fill="#A0763E"/><rect x="252" y="252" width="36" height="36" fill="#F5E6C8"/>
+      </g>
+      <!-- Gold frame -->
+      <rect x="-3" y="-3" width="294" height="294" fill="none" stroke="url(#hbGoldFrame)" stroke-width="4" rx="2"/>
+    </g>
+
+    <!-- Pieces sitting ON board (perspective compensated visually — placed on rendered board) -->
+    <g font-family="Georgia, serif" text-anchor="middle">
+      <!-- Some grounded pieces with subtle shadow -->
+      <g filter="url(#hbPieceShadow)">
+        <text x="155" y="265" font-size="34" fill="#1F2937">♟</text>
+        <text x="200" y="263" font-size="34" fill="#FFFFFF">♙</text>
+        <text x="290" y="270" font-size="40" fill="#FFFFFF">♔</text>
+        <text x="380" y="263" font-size="36" fill="#1F2937">♜</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- FLOATING pieces above the board (the magic moment) -->
+  <g font-family="Georgia, serif" text-anchor="middle">
+    <!-- Knight jumping up — central piece, biggest impact -->
+    <g transform="translate(245 95) rotate(-8)" filter="url(#hbFloatShadow)">
+      <text x="0" y="0" font-size="76" fill="#FFFFFF" stroke="#0F172A" stroke-width="1.5">♘</text>
+    </g>
+    <!-- Black queen floating left -->
+    <g transform="translate(120 130) rotate(8)" filter="url(#hbFloatShadow)">
+      <text x="0" y="0" font-size="60" fill="#1F2937" stroke="#FBBF24" stroke-width="0.8">♛</text>
+    </g>
+    <!-- White bishop floating top-right -->
+    <g transform="translate(385 110) rotate(-12)" filter="url(#hbFloatShadow)">
+      <text x="0" y="0" font-size="56" fill="#FFFFFF" stroke="#0F172A" stroke-width="1">♗</text>
+    </g>
+    <!-- Sparkle dots near floating pieces -->
+    <circle cx="180" cy="80" r="3" fill="#FBBF24" opacity="0.8"/>
+    <circle cx="320" cy="65" r="2.5" fill="#FCD34D" opacity="0.7"/>
+    <circle cx="430" cy="170" r="3" fill="#FBBF24" opacity="0.6"/>
+    <circle cx="80" cy="200" r="2" fill="#FCD34D" opacity="0.7"/>
+    <!-- Motion lines / sparks -->
+    <path d="M 245 50 Q 250 35 258 25" fill="none" stroke="#FBBF24" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+    <path d="M 245 50 Q 240 35 232 25" fill="none" stroke="#FBBF24" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+  </g>
+</svg>

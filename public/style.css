@@ -485,6 +485,25 @@ html[data-theme="dark"] .hero-title {
   animation: pulse 1.6s ease-in-out infinite;
 }
 
+.hero-board {
+  margin-top: 20px;
+  max-width: 480px;
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.18));
+}
+.hero-board img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+html[data-theme="dark"] .hero-board {
+  filter: drop-shadow(0 10px 24px rgba(251, 191, 36, 0.18));
+}
+@media (max-width: 720px) {
+  .hero-board { margin-top: 14px; max-width: 100%; }
+}
+
 .hero-actions {
   display: flex;
   flex-direction: column;
@@ -492,6 +511,7 @@ html[data-theme="dark"] .hero-title {
   min-width: 280px;
   position: relative;
   z-index: 1;
+  align-self: start;
 }
 .hero-actions input { font-size: 15px; background: rgba(255, 255, 255, 0.9); }
 .hero-actions button { padding: 12px 20px; font-size: 15px; }
