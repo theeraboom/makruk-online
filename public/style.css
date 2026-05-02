@@ -731,6 +731,8 @@ html[data-theme="dark"] .info-card:hover::after { opacity: 0.35; }
 }
 .info-card p { margin: 0 0 8px; font-size: 13px; color: var(--text-2); }
 .info-card ol { margin: 8px 0 0; padding-left: 20px; font-size: 13px; color: var(--text-2); line-height: 1.8; }
+.how-list { margin: 8px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.how-list li { font-size: 13px; color: var(--text-2); line-height: 1.6; }
 .info-card a { color: var(--primary); font-weight: 500; }
 .info-card a:hover { text-decoration: underline; }
 

@@ -61,10 +61,10 @@
       'room.join': 'เข้าร่วม →',
 
       // Sidebar info cards
-      'how.title': '📜 วิธีเข้าร่วม',
-      'how.1': 'กดเปิดวงใหม่ หรือเข้าวงที่เปิดอยู่',
-      'how.2': '2 คนแรก = ผู้เล่น (ขาว/ดำ)',
-      'how.3': 'คนถัดไป = ยืนดู + ร่วมพูดคุยในแชท',
+      'how.title': '🎮 วิธีเปิดวง',
+      'how.1': '<strong>🤝 เล่นกับเพื่อน</strong> — เปิดวงใหม่ แชร์ลิ้งค์ให้เพื่อน 2 คนแรกได้เล่น คนถัดไปดู+แชทได้เลย',
+      'how.2': '<strong>🤖 ฝึกซ้อมกับ AI Bot</strong> — ติ๊ก "เล่นกับ Bot" ตอนสร้างห้อง เลือกได้ 3 ระดับ ง่าย / กลาง / ยาก',
+      'how.3': '<strong>🔒 ห้องส่วนตัว</strong> — ห้องที่คุณสร้างมีลิ้งค์เฉพาะ ส่งให้เฉพาะคนที่ต้องการได้เลย',
       'rulesShort.title': '♟ กฎทั้ง 4 เกม ฉบับย่อ',
       'rulesShort.read': 'อ่านประวัติและกติกาเต็ม →',
 
@@ -229,10 +229,10 @@
       'room.turnB': 'Black to move',
       'room.join': 'Join →',
 
-      'how.title': '📜 How to join',
-      'how.1': 'Open a new room or join an existing one',
-      'how.2': 'First 2 = players (white/black)',
-      'how.3': 'Others = watch + chat live',
+      'how.title': '🎮 How to play',
+      'how.1': '<strong>🤝 Play with friends</strong> — open a room, share the link. First 2 join as players, others watch + chat.',
+      'how.2': '<strong>🤖 Practice vs AI Bot</strong> — check "Play vs Bot" when creating a room. Choose from 3 difficulty levels.',
+      'how.3': '<strong>🔒 Private room</strong> — each room has its own link. Share it only with who you want.',
       'rulesShort.title': '♟ All 4 games — quick reference',
       'rulesShort.read': 'Read full history & rules →',
 
