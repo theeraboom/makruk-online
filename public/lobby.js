@@ -69,8 +69,8 @@ document.querySelectorAll('#tcIncOptions .tc-btn').forEach((btn) => {
   };
 });
 
-// Side selection — independent from bot mode
-let selectedUserColor = null; // 'w' | 'b' | null (server defaults to 'w')
+// Side selection — independent from bot mode (default: white)
+let selectedUserColor = 'w';
 document.querySelectorAll('#userColorOptions .tc-btn').forEach((btn) => {
   btn.onclick = () => {
     document.querySelectorAll('#userColorOptions .tc-btn').forEach((b) => b.classList.remove('active'));
