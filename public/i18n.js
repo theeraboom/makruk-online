@@ -13,7 +13,7 @@
 
       // Hero (lobby)
       'hero.title': 'เล่นหมากรุก หมากฮอส ออนไลน์',
-      'hero.sub': 'นั่งเล่น ยืนดู คุยกันสนุกๆ บรรยากาศเป็นกันเอง — สองคนเล่น คนอื่นๆ ยืนดูล้อมวง พูดคุยเชียร์กันได้ทุกเมื่อ',
+      'hero.sub': 'นั่งเล่น ยืนดู คุยกันสนุกๆ บรรยากาศเป็นกันเอง — สองคนเล่น คนอื่นๆ ยืนดูล้อมวง พูดคุยเชียร์กันได้ทุกเมื่อ พร้อมวิทยุไทยให้ฟังขณะเล่น 📻',
       'stat.rooms': 'ห้องเปิด',
       'stat.players': 'กำลังเล่น',
       'stat.viewers': 'กำลังดู',
@@ -184,7 +184,7 @@
       'back': '← Back',
 
       'hero.title': 'Play Chess & Checkers Online',
-      'hero.sub': 'Play, watch, chat — friendly atmosphere. Two players play, others watch and cheer in real-time chat.',
+      'hero.sub': 'Play, watch, chat — friendly atmosphere. Two players play, others watch and cheer in real-time chat. Tune in to a Thai radio station while you play 📻',
       'stat.rooms': 'rooms open',
       'stat.players': 'playing',
       'stat.viewers': 'watching',

@@ -55,7 +55,7 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" v
   <text x="99" y="110" font-family="serif" font-size="54" fill="#0F172A" text-anchor="middle" font-weight="900">♛</text>
 
   <text x="158" y="90" font-family="'Prompt','Sarabun','Helvetica Neue',sans-serif" font-size="38" font-weight="700" fill="#F8FAFC">Playmakruk.com</text>
-  <text x="158" y="120" font-family="'Prompt','Sarabun','Helvetica Neue',sans-serif" font-size="18" fill="#94A3B8">หมากรุก / หมากฮอส ออนไลน์ — ฟรี ไม่ต้องสมัคร</text>
+  <text x="158" y="120" font-family="'Prompt','Sarabun','Helvetica Neue',sans-serif" font-size="18" fill="#94A3B8">หมากรุก / หมากฮอส ออนไลน์ + วิทยุไทย — ฟรี ไม่ต้องสมัคร</text>
 
   <!-- "NEW" burst badge top-right -->
   <g transform="translate(1080, 90) rotate(-12)" filter="url(#softShadow)">
@@ -131,7 +131,7 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" v
   </g>
 
   <!-- Subhead: or play with friends -->
-  <text x="60" y="495" font-family="'Prompt','Sarabun',sans-serif" font-size="22" fill="#CBD5E1">หรือเล่นกับเพื่อน • คนอื่นเข้าดู+แชทสดได้</text>
+  <text x="60" y="495" font-family="'Prompt','Sarabun',sans-serif" font-size="22" fill="#CBD5E1">หรือเล่นกับเพื่อน • แชทสดกับผู้ชม • ฟังวิทยุไทยขณะเล่น</text>
 
   <!-- 4 game pills - compact row -->
   <g font-family="'Prompt','Sarabun',sans-serif" font-size="16" font-weight="600" transform="translate(60, 525)">
