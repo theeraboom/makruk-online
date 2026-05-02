@@ -16,7 +16,7 @@
     'https://at1.api.radio-browser.info',
     'https://fr1.api.radio-browser.info',
   ];
-  const CACHE_KEY = 'mk_radio_stations_v1';
+  const CACHE_KEY = 'mk_radio_stations_v2'; // bumped: dedup + freq + blocked list
   const CACHE_TS_KEY = 'mk_radio_stations_ts';
   const CACHE_TTL = 24 * 60 * 60 * 1000; // 24h
   const LS_OPEN = 'mk_radio_open';
@@ -126,6 +126,15 @@
     .radio-station .name { font-weight: 600; font-size: 13px; }
     .radio-station .meta { font-size: 11px; color: #6B5B45; margin-top: 2px; }
     html[data-theme="dark"] .radio-station .meta { color: #94A3B8; }
+    .fm-badge {
+      flex-shrink: 0; font-size: 10px; font-weight: 700;
+      padding: 3px 6px; border-radius: 4px;
+      background: rgba(180, 83, 9, 0.15); color: #B45309;
+      letter-spacing: 0.02em;
+    }
+    html[data-theme="dark"] .fm-badge {
+      background: rgba(251, 191, 36, 0.15); color: #FBBF24;
+    }
     .radio-fav {
       background: transparent; border: none; cursor: pointer;
       font-size: 18px; padding: 4px 6px; opacity: 0.4;
@@ -279,18 +288,41 @@
 
     try {
       const raw = await fetchFromApi();
-      // Filter: must have a stream URL, prefer https, keep useful fields
+      // Stations known to be dead (timeout / 404 / unstable) — keep updating as we find more
+      const BLOCKED_NAMES = new Set([
+        'mcot radio buriram 92.0 fm',
+        'radio samui online',
+        'mcot อุดรธานี',
+        'top news (mobile stream)',
+      ]);
+      // Normalize name for dedup (strip whitespace, dashes, punctuation, lowercase)
+      const norm = (s) => (s || '').toLowerCase().replace(/[\s\-_.,()]/g, '');
+
+      const seen = new Set();
       stations = raw
         .filter(s => s.url_resolved || s.url)
-        .map(s => ({
-          uuid: s.stationuuid,
-          name: s.name,
-          url: s.url_resolved || s.url,
-          tags: s.tags || '',
-          bitrate: s.bitrate || 0,
-          codec: s.codec || '',
-          favicon: s.favicon || '',
-        }));
+        .filter(s => !BLOCKED_NAMES.has((s.name || '').toLowerCase().trim()))
+        .filter(s => {
+          const k = norm(s.name);
+          if (seen.has(k)) return false;
+          seen.add(k);
+          return true;
+        })
+        .map(s => {
+          // Extract FM frequency from name (e.g., "Cool 93 FM" → "93", "Smooth 105.5" → "105.5")
+          const freqMatch = (s.name || '').match(/\b(\d{2,3}(?:\.\d)?)\b/);
+          const freq = freqMatch ? freqMatch[1] : null;
+          return {
+            uuid: s.stationuuid,
+            name: s.name,
+            url: s.url_resolved || s.url,
+            tags: s.tags || '',
+            bitrate: s.bitrate || 0,
+            codec: s.codec || '',
+            favicon: s.favicon || '',
+            freq,
+          };
+        });
       localStorage.setItem(CACHE_KEY, JSON.stringify(stations));
       localStorage.setItem(CACHE_TS_KEY, String(Date.now()));
       stationsLoaded = true;
@@ -335,11 +367,19 @@
     const tags = s.tags ? s.tags.split(',').slice(0, 3).join(' • ') : '';
     const bitrate = s.bitrate ? s.bitrate + 'k' : '';
     const isCustom = s.uuid.startsWith('custom-');
+    // Extract freq from cached data (set during fetch) OR from name as fallback
+    let freq = s.freq;
+    if (!freq) {
+      const m = (s.name || '').match(/\b(\d{2,3}(?:\.\d)?)\b/);
+      if (m) freq = m[1];
+    }
+    const fmBadge = freq ? `<span class="fm-badge">FM ${freq}</span>` : '';
     item.innerHTML = `
       <div class="body">
         <div class="name"></div>
         <div class="meta"></div>
       </div>
+      ${fmBadge}
       <button class="radio-fav ${isFav ? 'on' : ''}" title="Favorite">${isFav ? '★' : '☆'}</button>
       ${isCustom ? '<button class="radio-fav" title="Remove" data-remove="1">✕</button>' : ''}
     `;
