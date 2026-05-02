@@ -202,11 +202,32 @@
   document.body.appendChild(panel);
 
   // ---- Audio element ----
+  // No crossOrigin → maximum stream compatibility (most stations don't send CORS headers)
   const audio = new Audio();
   audio.preload = 'none';
-  audio.crossOrigin = 'anonymous';
   let currentStation = null;
   let isPlaying = false;
+
+  // ---- Web Audio gain node (allows volume boost beyond 100% + works on iOS) ----
+  // iOS Safari ignores audio.volume, but GainNode.gain is software-controlled and works.
+  // Try to route the audio element through Web Audio. Falls back to audio.volume if blocked.
+  let waCtx = null, waGain = null, waSource = null;
+  function tryWebAudio() {
+    if (waCtx) return waCtx;
+    const Ctor = window.AudioContext || window.webkitAudioContext;
+    if (!Ctor) return null;
+    try {
+      waCtx = new Ctor();
+      waSource = waCtx.createMediaElementSource(audio);
+      waGain = waCtx.createGain();
+      waSource.connect(waGain).connect(waCtx.destination);
+      return waCtx;
+    } catch (e) {
+      // CORS or already connected — fall back to audio.volume
+      waCtx = null; waGain = null; waSource = null;
+      return null;
+    }
+  }
 
   // ---- Refs ----
   const closeBtn = document.getElementById('radioCloseBtn');
@@ -225,17 +246,26 @@
   btn.appendChild(pulseDot);
 
   // ---- Volume ----
-  const savedVolume = parseFloat(localStorage.getItem(LS_VOLUME));
-  const initialVol = isFinite(savedVolume) ? savedVolume : 0.6;
-  audio.volume = initialVol;
-  volSlider.value = String(Math.round(initialVol * 100));
-  volLabel.textContent = volSlider.value;
-  volSlider.oninput = () => {
-    const v = parseInt(volSlider.value, 10) / 100;
-    audio.volume = v;
-    volLabel.textContent = volSlider.value;
-    localStorage.setItem(LS_VOLUME, String(v));
-  };
+  // Slider 0-100 maps to 0..2.0 gain (so '100' = 2x boost above unity)
+  // Both audio.volume (capped at 1) AND waGain.gain.value are set together
+  function applyVolume(sliderVal) {
+    const slider = Math.max(0, Math.min(100, sliderVal));
+    const gain = (slider / 100) * 2.0; // 0..2.0
+    // Always set audio.volume (works on Android/desktop)
+    audio.volume = Math.min(1, gain);
+    // Also set GainNode (works on iOS, allows boost above 1)
+    if (waGain) {
+      try { waGain.gain.setTargetAtTime(gain, waCtx.currentTime, 0.01); } catch (e) {}
+    }
+    volLabel.textContent = String(slider);
+    localStorage.setItem(LS_VOLUME, String(slider));
+  }
+  const savedVolume = parseInt(localStorage.getItem(LS_VOLUME), 10);
+  const initialSlider = isFinite(savedVolume) && savedVolume >= 0 && savedVolume <= 100 ? savedVolume : 60;
+  volSlider.value = String(initialSlider);
+  audio.volume = Math.min(1, (initialSlider / 100) * 2.0);
+  volLabel.textContent = String(initialSlider);
+  volSlider.oninput = () => applyVolume(parseInt(volSlider.value, 10));
 
   // ---- Open / close ----
   let panelOpen = false;
@@ -437,6 +467,13 @@
     nowName.textContent = s.name;
     audio.src = s.url;
     localStorage.setItem(LS_STATION, s.uuid);
+    // First user gesture → set up Web Audio routing for iOS-friendly volume control
+    tryWebAudio();
+    if (waCtx && waCtx.state === 'suspended') waCtx.resume().catch(() => {});
+    if (waGain) {
+      const slider = parseInt(volSlider.value, 10) || 60;
+      waGain.gain.value = (slider / 100) * 2.0;
+    }
     audio.play().then(() => {
       playBtn.disabled = false;
       setPlayingState(true);
@@ -456,6 +493,8 @@
       audio.pause();
       setPlayingState(false);
     } else {
+      tryWebAudio();
+      if (waCtx && waCtx.state === 'suspended') waCtx.resume().catch(() => {});
       audio.play().then(() => setPlayingState(true)).catch(() => {});
     }
   };
