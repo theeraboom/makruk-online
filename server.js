@@ -218,6 +218,131 @@ async function upstashCmd(pathSegment) {
   return (await res.json()).result;
 }
 
+// Pipeline a single command (supports large bodies via JSON, used for SET with big values)
+async function upstashExec(args) {
+  const res = await fetch(`${UPSTASH_URL}/`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${UPSTASH_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(args),
+  });
+  if (!res.ok) throw new Error(`Upstash ${res.status}`);
+  return (await res.json()).result;
+}
+
+// ============ Room state persistence (level 2: survive server restarts) ============
+const ROOM_KEY_PREFIX = 'playmakruk:room:';
+const ROOM_TTL_SEC = 24 * 60 * 60; // 24h: abandoned rooms eventually expire
+const RECLAIM_WINDOW_MS = 5 * 60 * 1000; // 5min after disconnect, slot can be reclaimed by name
+
+function snapshotRoom(room) {
+  // Snapshot game state, freezing the running clock so restored time is fair
+  let whiteTime = room.whiteTime, blackTime = room.blackTime;
+  if (room.runningSince && room.timeBase) {
+    const elapsed = Date.now() - room.runningSince;
+    if (room.currentPlayer === 'w') whiteTime = Math.max(0, whiteTime - elapsed);
+    else blackTime = Math.max(0, blackTime - elapsed);
+  }
+  return {
+    id: room.id,
+    name: room.name,
+    hasDefaultName: !!room.hasDefaultName,
+    password: room.password,
+    creatorColor: room.creatorColor,
+    bot: room.bot,
+    gameType: room.gameType,
+    board: room.board,
+    currentPlayer: room.currentPlayer,
+    moves: room.moves,
+    timeBase: room.timeBase,
+    timeIncrement: room.timeIncrement,
+    whiteTime,
+    blackTime,
+    runningSince: null, // will resume on first reconnect after restore
+    endedReason: room.endedReason,
+    endedWinner: room.endedWinner,
+    mustContinueFrom: room.mustContinueFrom,
+    castling: room.castling || null,
+    enPassant: room.enPassant || null,
+    status: room.status,
+    // Players: keep names + isBot, drop socket id (will be reclaimed on reconnect)
+    // disconnectedAt timestamp lets us detect stale slots within reclaim window
+    players: {
+      w: room.players.w ? { name: room.players.w.name, isBot: !!room.players.w.isBot, botDifficulty: room.players.w.botDifficulty || null, disconnectedAt: Date.now() } : null,
+      b: room.players.b ? { name: room.players.b.name, isBot: !!room.players.b.isBot, botDifficulty: room.players.b.botDifficulty || null, disconnectedAt: Date.now() } : null,
+    },
+    // Keep last 50 messages so chat survives restart (cheap, useful)
+    messages: (room.messages || []).slice(-50),
+    // viewers Map can't serialize and they're transient anyway — drop
+  };
+}
+
+const persistTimers = new Map();
+function persistRoom(room) {
+  if (!UPSTASH_URL || !UPSTASH_TOKEN) return;
+  // Debounce: at most one write per 500ms per room (avoid spamming on rapid moves)
+  if (persistTimers.has(room.id)) clearTimeout(persistTimers.get(room.id));
+  const t = setTimeout(async () => {
+    persistTimers.delete(room.id);
+    try {
+      const snap = snapshotRoom(room);
+      await upstashExec(['SET', ROOM_KEY_PREFIX + room.id, JSON.stringify(snap), 'EX', ROOM_TTL_SEC]);
+    } catch (e) {
+      console.error('[persist] room', room.id, 'failed:', e.message);
+    }
+  }, 500);
+  persistTimers.set(room.id, t);
+}
+
+async function persistRoomNow(room) {
+  if (!UPSTASH_URL || !UPSTASH_TOKEN) return;
+  if (persistTimers.has(room.id)) {
+    clearTimeout(persistTimers.get(room.id));
+    persistTimers.delete(room.id);
+  }
+  try {
+    const snap = snapshotRoom(room);
+    await upstashExec(['SET', ROOM_KEY_PREFIX + room.id, JSON.stringify(snap), 'EX', ROOM_TTL_SEC]);
+  } catch (e) {
+    console.error('[persist-sync] room', room.id, 'failed:', e.message);
+  }
+}
+
+async function deletePersistedRoom(roomId) {
+  if (!UPSTASH_URL || !UPSTASH_TOKEN) return;
+  try { await upstashExec(['DEL', ROOM_KEY_PREFIX + roomId]); } catch (e) { /* ignore */ }
+}
+
+async function restoreRooms() {
+  if (!UPSTASH_URL || !UPSTASH_TOKEN) return 0;
+  try {
+    const keys = await upstashExec(['KEYS', ROOM_KEY_PREFIX + '*']);
+    if (!Array.isArray(keys) || keys.length === 0) return 0;
+    let restored = 0;
+    for (const key of keys) {
+      try {
+        const json = await upstashExec(['GET', key]);
+        if (!json) continue;
+        const room = JSON.parse(json);
+        // Rehydrate runtime-only fields
+        room.viewers = new Map();
+        // Clear socket ids on human players (will be re-set on reconnect)
+        if (room.players.w && !room.players.w.isBot) room.players.w.id = null;
+        if (room.players.b && !room.players.b.isBot) room.players.b.id = null;
+        // Pause clock — will resume when both players reconnect
+        room.runningSince = null;
+        rooms.set(room.id, room);
+        restored++;
+      } catch (e) {
+        console.error('[restore] failed key', key, e.message);
+      }
+    }
+    return restored;
+  } catch (e) {
+    console.error('[restore] scan failed:', e.message);
+    return 0;
+  }
+}
+
 async function loadVisits() {
   if (UPSTASH_URL && UPSTASH_TOKEN) {
     try {
@@ -259,6 +384,15 @@ loadVisits().then((n) => {
   totalVisits = n;
   console.log(`[Visits] starting count: ${totalVisits}${UPSTASH_URL ? ' (Upstash)' : ' (file)'}`);
   io.emit('site_stats', { totalVisits, onlineUsers });
+});
+
+restoreRooms().then((n) => {
+  if (n > 0) {
+    console.log(`[Restore] restored ${n} active rooms from Redis`);
+    broadcastRoomList();
+  } else {
+    console.log(`[Restore] no rooms to restore${UPSTASH_URL ? '' : ' (Upstash not configured)'}`);
+  }
 });
 
 const HTML_PATHS = ['/', '/index.html', '/room.html', '/rules.html'];
@@ -393,6 +527,7 @@ io.on('connection', (socket) => {
       room.players[botColor] = { id: 'BOT', name: 'Bot', isBot: true, botDifficulty };
     }
     rooms.set(id, room);
+    persistRoom(room);
     socket.emit('room_created', { id });
     broadcastRoomList();
   });
@@ -409,20 +544,37 @@ io.on('connection', (socket) => {
     socket.join(roomId);
     socket.data.roomId = roomId;
 
+    // Slot reclaim: if user's name matches a recently-disconnected slot, reclaim it
+    const userName = socket.data.user.name;
+    const now = Date.now();
+    const isReclaimable = (slot) => {
+      const p = room.players[slot];
+      if (!p || p.isBot || p.id) return false;
+      if (p.name !== userName) return false;
+      if (p.disconnectedAt && (now - p.disconnectedAt > RECLAIM_WINDOW_MS)) return false;
+      return true;
+    };
+
     // Side priority: respect creator's preferred color first, then the other slot, else viewer
     const preferred = room.creatorColor || 'w';
     const other = preferred === 'w' ? 'b' : 'w';
     const slotEmpty = (c) => !room.players[c] || room.players[c].isBot;
 
     let role;
-    if (slotEmpty(preferred)) {
-      room.players[preferred] = { id: socket.id, name: socket.data.user.name };
+    if (isReclaimable('w')) {
+      room.players.w = { id: socket.id, name: userName };
+      role = 'w';
+    } else if (isReclaimable('b')) {
+      room.players.b = { id: socket.id, name: userName };
+      role = 'b';
+    } else if (slotEmpty(preferred)) {
+      room.players[preferred] = { id: socket.id, name: userName };
       role = preferred;
     } else if (slotEmpty(other)) {
-      room.players[other] = { id: socket.id, name: socket.data.user.name };
+      room.players[other] = { id: socket.id, name: userName };
       role = other;
     } else {
-      room.viewers.set(socket.id, { name: socket.data.user.name });
+      room.viewers.set(socket.id, { name: userName });
       role = 'viewer';
     }
 
@@ -443,8 +595,9 @@ io.on('connection', (socket) => {
     socket.emit('chat_history', room.messages);
     broadcastRoomState(roomId);
     broadcastRoomList();
+    if (role !== 'viewer') persistRoom(room);
 
-    pushSystemMessage(room, 'sys.joined.' + role, { name: socket.data.user.name });
+    pushSystemMessage(room, 'sys.joined.' + role, { name: userName });
     if (room.bot && room.status === 'playing' && room.currentPlayer === room.bot.color) {
       maybeBotMove(roomId, 800);
     }
@@ -484,6 +637,7 @@ io.on('connection', (socket) => {
     processMove(room, from, to, moveInfo);
     broadcastRoomState(roomId);
     broadcastRoomList();
+    persistRoom(room);
     if (room.bot && room.status === 'playing' && room.currentPlayer === room.bot.color) {
       maybeBotMove(roomId);
     }
@@ -500,6 +654,7 @@ io.on('connection', (socket) => {
     pushSystemMessage(room, 'sys.resign', { user: socket.data.user.name, winner });
     broadcastRoomState(socket.data.roomId);
     broadcastRoomList();
+    persistRoom(room);
   });
 
   socket.on('chat', (text) => {
@@ -543,6 +698,7 @@ io.on('connection', (socket) => {
     pushSystemMessage(room, 'sys.reset', { user: socket.data.user.name });
     broadcastRoomState(roomId);
     broadcastRoomList();
+    persistRoom(room);
     if (room.bot && room.status === 'playing' && room.currentPlayer === room.bot.color) {
       maybeBotMove(roomId, 800);
     }
@@ -558,10 +714,14 @@ io.on('connection', (socket) => {
 
     const role = socket.data.role;
     let removed = false;
+    // Mark slot as disconnected (for reclaim window) instead of clearing entirely
+    // — name is kept so the same user can reclaim within RECLAIM_WINDOW_MS
     if (role === 'w' && room.players.w && room.players.w.id === socket.id) {
-      room.players.w = null; removed = true;
+      room.players.w = { name: room.players.w.name, isBot: false, id: null, disconnectedAt: Date.now() };
+      removed = true;
     } else if (role === 'b' && room.players.b && room.players.b.id === socket.id) {
-      room.players.b = null; removed = true;
+      room.players.b = { name: room.players.b.name, isBot: false, id: null, disconnectedAt: Date.now() };
+      removed = true;
     } else if (role === 'viewer') {
       room.viewers.delete(socket.id);
     }
@@ -571,12 +731,15 @@ io.on('connection', (socket) => {
       if (room.status === 'playing') room.status = 'waiting';
     }
 
-    const wEmpty = !room.players.w || room.players.w.isBot;
-    const bEmpty = !room.players.b || room.players.b.isBot;
-    if (wEmpty && bEmpty && room.viewers.size === 0) {
+    // Delete room if NO sockets left (both human slots gone or bot-only) and no viewers
+    const wActive = room.players.w && (room.players.w.isBot || room.players.w.id);
+    const bActive = room.players.b && (room.players.b.isBot || room.players.b.id);
+    if (!wActive && !bActive && room.viewers.size === 0) {
       rooms.delete(roomId);
+      deletePersistedRoom(roomId);
     } else {
       broadcastRoomState(roomId);
+      if (removed) persistRoom(room);
     }
     broadcastRoomList();
   });
@@ -603,22 +766,29 @@ server.listen(PORT, () => {
   console.log(`♛ หมากรุกไทยออนไลน์: http://localhost:${PORT}`);
 });
 
-// Graceful shutdown: warn connected clients before Render kills the instance
+// Graceful shutdown: warn clients, flush room state to Redis, then exit cleanly
 let isShuttingDown = false;
-function gracefulShutdown(signal) {
+async function gracefulShutdown(signal) {
   if (isShuttingDown) return;
   isShuttingDown = true;
   const SHUTDOWN_DELAY_MS = 8000;
   console.log(`[shutdown] ${signal} received, broadcasting restart warning, exiting in ${SHUTDOWN_DELAY_MS}ms`);
   io.emit('server_restart', { in_seconds: Math.floor(SHUTDOWN_DELAY_MS / 1000) });
-  setTimeout(() => {
+
+  setTimeout(async () => {
+    // Flush all active rooms to Redis synchronously so they survive restart
+    if (UPSTASH_URL && UPSTASH_TOKEN) {
+      console.log(`[shutdown] flushing ${rooms.size} rooms to Redis...`);
+      const tasks = Array.from(rooms.values()).map(persistRoomNow);
+      await Promise.allSettled(tasks);
+      console.log(`[shutdown] flush done`);
+    }
     io.close(() => {
       server.close(() => {
         console.log('[shutdown] clean exit');
         process.exit(0);
       });
     });
-    // Hard exit fallback if close hangs
     setTimeout(() => process.exit(0), 2000);
   }, SHUTDOWN_DELAY_MS);
 }
