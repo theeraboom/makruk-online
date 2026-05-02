@@ -64,7 +64,7 @@
       'how.title': '🎮 วิธีเปิดวง',
       'how.1': '<strong>🤝 เล่นกับเพื่อน</strong> — เปิดวงใหม่ แชร์ลิ้งค์ให้เพื่อน 2 คนแรกได้เล่น คนถัดไปดู+แชทได้เลย',
       'how.2': '<strong>🤖 ฝึกซ้อมกับ AI Bot</strong> — ติ๊ก "เล่นกับ Bot" ตอนสร้างห้อง เลือกได้ 3 ระดับ ง่าย / กลาง / ยาก',
-      'how.3': '<strong>🔒 ห้องส่วนตัว</strong> — ห้องที่คุณสร้างมีลิ้งค์เฉพาะ ส่งให้เฉพาะคนที่ต้องการได้เลย',
+      'how.3': '<strong>🔒 ห้องส่วนตัว</strong> — ใส่รหัสห้องตอนสร้างวง แล้วส่งลิ้งค์พร้อมรหัสให้เพื่อน คนอื่นเข้าไม่ได้',
       'rulesShort.title': '♟ กฎทั้ง 4 เกม ฉบับย่อ',
       'rulesShort.read': 'อ่านประวัติและกติกาเต็ม →',
 
@@ -232,7 +232,7 @@
       'how.title': '🎮 How to play',
       'how.1': '<strong>🤝 Play with friends</strong> — open a room, share the link. First 2 join as players, others watch + chat.',
       'how.2': '<strong>🤖 Practice vs AI Bot</strong> — check "Play vs Bot" when creating a room. Choose from 3 difficulty levels.',
-      'how.3': '<strong>🔒 Private room</strong> — each room has its own link. Share it only with who you want.',
+      'how.3': '<strong>🔒 Private room</strong> — set a password when creating the room, then share the link + password with friends. Others can\'t get in.',
       'rulesShort.title': '♟ All 4 games — quick reference',
       'rulesShort.read': 'Read full history & rules →',
 
