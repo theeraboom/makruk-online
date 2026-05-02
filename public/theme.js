@@ -1,12 +1,12 @@
 (function () {
   // Apply saved theme as early as possible to avoid flash
-  // Default = dark (only switch to light when user explicitly chose it)
+  // Default = light (only switch to dark when user explicitly chose it)
   try {
-    if (localStorage.getItem('makruk_dark') !== '0') {
+    if (localStorage.getItem('makruk_dark') === '1') {
       document.documentElement.setAttribute('data-theme', 'dark');
     }
   } catch (e) {
-    document.documentElement.setAttribute('data-theme', 'dark');
+    // Default = light, no attribute needed
   }
 
   function isDark() {
