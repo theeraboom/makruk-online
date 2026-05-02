@@ -289,3 +289,51 @@ function escapeHtml(s) {
 }
 
 socket.emit('list_rooms');
+
+// ============ Server status banner (graceful shutdown / reconnect) ============
+function ensureLobbyBanner() {
+  let el = document.getElementById('serverBanner');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'serverBanner';
+    document.body.appendChild(el);
+  }
+  return el;
+}
+function showLobbyBanner(text, kind, autoHideMs) {
+  const el = ensureLobbyBanner();
+  el.className = '';
+  el.classList.add(kind || 'info');
+  el.classList.add('show');
+  el.textContent = text;
+  if (autoHideMs) setTimeout(() => el.classList.remove('show'), autoHideMs);
+}
+
+let restartCountdownTimer = null;
+socket.on('server_restart', ({ in_seconds }) => {
+  let remaining = in_seconds || 8;
+  if (restartCountdownTimer) clearInterval(restartCountdownTimer);
+  showLobbyBanner(I18N.t('sys.restart.warn').replace('{sec}', remaining), 'warn');
+  restartCountdownTimer = setInterval(() => {
+    remaining--;
+    if (remaining <= 0) {
+      clearInterval(restartCountdownTimer);
+      restartCountdownTimer = null;
+      return;
+    }
+    showLobbyBanner(I18N.t('sys.restart.warn').replace('{sec}', remaining), 'warn');
+  }, 1000);
+});
+
+let lobbyWasConnected = true;
+socket.on('disconnect', () => {
+  lobbyWasConnected = false;
+  showLobbyBanner(I18N.t('sys.disconnect'), 'warn');
+});
+socket.on('connect', () => {
+  if (!lobbyWasConnected) {
+    lobbyWasConnected = true;
+    socket.emit('list_rooms');
+    showLobbyBanner(I18N.t('sys.reconnected'), 'ok', 2500);
+  }
+});

@@ -602,3 +602,25 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`♛ หมากรุกไทยออนไลน์: http://localhost:${PORT}`);
 });
+
+// Graceful shutdown: warn connected clients before Render kills the instance
+let isShuttingDown = false;
+function gracefulShutdown(signal) {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+  const SHUTDOWN_DELAY_MS = 8000;
+  console.log(`[shutdown] ${signal} received, broadcasting restart warning, exiting in ${SHUTDOWN_DELAY_MS}ms`);
+  io.emit('server_restart', { in_seconds: Math.floor(SHUTDOWN_DELAY_MS / 1000) });
+  setTimeout(() => {
+    io.close(() => {
+      server.close(() => {
+        console.log('[shutdown] clean exit');
+        process.exit(0);
+      });
+    });
+    // Hard exit fallback if close hangs
+    setTimeout(() => process.exit(0), 2000);
+  }, SHUTDOWN_DELAY_MS);
+}
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

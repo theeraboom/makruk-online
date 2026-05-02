@@ -122,6 +122,11 @@
       'footer.times': 'ครั้ง',
       'footer.people': 'คน',
 
+      'sys.restart.warn': '🔄 ระบบกำลังอัพเดท ขอ {sec} วินาที — ห้องอาจรีเซ็ต กรุณารอสักครู่',
+      'sys.disconnect': '🔌 ขาดการเชื่อมต่อ กำลังเชื่อมต่อใหม่...',
+      'sys.reconnected': '✓ เชื่อมต่อกลับมาแล้ว',
+      'sys.room_expired': 'ห้องนี้หมดอายุจากการอัพเดทระบบ — กลับสู่หน้าแรก',
+
       // Toast / errors
       'err.notYourTurn': 'ยังไม่ถึงตาคุณ',
       'err.invalidPos': 'ตำแหน่งไม่ถูกต้อง',
@@ -280,6 +285,11 @@
       'footer.online': 'Online now',
       'footer.times': '',
       'footer.people': '',
+
+      'sys.restart.warn': '🔄 Updating server in {sec}s — your room may reset, please hold on',
+      'sys.disconnect': '🔌 Disconnected, reconnecting...',
+      'sys.reconnected': '✓ Reconnected',
+      'sys.room_expired': 'Room expired due to a server update — returning to lobby',
 
       'err.notYourTurn': 'Not your turn',
       'err.invalidPos': 'Invalid position',

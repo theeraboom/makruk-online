@@ -259,6 +259,76 @@ socket.on('site_stats', ({ totalVisits, onlineUsers }) => {
   updateFooterStats();
 });
 
+// ============ Server status banner (graceful shutdown / reconnect) ============
+function ensureServerBanner() {
+  let el = document.getElementById('serverBanner');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'serverBanner';
+    document.body.appendChild(el);
+  }
+  return el;
+}
+function showBanner(text, kind, autoHideMs) {
+  const el = ensureServerBanner();
+  el.className = '';
+  el.classList.add(kind || 'info');
+  el.classList.add('show');
+  el.textContent = text;
+  if (autoHideMs) setTimeout(() => el.classList.remove('show'), autoHideMs);
+}
+function hideBanner() {
+  const el = document.getElementById('serverBanner');
+  if (el) el.classList.remove('show');
+}
+
+let restartCountdownTimer = null;
+socket.on('server_restart', ({ in_seconds }) => {
+  let remaining = in_seconds || 8;
+  if (restartCountdownTimer) clearInterval(restartCountdownTimer);
+  showBanner(I18N.t('sys.restart.warn').replace('{sec}', remaining), 'warn');
+  restartCountdownTimer = setInterval(() => {
+    remaining--;
+    if (remaining <= 0) {
+      clearInterval(restartCountdownTimer);
+      restartCountdownTimer = null;
+      return;
+    }
+    showBanner(I18N.t('sys.restart.warn').replace('{sec}', remaining), 'warn');
+  }, 1000);
+});
+
+let wasConnected = true;
+socket.on('disconnect', () => {
+  wasConnected = false;
+  showBanner(I18N.t('sys.disconnect'), 'warn');
+});
+let justReconnected = false;
+socket.on('connect', () => {
+  if (!wasConnected) {
+    wasConnected = true;
+    justReconnected = true;
+    setTimeout(() => { justReconnected = false; }, 5000);
+    // Re-join the same room with same password
+    const params = new URLSearchParams(location.search);
+    const roomId = params.get('id');
+    const password = params.get('pw') || sessionStorage.getItem('mk_pw_' + roomId) || '';
+    if (roomId) {
+      if (userName) socket.emit('set_name', userName);
+      socket.emit('join_room', { roomId, password });
+    }
+    showBanner(I18N.t('sys.reconnected'), 'ok', 2500);
+  }
+});
+
+// If room is gone after reconnect (server restarted, in-memory rooms lost), redirect to lobby
+socket.on('error_msg', (msg) => {
+  if (justReconnected && msg === 'ไม่พบห้องนี้') {
+    showBanner(I18N.t('sys.room_expired'), 'warn');
+    setTimeout(() => { location.href = '/'; }, 2500);
+  }
+});
+
 document.querySelectorAll('.reaction-btn').forEach((btn) => {
   btn.onclick = () => {
     const emoji = btn.dataset.emoji;
@@ -567,36 +637,45 @@ function getNoiseBuffer(ctx) {
   return buf;
 }
 
+let audioUnlocked = false;
 function ensureAudioCtx() {
   if (!audioCtx) {
     try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; }
   }
-  // iOS / Chrome mobile: context starts 'suspended', must resume from a user gesture
   if (audioCtx.state === 'suspended') {
     audioCtx.resume().catch(() => {});
   }
   return audioCtx;
 }
 
-// Unlock audio on first user interaction (required by iOS Safari, Chrome mobile)
-function unlockAudioOnce() {
+// iOS Safari / Chrome mobile: AudioContext is locked until first user gesture.
+// Keep retrying unlock on EVERY interaction until state === 'running'.
+function tryUnlockAudio() {
   const ctx = ensureAudioCtx();
-  if (ctx) {
-    // Play a silent buffer to fully unlock on iOS
-    try {
-      const buf = ctx.createBuffer(1, 1, 22050);
-      const src = ctx.createBufferSource();
-      src.buffer = buf;
-      src.connect(ctx.destination);
-      src.start(0);
-    } catch (e) {}
+  if (!ctx) return;
+  try {
+    // Play a silent 1-sample buffer — iOS unlock trick
+    const buf = ctx.createBuffer(1, 1, 22050);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(ctx.destination);
+    src.start(0);
+  } catch (e) {}
+  // Resume returns a Promise — when it resolves, mark unlocked + remove listeners
+  if (ctx.resume) {
+    ctx.resume().then(() => {
+      if (ctx.state === 'running' && !audioUnlocked) {
+        audioUnlocked = true;
+        ['touchstart', 'touchend', 'pointerdown', 'mousedown', 'click', 'keydown'].forEach((ev) => {
+          document.removeEventListener(ev, tryUnlockAudio, { capture: true });
+          document.removeEventListener(ev, tryUnlockAudio, true);
+        });
+      }
+    }).catch(() => {});
   }
-  ['touchstart', 'touchend', 'mousedown', 'click', 'keydown'].forEach((ev) => {
-    document.removeEventListener(ev, unlockAudioOnce, true);
-  });
 }
-['touchstart', 'touchend', 'mousedown', 'click', 'keydown'].forEach((ev) => {
-  document.addEventListener(ev, unlockAudioOnce, { capture: true, passive: true });
+['touchstart', 'touchend', 'pointerdown', 'mousedown', 'click', 'keydown'].forEach((ev) => {
+  document.addEventListener(ev, tryUnlockAudio, { capture: true, passive: true });
 });
 
 function playSound(type) {
