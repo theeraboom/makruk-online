@@ -585,6 +585,23 @@ document.querySelectorAll('#pieceOptions .theme-btn').forEach((btn) => {
   btn.onclick = () => applyPieceSet(btn.dataset.pieceset);
 });
 
+// Sound style picker: select + preview
+function applySoundStyle(style, preview) {
+  soundStyle = style;
+  localStorage.setItem('makruk_sound_style', style);
+  document.querySelectorAll('#soundStyleOptions .theme-btn').forEach((b) => {
+    b.classList.toggle('active', b.dataset.sound === style);
+  });
+  if (preview && soundEnabled) {
+    // Force-enable temporarily (in case user wants to hear even when sound is off)
+    playSound('move');
+  }
+}
+applySoundStyle(soundStyle, false);
+document.querySelectorAll('#soundStyleOptions .theme-btn').forEach((btn) => {
+  btn.onclick = () => applySoundStyle(btn.dataset.sound, true);
+});
+
 document.getElementById('resetBtn').onclick = () => {
   if (myRole !== 'w' && myRole !== 'b') {
     showToast(I18N.t('err.playerOnly'));
@@ -695,18 +712,30 @@ function tryUnlockAudio() {
   document.addEventListener(ev, tryUnlockAudio, { capture: true, passive: true });
 });
 
+// ============ Sound style presets ============
+let soundStyle = localStorage.getItem('makruk_sound_style') || 'pop';
+
+const SOUND_GENERATORS = {
+  pop:    (ctx, when, i) => popClick(ctx, when, i),
+  wood:   (ctx, when, i) => woodTap(ctx, when, i),
+  glass:  (ctx, when, i) => glassClink(ctx, when, i, 2400),
+  marble: (ctx, when, i) => marbleTap(ctx, when, i),
+  bell:   (ctx, when, i) => bellRing(ctx, when, i),
+  tap:    (ctx, when, i) => uiTap(ctx, when, i),
+};
+
 function playSound(type) {
   if (!soundEnabled) return;
   try {
     const ctx = ensureAudioCtx();
     if (!ctx) return;
     const now = ctx.currentTime;
+    const gen = SOUND_GENERATORS[soundStyle] || SOUND_GENERATORS.pop;
     if (type === 'move') {
-      glassClink(ctx, now, 1.0, 2400);
+      gen(ctx, now, 1.0);
     } else if (type === 'capture') {
-      // Two glasses, slightly different pitch
-      glassClink(ctx, now, 1.2, 2000);
-      glassClink(ctx, now + 0.05, 0.8, 2800);
+      gen(ctx, now, 1.3);
+      gen(ctx, now + 0.05, 0.7);
     } else if (type === 'chat') {
       tone(ctx, now, 880, 0.06);
     } else if (type === 'end') {
@@ -717,13 +746,56 @@ function playSound(type) {
   } catch (e) {}
 }
 
-// Glass clink: sharp impact + ringing harmonics (high-freq → great on mobile speakers)
+// ============ Sound generators ============
+// Pop: pitch drop, soft, modern UI feel
+function popClick(ctx, when, intensity) {
+  const out = audioOutput || ctx.destination;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(1200, when);
+  osc.frequency.exponentialRampToValueAtTime(400, when + 0.04);
+  gain.gain.setValueAtTime(0, when);
+  gain.gain.linearRampToValueAtTime(0.5 * intensity, when + 0.003);
+  gain.gain.exponentialRampToValueAtTime(0.001, when + 0.12);
+  osc.connect(gain).connect(out);
+  osc.start(when);
+  osc.stop(when + 0.13);
+}
+
+// Wood: warm 350Hz body + click attack (mid-freq, mobile-friendly)
+function woodTap(ctx, when, intensity) {
+  const out = audioOutput || ctx.destination;
+  const osc = ctx.createOscillator();
+  const oscGain = ctx.createGain();
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(350, when);
+  osc.frequency.exponentialRampToValueAtTime(180, when + 0.06);
+  oscGain.gain.setValueAtTime(0, when);
+  oscGain.gain.linearRampToValueAtTime(0.45 * intensity, when + 0.003);
+  oscGain.gain.exponentialRampToValueAtTime(0.001, when + 0.1);
+  osc.connect(oscGain).connect(out);
+  osc.start(when);
+  osc.stop(when + 0.11);
+  // Click attack
+  const noise = ctx.createBufferSource();
+  noise.buffer = getNoiseBuffer(ctx);
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.frequency.value = 1800;
+  filter.Q.value = 2;
+  const noiseGain = ctx.createGain();
+  noiseGain.gain.setValueAtTime(0.35 * intensity, when);
+  noiseGain.gain.exponentialRampToValueAtTime(0.001, when + 0.04);
+  noise.connect(filter).connect(noiseGain).connect(out);
+  noise.start(when);
+  noise.stop(when + 0.05);
+}
+
+// Glass: ringing harmonics (current default)
 function glassClink(ctx, when, intensity, fundamental) {
-  intensity = intensity || 1;
   fundamental = fundamental || 2400;
   const out = audioOutput || ctx.destination;
-
-  // 1. Initial impact transient — short noise burst
   const noise = ctx.createBufferSource();
   noise.buffer = getNoiseBuffer(ctx);
   const noiseFilter = ctx.createBiquadFilter();
@@ -735,14 +807,10 @@ function glassClink(ctx, when, intensity, fundamental) {
   noise.connect(noiseFilter).connect(noiseGain).connect(out);
   noise.start(when);
   noise.stop(when + 0.02);
-
-  // 2. Ringing harmonics (sine waves: clean, glass-like)
-  // Slight detuning between harmonics for natural shimmer
   const harmonics = [
-    { mult: 1.0,  gain: 0.45, decay: 0.45 }, // fundamental — strongest
-    { mult: 2.01, gain: 0.22, decay: 0.35 }, // 2nd harmonic (slightly sharp)
-    { mult: 3.04, gain: 0.12, decay: 0.25 }, // 3rd harmonic
-    { mult: 4.97, gain: 0.06, decay: 0.18 }, // sparkle
+    { mult: 1.0, gain: 0.45, decay: 0.45 },
+    { mult: 2.01, gain: 0.22, decay: 0.35 },
+    { mult: 3.04, gain: 0.12, decay: 0.25 },
   ];
   for (const h of harmonics) {
     const osc = ctx.createOscillator();
@@ -756,6 +824,75 @@ function glassClink(ctx, when, intensity, fundamental) {
     osc.start(when);
     osc.stop(when + h.decay + 0.05);
   }
+}
+
+// Marble: sharp 1500Hz click + brief ring
+function marbleTap(ctx, when, intensity) {
+  const out = audioOutput || ctx.destination;
+  // Sharp transient
+  const noise = ctx.createBufferSource();
+  noise.buffer = getNoiseBuffer(ctx);
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.frequency.value = 1500;
+  filter.Q.value = 4;
+  const noiseGain = ctx.createGain();
+  noiseGain.gain.setValueAtTime(0.55 * intensity, when);
+  noiseGain.gain.exponentialRampToValueAtTime(0.001, when + 0.025);
+  noise.connect(filter).connect(noiseGain).connect(out);
+  noise.start(when);
+  noise.stop(when + 0.03);
+  // Brief ring (square wave for snap)
+  const osc = ctx.createOscillator();
+  const oscGain = ctx.createGain();
+  osc.type = 'square';
+  osc.frequency.value = 1500;
+  oscGain.gain.setValueAtTime(0.18 * intensity, when);
+  oscGain.gain.exponentialRampToValueAtTime(0.001, when + 0.08);
+  osc.connect(oscGain).connect(out);
+  osc.start(when);
+  osc.stop(when + 0.09);
+}
+
+// Bell: soft musical chime
+function bellRing(ctx, when, intensity) {
+  const out = audioOutput || ctx.destination;
+  const fundamental = 600;
+  const harmonics = [
+    { mult: 1.0, gain: 0.4, decay: 0.6 },
+    { mult: 2.0, gain: 0.25, decay: 0.5 },
+    { mult: 3.0, gain: 0.15, decay: 0.4 },
+    { mult: 4.0, gain: 0.08, decay: 0.3 },
+  ];
+  for (const h of harmonics) {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = fundamental * h.mult;
+    gain.gain.setValueAtTime(0, when);
+    gain.gain.linearRampToValueAtTime(h.gain * intensity, when + 0.005);
+    gain.gain.exponentialRampToValueAtTime(0.001, when + h.decay);
+    osc.connect(gain).connect(out);
+    osc.start(when);
+    osc.stop(when + h.decay + 0.05);
+  }
+}
+
+// Tap: minimal UI tap (very short noise burst)
+function uiTap(ctx, when, intensity) {
+  const out = audioOutput || ctx.destination;
+  const noise = ctx.createBufferSource();
+  noise.buffer = getNoiseBuffer(ctx);
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.frequency.value = 800;
+  filter.Q.value = 1.5;
+  const noiseGain = ctx.createGain();
+  noiseGain.gain.setValueAtTime(0.6 * intensity, when);
+  noiseGain.gain.exponentialRampToValueAtTime(0.001, when + 0.025);
+  noise.connect(filter).connect(noiseGain).connect(out);
+  noise.start(when);
+  noise.stop(when + 0.03);
 }
 
 function tone(ctx, when, freq, dur) {
