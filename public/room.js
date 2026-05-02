@@ -567,11 +567,43 @@ function getNoiseBuffer(ctx) {
   return buf;
 }
 
+function ensureAudioCtx() {
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; }
+  }
+  // iOS / Chrome mobile: context starts 'suspended', must resume from a user gesture
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume().catch(() => {});
+  }
+  return audioCtx;
+}
+
+// Unlock audio on first user interaction (required by iOS Safari, Chrome mobile)
+function unlockAudioOnce() {
+  const ctx = ensureAudioCtx();
+  if (ctx) {
+    // Play a silent buffer to fully unlock on iOS
+    try {
+      const buf = ctx.createBuffer(1, 1, 22050);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(ctx.destination);
+      src.start(0);
+    } catch (e) {}
+  }
+  ['touchstart', 'touchend', 'mousedown', 'click', 'keydown'].forEach((ev) => {
+    document.removeEventListener(ev, unlockAudioOnce, true);
+  });
+}
+['touchstart', 'touchend', 'mousedown', 'click', 'keydown'].forEach((ev) => {
+  document.addEventListener(ev, unlockAudioOnce, { capture: true, passive: true });
+});
+
 function playSound(type) {
   if (!soundEnabled) return;
   try {
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const ctx = audioCtx;
+    const ctx = ensureAudioCtx();
+    if (!ctx) return;
     const now = ctx.currentTime;
     if (type === 'move') {
       woodClick(ctx, now, 1.8);
