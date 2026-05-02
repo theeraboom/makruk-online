@@ -666,21 +666,49 @@ function ensureAudioCtx() {
 }
 
 // iOS Safari / Chrome mobile: AudioContext is locked until first user gesture.
-// CRITICAL: iOS doesn't activate AudioSession from MUTED audio — must be unmuted
-// (volume can be 0 / data can be silent, but muted=true ignored). Without an
-// HTMLMediaElement actually playing, Web Audio output stays silent on iOS.
-let silentAudioEl = null;
-function getSilentAudio() {
-  if (silentAudioEl) return silentAudioEl;
-  silentAudioEl = document.createElement('audio');
-  silentAudioEl.setAttribute('playsinline', '');
-  // 1-second silent WAV (44.1kHz mono, 16-bit) — long enough to keep AudioSession active
-  // Generated: header + 44100 zero samples
-  silentAudioEl.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
-  silentAudioEl.loop = true;       // keep AudioSession active continuously
-  silentAudioEl.volume = 0.0001;   // virtually silent but NOT muted
-  return silentAudioEl;
+// CRITICAL: iOS only activates AudioSession when an HTMLMediaElement plays
+// REAL audio data (with actual samples, not just a header). We generate a
+// 2-second silent WAV via Blob and loop it to keep the session alive.
+function buildSilentWavBlobUrl(seconds) {
+  const sampleRate = 8000;
+  const numSamples = Math.floor(sampleRate * seconds);
+  const dataSize = numSamples; // 8-bit mono = 1 byte per sample
+  const total = 44 + dataSize;
+  const buf = new ArrayBuffer(total);
+  const v = new DataView(buf);
+  // RIFF header
+  v.setUint32(0, 0x52494646, false);     // "RIFF"
+  v.setUint32(4, total - 8, true);
+  v.setUint32(8, 0x57415645, false);     // "WAVE"
+  // fmt chunk
+  v.setUint32(12, 0x666d7420, false);    // "fmt "
+  v.setUint32(16, 16, true);             // chunk size
+  v.setUint16(20, 1, true);              // PCM
+  v.setUint16(22, 1, true);              // mono
+  v.setUint32(24, sampleRate, true);
+  v.setUint32(28, sampleRate, true);     // byte rate
+  v.setUint16(32, 1, true);              // block align
+  v.setUint16(34, 8, true);              // bits per sample
+  // data chunk
+  v.setUint32(36, 0x64617461, false);    // "data"
+  v.setUint32(40, dataSize, true);
+  // 8-bit unsigned silence = 128 (mid-point)
+  for (let i = 44; i < total; i++) v.setUint8(i, 128);
+  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
 }
+// Pre-create silent audio at init — DOM-attached, preloaded, ready to play in
+// the very first gesture handler synchronously (iOS rule)
+const silentAudioEl = document.createElement('audio');
+silentAudioEl.setAttribute('playsinline', '');
+silentAudioEl.setAttribute('webkit-playsinline', '');
+silentAudioEl.src = buildSilentWavBlobUrl(3);
+silentAudioEl.loop = true;
+silentAudioEl.volume = 0.01;
+silentAudioEl.preload = 'auto';
+silentAudioEl.style.cssText = 'position:absolute;width:1px;height:1px;left:-9999px;';
+if (document.body) document.body.appendChild(silentAudioEl);
+else document.addEventListener('DOMContentLoaded', () => document.body.appendChild(silentAudioEl));
+function getSilentAudio() { return silentAudioEl; }
 function tryUnlockAudio() {
   const ctx = ensureAudioCtx();
   if (!ctx) return;
