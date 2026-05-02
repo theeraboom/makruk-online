@@ -638,23 +638,23 @@ function getNoiseBuffer(ctx) {
 }
 
 let audioUnlocked = false;
-let audioOutput = null; // master output node — all sounds connect here, NOT to ctx.destination
+let audioOutput = null; // master input node — all sounds connect here
 function ensureAudioCtx() {
   if (!audioCtx) {
     try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; }
-    // Master chain: sources → compressor → gain → destination
-    // Compressor prevents clipping when boosting volume; gain makes it loud enough on mobile
+    // Chain: sources → BIG GAIN (~30x) → brick-wall LIMITER → destination
+    // Limiter sits AFTER gain so we can boost hard without clipping
     try {
-      const compressor = audioCtx.createDynamicsCompressor();
-      compressor.threshold.value = -10;
-      compressor.knee.value = 8;
-      compressor.ratio.value = 4;
-      compressor.attack.value = 0.001;
-      compressor.release.value = 0.05;
       const masterGain = audioCtx.createGain();
-      masterGain.gain.value = 3.0; // 3x boost — needed for mobile speakers
-      compressor.connect(masterGain).connect(audioCtx.destination);
-      audioOutput = compressor;
+      masterGain.gain.value = 30.0; // ~+30dB — much louder for mobile speakers
+      const limiter = audioCtx.createDynamicsCompressor();
+      limiter.threshold.value = -1;   // engage just below 0 dBFS
+      limiter.knee.value = 0;          // hard knee
+      limiter.ratio.value = 20;        // brick-wall limiter
+      limiter.attack.value = 0.001;
+      limiter.release.value = 0.05;
+      masterGain.connect(limiter).connect(audioCtx.destination);
+      audioOutput = masterGain;
     } catch (e) {
       audioOutput = audioCtx.destination;
     }
