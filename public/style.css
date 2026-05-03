@@ -893,7 +893,11 @@ html[data-theme="dark"] .info-card:hover::after { opacity: 0.35; }
 
 /* Chess board */
 .board-wrapper {
+  width: 100%;
+  max-width: 728px;
+  margin: 0 auto;
   padding: 14px;
+  box-sizing: border-box;
   background: linear-gradient(135deg, #5A3A1A, #3E2A12);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
@@ -901,14 +905,16 @@ html[data-theme="dark"] .info-card:hover::after { opacity: 0.35; }
 
 .board {
   display: grid;
-  grid-template-columns: repeat(8, 56px);
-  grid-template-rows: repeat(8, 56px);
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(8, 1fr);
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  container-type: inline-size;
   border-radius: 4px;
   overflow: hidden;
 }
 
 @media (max-width: 600px) {
-  .board { grid-template-columns: repeat(8, 40px); grid-template-rows: repeat(8, 40px); }
   .square { font-size: 26px !important; }
 }
 
@@ -916,7 +922,7 @@ html[data-theme="dark"] .info-card:hover::after { opacity: 0.35; }
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 38px;
+  font-size: 8.5cqw;
   cursor: pointer;
   position: relative;
   user-select: none;
@@ -1141,8 +1147,13 @@ body[data-board-theme="gray"] .dark .sq-label { color: #FFF; }
   gap: 8px;
   align-items: center;
   flex-wrap: wrap;
+  justify-content: center;
   width: 100%;
-  max-width: 520px;
+  max-width: 728px;
+  margin: 0 auto;
+}
+@media (min-width: 720px) {
+  .game-controls { flex-wrap: nowrap; }
 }
 .game-controls .viewer-count {
   margin-left: auto;
