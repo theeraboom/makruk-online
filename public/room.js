@@ -72,6 +72,7 @@ let lastMoveCount = 0;
 let soundEnabled = localStorage.getItem('makruk_sound') !== 'off';
 let boardTheme = localStorage.getItem('makruk_theme') || 'wood';
 let pieceSet = localStorage.getItem('makruk_pieceset') || 'classic';
+if (pieceSet === 'thai-shell' || pieceSet === 'thai-temple') pieceSet = 'thai-real';
 
 const userName = localStorage.getItem('makruk_name') || '';
 if (userName) socket.emit('set_name', userName);

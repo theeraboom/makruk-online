@@ -1087,17 +1087,11 @@ body[data-board-theme="gray"] .dark .sq-label { color: #FFF; }
 .square.piece-set-thai-carved .ps-svg g { stroke: #1a1a1a; stroke-width: 1.2; }
 .square.piece-set-thai-carved.piece-b .ps-svg g { stroke: #000; }
 
-/* Thai Shell — เบี้ยหอย (cowrie pawn + smooth turned wood) */
-.square.piece-set-thai-shell.piece-w { color: #F8F4E8; text-shadow: none; }
-.square.piece-set-thai-shell.piece-b { color: #2A2018; text-shadow: none; }
-.square.piece-set-thai-shell .ps-svg g { stroke: #1a1a1a; stroke-width: 1.2; }
-.square.piece-set-thai-shell.piece-b .ps-svg g { stroke: #000; }
-
-/* Thai Temple — เจดีย์/ปราสาท */
-.square.piece-set-thai-temple.piece-w { color: #F5F2E8; text-shadow: none; }
-.square.piece-set-thai-temple.piece-b { color: #2A2A2A; text-shadow: none; }
-.square.piece-set-thai-temple .ps-svg g { stroke: #1a1a1a; stroke-width: 1.2; }
-.square.piece-set-thai-temple.piece-b .ps-svg g { stroke: #000; }
+/* Thai Real — หมากไทยแท้ (turned-wood multi-tier finials, disc pawn) */
+.square.piece-set-thai-real.piece-w { color: #F5F2E8; text-shadow: none; }
+.square.piece-set-thai-real.piece-b { color: #2A2A2A; text-shadow: none; }
+.square.piece-set-thai-real .ps-svg g { stroke: #1a1a1a; stroke-width: 1.2; }
+.square.piece-set-thai-real.piece-b .ps-svg g { stroke: #000; }
 
 /* Thai Letters */
 .ps-letter {
