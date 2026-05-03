@@ -147,7 +147,6 @@ socket.on('room_state', (state) => {
   document.getElementById('playerW').classList.toggle('active', currentPlayer === 'w' && status === 'playing');
   document.getElementById('playerB').classList.toggle('active', currentPlayer === 'b' && status === 'playing');
 
-  document.getElementById('viewerCount').textContent = state.viewerCount;
   updateViewersList(state.viewers || [], state.viewerCount);
 
   updateStatus();
