@@ -894,7 +894,7 @@ html[data-theme="dark"] .info-card:hover::after { opacity: 0.35; }
 /* Chess board */
 .board-wrapper {
   width: 100%;
-  max-width: 580px;
+  max-width: 550px;
   margin: 0 auto;
   padding: 14px;
   box-sizing: border-box;
