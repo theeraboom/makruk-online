@@ -19,7 +19,15 @@ const roomId = params.get('id');
 const initialPw = params.get('pw') || null;
 if (!roomId) window.location.href = '/';
 
-const socket = io();
+const socket = io({
+  reconnection: true,
+  reconnectionAttempts: Infinity,        // keep trying forever
+  reconnectionDelay: 1000,               // start with 1s
+  reconnectionDelayMax: 10000,           // cap at 10s between retries
+  randomizationFactor: 0.3,
+  timeout: 20000,                        // 20s to establish connection
+  transports: ['websocket', 'polling'],
+});
 document.getElementById('langToggleBtn').onclick = () => I18N.toggleLang();
 document.addEventListener('langchange', () => {
   updateRoleBadge();

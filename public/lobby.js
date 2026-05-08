@@ -6,7 +6,14 @@ const CHECKERS_SYMBOLS = {
   'wM': '⛂', 'wK': '⛃', 'bM': '⛂', 'bK': '⛃'
 };
 
-const socket = io();
+const socket = io({
+  reconnection: true,
+  reconnectionAttempts: Infinity,
+  reconnectionDelay: 1000,
+  reconnectionDelayMax: 10000,
+  timeout: 20000,
+  transports: ['websocket', 'polling'],
+});
 
 document.getElementById('langToggleBtn').onclick = () => I18N.toggleLang();
 document.addEventListener('langchange', () => { socket.emit('list_rooms'); });

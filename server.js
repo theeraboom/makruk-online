@@ -21,7 +21,16 @@ const ALLOWED_BOT_DIFFICULTIES = ['easy', 'medium', 'hard'];
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+  // Resilient for mobile backgrounding + Render free-tier network
+  pingInterval: 25000,    // server pings every 25s
+  pingTimeout: 60000,     // wait 60s for pong before declaring disconnect (mobile-friendly)
+  transports: ['websocket', 'polling'],  // allow polling fallback
+  connectionStateRecovery: {
+    maxDisconnectionDuration: 2 * 60 * 1000,  // 2 min — recover state if reconnect within 2 min
+    skipMiddlewares: true,
+  },
+});
 
 const rooms = new Map();
 const ALLOWED_REACTIONS = ['👍', '👏', '🔥', '😱', '♟', '🎉', '❤️', '🤔'];
@@ -420,6 +429,19 @@ app.use((req, res, next) => {
     }).catch(() => {});
   }
   next();
+});
+
+// Health endpoint for uptime monitors (UptimeRobot, cron-job.org, etc.)
+// Hitting this every 5-10 min prevents Render free tier from sleeping.
+app.get('/health', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({
+    status: 'ok',
+    uptime: process.uptime(),
+    rooms: rooms.size,
+    onlineUsers,
+    timestamp: Date.now(),
+  });
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
