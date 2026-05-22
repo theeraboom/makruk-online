@@ -20,8 +20,20 @@ document.addEventListener('langchange', () => { socket.emit('list_rooms'); });
 const nameInput = document.getElementById('nameInput');
 const saveNameBtn = document.getElementById('saveName');
 
+// Persistent UID (shared with room.js) so slot reclaim works across reconnects
+let userUid = localStorage.getItem('makruk_uid');
+if (!userUid) {
+  userUid = 'u_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+  localStorage.setItem('makruk_uid', userUid);
+}
 const savedName = localStorage.getItem('makruk_name') || '';
 nameInput.value = savedName;
+// Re-send identity on every connect (initial + reconnects)
+socket.on('connect', () => {
+  socket.emit('set_uid', userUid);
+  if (savedName) socket.emit('set_name', savedName);
+});
+socket.emit('set_uid', userUid);
 if (savedName) socket.emit('set_name', savedName);
 
 saveNameBtn.onclick = () => {

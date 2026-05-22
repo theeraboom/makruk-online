@@ -82,7 +82,27 @@ let boardTheme = localStorage.getItem('makruk_theme') || 'wood';
 let pieceSet = localStorage.getItem('makruk_pieceset') || 'classic';
 if (pieceSet === 'thai-shell' || pieceSet === 'thai-temple' || pieceSet === 'thai-real') pieceSet = 'classic';
 
+// Persistent UID so slot reclaim works even for anonymous users across reconnects
+let userUid = localStorage.getItem('makruk_uid');
+if (!userUid) {
+  userUid = 'u_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+  localStorage.setItem('makruk_uid', userUid);
+}
 const userName = localStorage.getItem('makruk_name') || '';
+// Send identity + join_room. On reconnect, do the same so the new server
+// socket knows our UID/name and we get placed back in our slot.
+let isFirstConnect = true;
+socket.on('connect', () => {
+  socket.emit('set_uid', userUid);
+  if (userName) socket.emit('set_name', userName);
+  if (!isFirstConnect) {
+    // reconnection — re-emit join_room so server reclaims our slot
+    socket.emit('join_room', { roomId, password: initialPw });
+  }
+  isFirstConnect = false;
+});
+// Initial emit (Socket.IO queues until first connect; ordering preserved)
+socket.emit('set_uid', userUid);
 if (userName) socket.emit('set_name', userName);
 socket.emit('join_room', { roomId, password: initialPw });
 

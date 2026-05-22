@@ -276,8 +276,8 @@ function snapshotRoom(room) {
     // Players: keep names + isBot, drop socket id (will be reclaimed on reconnect)
     // disconnectedAt timestamp lets us detect stale slots within reclaim window
     players: {
-      w: room.players.w ? { name: room.players.w.name, isBot: !!room.players.w.isBot, botDifficulty: room.players.w.botDifficulty || null, disconnectedAt: Date.now() } : null,
-      b: room.players.b ? { name: room.players.b.name, isBot: !!room.players.b.isBot, botDifficulty: room.players.b.botDifficulty || null, disconnectedAt: Date.now() } : null,
+      w: room.players.w ? { name: room.players.w.name, uid: room.players.w.uid || null, isBot: !!room.players.w.isBot, botDifficulty: room.players.w.botDifficulty || null, disconnectedAt: Date.now() } : null,
+      b: room.players.b ? { name: room.players.b.name, uid: room.players.b.uid || null, isBot: !!room.players.b.isBot, botDifficulty: room.players.b.botDifficulty || null, disconnectedAt: Date.now() } : null,
     },
     // Keep last 50 messages so chat survives restart (cheap, useful)
     messages: (room.messages || []).slice(-50),
@@ -514,13 +514,21 @@ function pushSystemMessage(room, key, params) {
 }
 
 io.on('connection', (socket) => {
-  socket.data.user = { name: 'Anon-' + socket.id.slice(0, 4) };
+  socket.data.user = { name: 'Anon-' + socket.id.slice(0, 4), uid: null };
   onlineUsers++;
   io.emit('site_stats', { totalVisits, onlineUsers });
 
   socket.on('set_name', (name) => {
     if (typeof name === 'string' && name.trim()) {
       socket.data.user.name = name.trim().slice(0, 24);
+    }
+  });
+
+  // Persistent user ID — stable across reconnects so slot reclaim works
+  // even when the user has no saved name (random Anon-XXXX changes each connect)
+  socket.on('set_uid', (uid) => {
+    if (typeof uid === 'string' && /^[a-zA-Z0-9_-]{8,64}$/.test(uid)) {
+      socket.data.user.uid = uid;
     }
   });
 
@@ -579,13 +587,26 @@ io.on('connection', (socket) => {
     socket.join(roomId);
     socket.data.roomId = roomId;
 
-    // Slot reclaim: if user's name matches a recently-disconnected slot, reclaim it
+    // Slot reclaim: match by UID first (stable across reconnects), fall back to name
     const userName = socket.data.user.name;
+    const userUid = socket.data.user.uid;
     const now = Date.now();
     const isReclaimable = (slot) => {
       const p = room.players[slot];
-      if (!p || p.isBot || p.id) return false;
-      if (p.name !== userName) return false;
+      if (!p || p.isBot) return false;
+      // Match by UID (preferred) or name (fallback for legacy slots without uid)
+      const sameUser = (userUid && p.uid) ? (p.uid === userUid) : (p.name === userName);
+      if (!sameUser) return false;
+      // Idempotent: already us
+      if (p.id === socket.id) return true;
+      // Slot has stale socket id (old socket dropped but disconnect handler not yet run, or different tab)
+      // If old socket isn't in the connected set, treat as reclaimable
+      if (p.id) {
+        const oldSocket = io.sockets.sockets.get(p.id);
+        if (!oldSocket) return true;
+        return false; // someone else with same uid is actively connected (e.g. second tab)
+      }
+      // No active socket — reclaim if within window
       if (p.disconnectedAt && (now - p.disconnectedAt > RECLAIM_WINDOW_MS)) return false;
       return true;
     };
@@ -605,19 +626,19 @@ io.on('connection', (socket) => {
 
     let role;
     if (isReclaimable('w')) {
-      room.players.w = { id: socket.id, name: userName };
+      room.players.w = { id: socket.id, name: userName, uid: userUid };
       role = 'w';
     } else if (isReclaimable('b')) {
-      room.players.b = { id: socket.id, name: userName };
+      room.players.b = { id: socket.id, name: userName, uid: userUid };
       role = 'b';
     } else if (slotEmpty(preferred)) {
-      room.players[preferred] = { id: socket.id, name: userName };
+      room.players[preferred] = { id: socket.id, name: userName, uid: userUid };
       role = preferred;
     } else if (slotEmpty(other)) {
-      room.players[other] = { id: socket.id, name: userName };
+      room.players[other] = { id: socket.id, name: userName, uid: userUid };
       role = other;
     } else {
-      room.viewers.set(socket.id, { name: userName });
+      room.viewers.set(socket.id, { name: userName, uid: userUid });
       role = 'viewer';
     }
 
@@ -760,10 +781,10 @@ io.on('connection', (socket) => {
     // Mark slot as disconnected (for reclaim window) instead of clearing entirely
     // — name is kept so the same user can reclaim within RECLAIM_WINDOW_MS
     if (role === 'w' && room.players.w && room.players.w.id === socket.id) {
-      room.players.w = { name: room.players.w.name, isBot: false, id: null, disconnectedAt: Date.now() };
+      room.players.w = { name: room.players.w.name, uid: room.players.w.uid || null, isBot: false, id: null, disconnectedAt: Date.now() };
       removed = true;
     } else if (role === 'b' && room.players.b && room.players.b.id === socket.id) {
-      room.players.b = { name: room.players.b.name, isBot: false, id: null, disconnectedAt: Date.now() };
+      room.players.b = { name: room.players.b.name, uid: room.players.b.uid || null, isBot: false, id: null, disconnectedAt: Date.now() };
       removed = true;
     } else if (role === 'viewer') {
       room.viewers.delete(socket.id);
