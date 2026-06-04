@@ -26,6 +26,7 @@
       'gt.chess-intl': '♚ หมากรุกสากล',
       'gt.checkers': '⛂ หมากฮอสไทย',
       'gt.checkers-intl': '⛀ หมากฮอสสากล',
+      'gt.connect4': '🔴 Connect Four',
       'create.roomName': 'ตั้งชื่อห้อง',
       'create.timeBase': '⏱ เวลารวมต่อฝ่าย',
       'create.timeIncrement': '➕ เพิ่มต่อตา',
@@ -45,6 +46,8 @@
       'create.userColor': '🎭 ฝ่ายของคุณ',
       'side.white': '⚪ ขาว (เดินก่อน)',
       'side.black': '⚫ ดำ',
+      'side.yellow': '🟡 เหลือง (เดินก่อน)',
+      'side.red': '🔴 แดง',
       'create.button': '+ เปิดวงเล่นใหม่',
 
       // Rooms list
@@ -65,7 +68,7 @@
       'how.1': '<strong>🤝 เล่นกับเพื่อน</strong> — เปิดวงใหม่ แชร์ลิ้งค์ให้เพื่อน 2 คนแรกได้เล่น คนถัดไปดู+แชทได้เลย',
       'how.2': '<strong>🤖 ฝึกซ้อมกับ AI Bot</strong> — ติ๊ก "เล่นกับ Bot" ตอนสร้างห้อง เลือกได้ 3 ระดับ ง่าย / กลาง / ยาก',
       'how.3': '<strong>🔒 ห้องส่วนตัว</strong> — ตั้งรหัสตอนสร้างวง แชร์ลิ้งค์ + รหัสให้เพื่อน เฉพาะคนที่มีรหัสเข้าได้ (ทั้งผู้เล่นและคนดู)',
-      'rulesShort.title': '♟ กฎทั้ง 4 เกม ฉบับย่อ',
+      'rulesShort.title': '♟ กฎทั้ง 5 เกม ฉบับย่อ',
       'rulesShort.read': 'อ่านประวัติและกติกาเต็ม →',
 
       // Room — players bar
@@ -151,6 +154,20 @@
       'default.chess-intl': 'วงหมากรุกสากล',
       'default.checkers': 'วงหมากฮอสไทย',
       'default.checkers-intl': 'วงหมากฮอสสากล',
+      'default.connect4': 'วง Connect Four',
+
+      // Connect Four (เหลือง vs แดง)
+      'c4.side.y': 'ฝ่ายเหลือง',
+      'c4.side.r': 'ฝ่ายแดง',
+      'c4.turnY': '🟡 ตาฝ่ายเหลือง',
+      'c4.turnR': '🔴 ตาฝ่ายแดง',
+      'c4.role.y': '🟡 คุณคือฝ่ายเหลือง',
+      'c4.role.r': '🔴 คุณคือฝ่ายแดง',
+      'c4.win': '🏆 {side} ชนะ! (เรียง 4 ติดกัน)',
+      'c4.joined.w': '{name} เข้าร่วมเป็นฝ่ายเหลือง',
+      'c4.joined.b': '{name} เข้าร่วมเป็นฝ่ายแดง',
+      'c4.left.w': '{name} (เหลือง) ออกจากห้อง',
+      'c4.left.b': '{name} (แดง) ออกจากห้อง',
 
       // Bot display names
       'bot.name.easy': '🤖 Bot (ง่าย)',
@@ -171,6 +188,8 @@
       'sys.reset': '{user} เริ่มเกมใหม่ 🔁',
       'sys.no_pieces': '🏆 {winner_side} ชนะ — เก็บหมากหมด!',
       'sys.no_moves': '🏆 {winner_side} ชนะ — อีกฝ่ายเดินไม่ได้',
+      'sys.connect4': '🎉 ต่อกัน 4 ตัว! {winner_side} ชนะ',
+      'sys.draw': '🤝 กระดานเต็ม — เสมอ',
     },
 
     en: {
@@ -196,6 +215,7 @@
       'gt.chess-intl': '♚ International Chess',
       'gt.checkers': '⛂ Thai Checkers',
       'gt.checkers-intl': '⛀ International Checkers',
+      'gt.connect4': '🔴 Connect Four',
       'create.roomName': 'Room name',
       'create.timeBase': '⏱ Time per side',
       'create.timeIncrement': '➕ Increment per move',
@@ -215,6 +235,8 @@
       'create.userColor': '🎭 Your side',
       'side.white': '⚪ White (moves first)',
       'side.black': '⚫ Black',
+      'side.yellow': '🟡 Yellow (moves first)',
+      'side.red': '🔴 Red',
       'create.button': '+ Open new room',
 
       'rooms.heading': 'Live rooms',
@@ -233,7 +255,7 @@
       'how.1': '<strong>🤝 Play with friends</strong> — open a room, share the link. First 2 join as players, others watch + chat.',
       'how.2': '<strong>🤖 Practice vs AI Bot</strong> — check "Play vs Bot" when creating a room. Choose from 3 difficulty levels.',
       'how.3': '<strong>🔒 Private room</strong> — set a password when creating the room, share the link + password with friends. Anyone with the password can join as a player or viewer.',
-      'rulesShort.title': '♟ All 4 games — quick reference',
+      'rulesShort.title': '♟ All 5 games — quick reference',
       'rulesShort.read': 'Read full history & rules →',
 
       'player.waiting': 'Waiting for player',
@@ -312,6 +334,20 @@
       'default.chess-intl': 'International Chess Room',
       'default.checkers': 'Thai Checkers Room',
       'default.checkers-intl': 'English Checkers Room',
+      'default.connect4': 'Connect Four Room',
+
+      // Connect Four (yellow vs red)
+      'c4.side.y': 'Yellow',
+      'c4.side.r': 'Red',
+      'c4.turnY': '🟡 Yellow to move',
+      'c4.turnR': '🔴 Red to move',
+      'c4.role.y': '🟡 You play Yellow',
+      'c4.role.r': '🔴 You play Red',
+      'c4.win': '🏆 {side} wins! (four in a row)',
+      'c4.joined.w': '{name} joined as Yellow',
+      'c4.joined.b': '{name} joined as Red',
+      'c4.left.w': '{name} (Yellow) left the room',
+      'c4.left.b': '{name} (Red) left the room',
 
       'bot.name.easy': '🤖 Bot (Easy)',
       'bot.name.medium': '🤖 Bot (Medium)',
@@ -330,6 +366,8 @@
       'sys.reset': '{user} started a new game 🔁',
       'sys.no_pieces': '🏆 {winner_side} wins — captured all pieces!',
       'sys.no_moves': '🏆 {winner_side} wins — opponent has no moves',
+      'sys.connect4': '🎉 Four in a row! {winner_side} wins',
+      'sys.draw': '🤝 Board full — draw',
     },
   };
 

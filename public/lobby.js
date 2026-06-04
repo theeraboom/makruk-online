@@ -59,13 +59,28 @@ const GAME_TYPE_LABELS = {
   'chess-intl': 'วงหมากรุกสากล',
   'checkers': 'วงหมากฮอสไทย',
   'checkers-intl': 'วงหมากฮอสสากล',
+  'connect4': 'Connect Four',
 };
+// Side picker labels switch between chess/checkers (white/black) and connect4 (yellow/red)
+function updateSidePickerLabels() {
+  const wBtn = document.querySelector('#userColorOptions .tc-btn[data-uc="w"]');
+  const bBtn = document.querySelector('#userColorOptions .tc-btn[data-uc="b"]');
+  if (!wBtn || !bBtn) return;
+  const wKey = selectedGameType === 'connect4' ? 'side.yellow' : 'side.white';
+  const bKey = selectedGameType === 'connect4' ? 'side.red' : 'side.black';
+  wBtn.setAttribute('data-i18n', wKey);
+  bBtn.setAttribute('data-i18n', bKey);
+  wBtn.textContent = I18N.t(wKey);
+  bBtn.textContent = I18N.t(bKey);
+}
+
 document.querySelectorAll('#gameTypeOptions .tc-btn').forEach((btn) => {
   btn.onclick = () => {
     document.querySelectorAll('#gameTypeOptions .tc-btn').forEach((b) => b.classList.remove('active'));
     btn.classList.add('active');
     selectedGameType = btn.dataset.gt;
     newRoomInput.placeholder = I18N.t('create.roomName') + ' (' + I18N.t('gt.' + selectedGameType) + ')';
+    updateSidePickerLabels();
   };
 });
 
@@ -285,6 +300,7 @@ function formatTimeControl(base, inc) {
 
 function renderMiniBoard(board, gameType) {
   if (!board) return '<div class="mini-board-empty">♟</div>';
+  if (gameType === 'connect4') return renderMiniConnect4(board);
   const isCheckers = gameType === 'checkers' || gameType === 'checkers-intl';
   const symbols = isCheckers ? CHECKERS_SYMBOLS : CHESS_SYMBOLS;
   let html = '<div class="mini-board">';
@@ -295,6 +311,20 @@ function renderMiniBoard(board, gameType) {
       const sym = piece ? (symbols[piece] || '') : '';
       const colorClass = piece ? (piece[0] === 'w' ? 'mb-w' : 'mb-b') : '';
       html += `<div class="mb-sq ${sqClass} ${colorClass}">${sym}</div>`;
+    }
+  }
+  html += '</div>';
+  return html;
+}
+
+function renderMiniConnect4(board) {
+  const ROWS = board.length, COLS = board[0] ? board[0].length : 7;
+  let html = '<div class="mini-board mini-connect4">';
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const p = board[r][c];
+      const cls = p === 'Y' ? 'mc4-y' : p === 'R' ? 'mc4-r' : '';
+      html += `<div class="mc4-cell"><div class="mc4-hole ${cls}"></div></div>`;
     }
   }
   html += '</div>';
