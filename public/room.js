@@ -9,9 +9,11 @@ function getEngine() {
   if (gameType === 'checkers') return Checkers;
   if (gameType === 'checkers-intl') return CheckersIntl;
   if (gameType === 'chess-intl') return ChessIntl;
+  if (gameType === 'connect4') return Connect4;
   return Chess;
 }
 function isCheckersGame() { return gameType === 'checkers' || gameType === 'checkers-intl'; }
+function isConnect4Game() { return gameType === 'connect4'; }
 function getSymbols() { return isCheckersGame() ? CHECKERS_SYMBOLS : CHESS_SYMBOLS; }
 
 const params = new URLSearchParams(window.location.search);
@@ -77,6 +79,8 @@ let endedReason = null;
 let endedWinner = null;
 let moves = [];
 let lastMoveCount = 0;
+let winCells = null;          // connect4: winning 4-in-a-row cells to highlight
+let c4AnimatedCount = 0;      // connect4: # of drops already animated (avoid re-animating on re-render)
 let soundEnabled = localStorage.getItem('makruk_sound') !== 'off';
 let boardTheme = localStorage.getItem('makruk_theme') || 'wood';
 let pieceSet = localStorage.getItem('makruk_pieceset') || 'classic';
@@ -127,13 +131,20 @@ socket.on('room_state', (state) => {
   const prevStatus = status;
   gameType = state.gameType || 'chess';
   const labelEl = document.getElementById('roomGameTypeLabel');
-  const gameLabels = { 'chess': 'หมากรุกไทย', 'chess-intl': 'หมากรุกสากล', 'checkers': 'หมากฮอสไทย', 'checkers-intl': 'หมากฮอสสากล' };
+  const gameLabels = { 'chess': 'หมากรุกไทย', 'chess-intl': 'หมากรุกสากล', 'checkers': 'หมากฮอสไทย', 'checkers-intl': 'หมากฮอสสากล', 'connect4': 'Connect Four' };
   if (labelEl) labelEl.textContent = gameLabels[gameType] || 'Playmakruk.com';
   document.querySelectorAll('.rule-list').forEach((el) => {
     el.hidden = !el.classList.contains('rl-' + gameType);
   });
   const piecePicker = document.getElementById('piecePicker');
-  if (piecePicker) piecePicker.hidden = isCheckersGame();
+  if (piecePicker) piecePicker.hidden = isCheckersGame() || isConnect4Game();
+  // Connect Four has fixed orientation (gravity) & no piece sets/themes
+  const flipBtn = document.getElementById('flipBtn');
+  if (flipBtn) flipBtn.hidden = isConnect4Game();
+  const themePicker = document.querySelector('.theme-picker:not(.piece-picker)');
+  if (themePicker) themePicker.hidden = isConnect4Game();
+  const boardWrapper = document.getElementById('boardWrapper');
+  if (boardWrapper) boardWrapper.classList.toggle('connect4', isConnect4Game());
   board = state.board;
   currentPlayer = state.currentPlayer;
   status = state.status;
@@ -147,6 +158,7 @@ socket.on('room_state', (state) => {
   runningSince = state.runningSince;
   endedReason = state.endedReason;
   endedWinner = state.endedWinner;
+  winCells = state.winCells || null;
   moves = state.moves || [];
 
   if (moves.length > lastMoveCount && prevStatus === 'playing') {
@@ -178,6 +190,7 @@ socket.on('room_state', (state) => {
 
   updateViewersList(state.viewers || [], state.viewerCount);
 
+  updateRoleBadge();
   updateStatus();
   render();
 });
@@ -381,6 +394,13 @@ function spawnFloatingReaction(emoji) {
 
 function updateRoleBadge() {
   const badge = document.getElementById('roleBadge');
+  if (isConnect4Game()) {
+    if (myRole === 'w') { badge.textContent = I18N.t('c4.role.y'); badge.className = 'role-badge w'; }
+    else if (myRole === 'b') { badge.textContent = I18N.t('c4.role.r'); badge.className = 'role-badge b'; }
+    else if (myRole === 'viewer') { badge.textContent = I18N.t('role.viewer'); badge.className = 'role-badge viewer'; }
+    else { badge.textContent = I18N.t('role.connecting'); badge.className = 'role-badge'; }
+    return;
+  }
   if (myRole === 'w') { badge.textContent = I18N.t('role.w'); badge.className = 'role-badge w'; }
   else if (myRole === 'b') { badge.textContent = I18N.t('role.b'); badge.className = 'role-badge b'; }
   else if (myRole === 'viewer') { badge.textContent = I18N.t('role.viewer'); badge.className = 'role-badge viewer'; }
@@ -391,6 +411,23 @@ function updateStatus() {
   const el = document.getElementById('status');
   el.className = 'status-pill';
   const lang = I18N.getLang();
+  if (isConnect4Game()) {
+    const cSide = (c) => I18N.t(c === 'w' ? 'c4.side.y' : 'c4.side.r');
+    if (status === 'waiting') {
+      el.textContent = I18N.t('status.waiting');
+      el.classList.add('waiting');
+    } else if (status === 'ended') {
+      const w = cSide(endedWinner);
+      if (endedReason === 'draw') el.textContent = lang === 'th' ? '🤝 เสมอ (กระดานเต็ม)' : '🤝 Draw (board full)';
+      else if (endedReason === 'resign') el.textContent = lang === 'th' ? `🏳 ${w} ชนะ (อีกฝ่ายยอมแพ้)` : `🏳 ${w} wins (opponent resigned)`;
+      else if (endedReason === 'timeout') el.textContent = lang === 'th' ? `⏰ ${w} ชนะ (หมดเวลา)` : `⏰ ${w} wins (timeout)`;
+      else el.textContent = I18N.t('c4.win').replace('{side}', w);
+    } else {
+      el.textContent = I18N.t(currentPlayer === 'w' ? 'c4.turnY' : 'c4.turnR');
+      el.classList.add('playing');
+    }
+    return;
+  }
   const sideName = (c) => c === 'w' ? (lang === 'th' ? 'ฝ่ายขาว' : 'White') : (lang === 'th' ? 'ฝ่ายดำ' : 'Black');
   if (status === 'waiting') {
     el.textContent = I18N.t('status.waiting');
@@ -487,7 +524,9 @@ function renderMoves() {
 }
 
 function render() {
+  if (isConnect4Game()) { renderConnect4(); return; }
   const boardEl = document.getElementById('board');
+  boardEl.className = 'board';
   boardEl.innerHTML = '';
   if (!board) return;
 
@@ -534,6 +573,78 @@ function render() {
       boardEl.appendChild(sq);
     }
   }
+}
+
+// ============ Connect Four rendering ============
+function renderConnect4() {
+  const boardEl = document.getElementById('board');
+  boardEl.className = 'board connect4';
+  boardEl.innerHTML = '';
+  if (!board) return;
+  const ROWS = Connect4.ROWS, COLS = Connect4.COLS;
+  const myTurn = status === 'playing' && myRole === currentPlayer;
+
+  // Animate only the newest drop, and only once (re-renders from lang/theme must not re-trigger).
+  let animateCell = null;
+  if (moves.length > c4AnimatedCount) {
+    const lm = moves[moves.length - 1];
+    if (lm && lm.to) animateCell = { r: lm.to.r, c: lm.to.c };
+  }
+  c4AnimatedCount = moves.length;
+
+  const winSet = new Set((winCells || []).map((w) => w.r + ',' + w.c));
+
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'c4-cell';
+      cell.dataset.col = c;
+      const piece = board[r][c];
+      if (piece) {
+        const coin = document.createElement('div');
+        coin.className = 'c4-coin ' + (piece === 'Y' ? 'coin-y' : 'coin-r');
+        if (winSet.has(r + ',' + c)) coin.classList.add('win');
+        if (animateCell && animateCell.r === r && animateCell.c === c) {
+          coin.classList.add('dropping');
+          coin.style.setProperty('--drop-rows', String(r + 1));
+        }
+        cell.appendChild(coin);
+      }
+      cell.onclick = () => dropColumn(c);
+      cell.onmouseenter = () => hoverColumn(c, true);
+      cell.onmouseleave = () => hoverColumn(c, false);
+      boardEl.appendChild(cell);
+    }
+  }
+  boardEl.classList.toggle('my-turn', myTurn);
+}
+
+function hoverColumn(col, on) {
+  if (!isConnect4Game()) return;
+  const boardEl = document.getElementById('board');
+  const myTurn = status === 'playing' && myRole === currentPlayer;
+  boardEl.querySelectorAll('.c4-cell[data-col="' + col + '"]').forEach((el) => {
+    el.classList.toggle('col-hover', on && myTurn);
+  });
+  boardEl.querySelectorAll('.c4-ghost').forEach((g) => g.remove());
+  if (on && myTurn) {
+    const landing = Connect4.findLandingRow(board, col);
+    if (landing >= 0) {
+      const cell = boardEl.children[landing * Connect4.COLS + col];
+      if (cell && !cell.querySelector('.c4-coin')) {
+        const ghost = document.createElement('div');
+        ghost.className = 'c4-ghost ' + (currentPlayer === 'w' ? 'coin-y' : 'coin-r');
+        cell.appendChild(ghost);
+      }
+    }
+  }
+}
+
+function dropColumn(col) {
+  if (!isConnect4Game()) return;
+  if (status !== 'playing' || myRole !== currentPlayer) return;
+  if (Connect4.findLandingRow(board, col) < 0) return; // column full
+  socket.emit('move', { col });
 }
 
 function handleClick(r, c) {
@@ -860,12 +971,16 @@ chatForm.onsubmit = (e) => {
 
 function formatSystemMessage(msg) {
   if (msg.key) {
-    let template = I18N.t(msg.key);
+    // Connect Four uses yellow/red instead of white/black for join/leave notices.
+    let key = msg.key;
+    if (isConnect4Game() && /^sys\.(joined|left)\.(w|b)$/.test(key)) key = 'c4.' + key.slice(4);
+    let template = I18N.t(key);
     const params = msg.params || {};
+    const sideShort = (c) => isConnect4Game() ? I18N.t(c === 'w' ? 'c4.side.y' : 'c4.side.r') : I18N.t('side.short.' + c);
     return template.replace(/\{(\w+)\}/g, (_, key) => {
-      if (key === 'winner_side') return params.winner ? I18N.t('side.short.' + params.winner) : '';
-      if (key === 'loser_side') return params.loser ? I18N.t('side.short.' + params.loser) : '';
-      if (key === 'player_side') return params.player ? I18N.t('side.short.' + params.player) : '';
+      if (key === 'winner_side') return params.winner ? sideShort(params.winner) : '';
+      if (key === 'loser_side') return params.loser ? sideShort(params.loser) : '';
+      if (key === 'player_side') return params.player ? sideShort(params.player) : '';
       return params[key] !== undefined ? params[key] : '';
     });
   }

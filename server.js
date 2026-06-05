@@ -7,16 +7,19 @@ const Chess = require('./public/chess.js');
 const Checkers = require('./public/checkers.js');
 const ChessIntl = require('./public/chess-intl.js');
 const CheckersIntl = require('./public/checkers-intl.js');
+const Connect4 = require('./public/connect4.js');
 const Bot = require('./ai-bot.js');
 const ENGINES = {
   chess: Chess,
   checkers: Checkers,
   'chess-intl': ChessIntl,
   'checkers-intl': CheckersIntl,
+  connect4: Connect4,
 };
-const ALLOWED_GAME_TYPES = ['chess', 'checkers', 'chess-intl', 'checkers-intl'];
+const ALLOWED_GAME_TYPES = ['chess', 'checkers', 'chess-intl', 'checkers-intl', 'connect4'];
 const CHECKERS_TYPES = ['checkers', 'checkers-intl'];
 const CHESS_TYPES = ['chess', 'chess-intl'];
+const CONNECT4_TYPES = ['connect4'];
 const ALLOWED_BOT_DIFFICULTIES = ['easy', 'medium', 'hard'];
 
 const app = express();
@@ -53,6 +56,7 @@ function buildInitialMatchState(gameType, timeBase, timeIncrement) {
     endedReason: null,
     endedWinner: null,
     mustContinueFrom: null,
+    winCells: null,
   };
   if (gameType === 'chess-intl') {
     state.castling = { wK: true, wQ: true, bK: true, bQ: true };
@@ -89,6 +93,44 @@ function endGame(room, reason, winner) {
 
 function processMove(room, from, to, moveInfo) {
   const engine = ENGINES[room.gameType] || Chess;
+
+  // Connect Four uses a column-drop model (no from/to piece), handle separately.
+  if (CONNECT4_TYPES.includes(room.gameType)) {
+    deductTime(room);
+    if (room.timeBase && (room.whiteTime <= 0 || room.blackTime <= 0)) {
+      const loser = room.currentPlayer;
+      endGame(room, 'timeout', loser === 'w' ? 'b' : 'w');
+      pushSystemMessage(room, 'sys.timeout', { loser, winner: loser === 'w' ? 'b' : 'w' });
+      return;
+    }
+    const col = moveInfo.col;
+    const landingRow = engine.findLandingRow(room.board, col);
+    if (landingRow < 0) return;
+    const movingPiece = room.currentPlayer === 'w' ? 'Y' : 'R';
+    room.board = engine.applyMove(room.board, col, room.currentPlayer);
+    const dropTo = { r: landingRow, c: col };
+    room.moves.push({
+      from: dropTo, to: dropTo,
+      piece: movingPiece,
+      capture: false,
+      promoted: false,
+      notation: engine.moveNotation(movingPiece, dropTo, dropTo, false, false, { col }),
+      time: Date.now(),
+      special: null,
+    });
+    addIncrement(room);
+    room.currentPlayer = room.currentPlayer === 'w' ? 'b' : 'w';
+    const status = engine.gameStatus(room.board);
+    if (status.ended) {
+      endGame(room, status.reason, status.winner);
+      room.winCells = status.winCells || null;
+      pushSystemMessage(room, status.reason === 'draw' ? 'sys.draw' : 'sys.connect4', { winner: status.winner });
+    } else {
+      startClock(room);
+    }
+    return;
+  }
+
   const piece = room.board[from.r][from.c];
   if (!piece) return;
 
@@ -272,6 +314,7 @@ function snapshotRoom(room) {
     mustContinueFrom: room.mustContinueFrom,
     castling: room.castling || null,
     enPassant: room.enPassant || null,
+    winCells: room.winCells || null,
     status: room.status,
     // Players: keep names + isBot, drop socket id (will be reclaimed on reconnect)
     // disconnectedAt timestamp lets us detect stale slots within reclaim window
@@ -500,6 +543,7 @@ function broadcastRoomState(roomId) {
     mustContinueFrom: room.mustContinueFrom,
     castling: room.castling || null,
     enPassant: room.enPassant || null,
+    winCells: room.winCells || null,
     hasBot: !!room.bot,
     botDifficulty: room.bot ? room.bot.difficulty : null,
     botColor: room.bot ? room.bot.color : null,
@@ -667,13 +711,32 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('move', ({ from, to }) => {
+  socket.on('move', ({ from, to, col }) => {
     const roomId = socket.data.roomId;
     const room = rooms.get(roomId);
     if (!room || room.status !== 'playing') return;
     if (socket.data.role !== room.currentPlayer) {
       socket.emit('error_msg', 'ยังไม่ถึงตาคุณ'); return;
     }
+
+    // Connect Four: client sends a column index to drop into.
+    if (CONNECT4_TYPES.includes(room.gameType)) {
+      if (!Number.isInteger(col) || col < 0 || col >= Connect4.COLS) {
+        socket.emit('error_msg', 'ตำแหน่งไม่ถูกต้อง'); return;
+      }
+      if (Connect4.findLandingRow(room.board, col) < 0) {
+        socket.emit('error_msg', 'เดินไม่ได้'); return;
+      }
+      processMove(room, null, null, { col });
+      broadcastRoomState(roomId);
+      broadcastRoomList();
+      persistRoom(room);
+      if (room.bot && room.status === 'playing' && room.currentPlayer === room.bot.color) {
+        maybeBotMove(roomId);
+      }
+      return;
+    }
+
     if (!from || !to || ![from.r, from.c, to.r, to.c].every(n => Number.isInteger(n) && n >= 0 && n < 8)) {
       socket.emit('error_msg', 'ตำแหน่งไม่ถูกต้อง'); return;
     }

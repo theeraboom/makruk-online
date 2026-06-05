@@ -151,6 +151,12 @@
               <li><b>บังคับกิน</b> — ถ้ามีโอกาสกินต้องกิน เลือกอันไหนก็ได้</li>
               <li><b>กินติด</b> — กินต่อได้ในตาเดียวกัน หากผ่านแถวสุดท้ายต้องหยุดและกลายเป็น King ทันที</li>
             </ul>
+            <ul class="rule-list rl-connect4" hidden>
+              <li><b>🟡 เหลือง</b> เดินก่อน สลับกับ <b>🔴 แดง</b></li>
+              <li><b>หยอดเหรียญ</b> — คลิกคอลัมน์ เหรียญจะตกลงไปอยู่ช่องว่างล่างสุดของคอลัมน์นั้น</li>
+              <li><b>ชนะ</b> — เรียงเหรียญสีเดียวกันครบ <b>4 เม็ดติดกัน</b> แนวนอน แนวตั้ง หรือแนวทแยง</li>
+              <li><b>เสมอ</b> — กระดานเต็ม (42 ช่อง) โดยไม่มีใครเรียงครบ 4</li>
+            </ul>
           </div>
           <div data-only="en">
             <ul class="rule-list rl-chess">
@@ -184,6 +190,12 @@
               <li><b>Capture</b> — jump over an opponent's piece into the next empty square — King captures all 4 directions</li>
               <li><b>Forced capture</b> — if a capture is available, you must take it (any choice)</li>
               <li><b>Multi-jump</b> — continue capturing in same turn; if you pass through the last rank you must stop and become a King immediately</li>
+            </ul>
+            <ul class="rule-list rl-connect4" hidden>
+              <li><b>🟡 Yellow</b> moves first, alternating with <b>🔴 Red</b></li>
+              <li><b>Drop</b> — click a column; the coin falls to the lowest empty slot in that column</li>
+              <li><b>Win</b> — line up <b>4 of your coins in a row</b> horizontally, vertically, or diagonally</li>
+              <li><b>Draw</b> — the board fills up (42 cells) with no four-in-a-row</li>
             </ul>
           </div>
           <p style="margin-top:12px"><a href="/rules.html" data-i18n="rules.readFull">อ่านประวัติและกติกาเต็ม →</a></p>
@@ -244,6 +256,7 @@
   <script src="chess-intl.js"></script>
   <script src="checkers.js"></script>
   <script src="checkers-intl.js"></script>
+  <script src="connect4.js"></script>
   <script src="pieces.js"></script>
   <script src="room.js"></script>
   <script src="radio.js"></script>

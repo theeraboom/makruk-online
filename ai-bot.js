@@ -2,6 +2,7 @@ const Chess = require('./public/chess.js');
 const ChessIntl = require('./public/chess-intl.js');
 const Checkers = require('./public/checkers.js');
 const CheckersIntl = require('./public/checkers-intl.js');
+const Connect4 = require('./public/connect4.js');
 
 const ENGINES = {
   'chess': Chess,
@@ -153,7 +154,114 @@ function shuffleArray(a) {
   }
 }
 
+// ============ Connect Four bot ============
+// Column-drop game — separate logic from the 8x8 board games above.
+function c4LegalCols(board) {
+  const cols = [];
+  for (let c = 0; c < Connect4.COLS; c++) {
+    if (Connect4.findLandingRow(board, c) >= 0) cols.push(c);
+  }
+  return cols;
+}
+
+// Heuristic eval from `color`'s perspective: score every length-4 window.
+function c4Evaluate(board, color) {
+  const ROWS = Connect4.ROWS, COLS = Connect4.COLS;
+  const me = color === 'w' ? 'Y' : 'R';
+  const opp = color === 'w' ? 'R' : 'Y';
+  const scoreWindow = (cells) => {
+    let mine = 0, theirs = 0, empty = 0;
+    for (const p of cells) {
+      if (p === me) mine++;
+      else if (p === opp) theirs++;
+      else empty++;
+    }
+    if (mine > 0 && theirs > 0) return 0;
+    if (mine === 3 && empty === 1) return 8;
+    if (mine === 2 && empty === 2) return 3;
+    if (mine === 1 && empty === 3) return 1;
+    if (theirs === 3 && empty === 1) return -10;
+    if (theirs === 2 && empty === 2) return -3;
+    return 0;
+  };
+  let score = 0;
+  // center column control
+  const centerCol = Math.floor(COLS / 2);
+  for (let r = 0; r < ROWS; r++) {
+    if (board[r][centerCol] === me) score += 3;
+    else if (board[r][centerCol] === opp) score -= 3;
+  }
+  const dirs = [[0, 1], [1, 0], [1, 1], [1, -1]];
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      for (const [dr, dc] of dirs) {
+        const er = r + dr * 3, ec = c + dc * 3;
+        if (er < 0 || er >= ROWS || ec < 0 || ec >= COLS) continue;
+        const cells = [];
+        for (let i = 0; i < 4; i++) cells.push(board[r + dr * i][c + dc * i]);
+        score += scoreWindow(cells);
+      }
+    }
+  }
+  return score;
+}
+
+// Negamax with alpha-beta. `board` is the position with `color` to move.
+function c4Negamax(board, depth, alpha, beta, color) {
+  // A win on the board means the side that just moved (not `color`) won → loss for `color`.
+  if (Connect4.checkWin(board)) return -100000 - depth;
+  const cols = c4LegalCols(board);
+  if (cols.length === 0) return 0; // draw
+  if (depth === 0) return c4Evaluate(board, color);
+  const opp = color === 'w' ? 'b' : 'w';
+  // center-first ordering improves pruning
+  const order = cols.slice().sort((a, b) => Math.abs((Connect4.COLS - 1) / 2 - a) - Math.abs((Connect4.COLS - 1) / 2 - b));
+  let best = -Infinity;
+  for (const c of order) {
+    const nb = Connect4.applyMove(board, c, color);
+    const score = -c4Negamax(nb, depth - 1, -beta, -alpha, opp);
+    if (score > best) best = score;
+    if (best > alpha) alpha = best;
+    if (alpha >= beta) break;
+  }
+  return best;
+}
+
+function chooseConnect4Move(board, botColor, difficulty) {
+  const legal = c4LegalCols(board);
+  if (legal.length === 0) return null;
+  const opp = botColor === 'w' ? 'b' : 'w';
+  const toMove = (col) => ({ from: null, to: { r: Connect4.findLandingRow(board, col), c: col }, info: { col } });
+
+  // 1. Take an immediate win.
+  for (const c of legal) {
+    const w = Connect4.checkWin(Connect4.applyMove(board, c, botColor));
+    if (w && w.winner === botColor) return toMove(c);
+  }
+  // 2. Block the opponent's immediate win.
+  for (const c of legal) {
+    const w = Connect4.checkWin(Connect4.applyMove(board, c, opp));
+    if (w && w.winner === opp) return toMove(c);
+  }
+  if (difficulty === 'easy') {
+    // Easy: prefer center-ish but mostly random.
+    if (Math.random() < 0.4) return toMove(legal[Math.floor(Math.random() * legal.length)]);
+  }
+
+  const depth = difficulty === 'hard' ? 6 : difficulty === 'medium' ? 4 : 2;
+  const order = legal.slice().sort((a, b) => Math.abs((Connect4.COLS - 1) / 2 - a) - Math.abs((Connect4.COLS - 1) / 2 - b));
+  let best = order[0], bestScore = -Infinity;
+  for (const c of order) {
+    const nb = Connect4.applyMove(board, c, botColor);
+    const score = -c4Negamax(nb, depth - 1, -Infinity, Infinity, opp);
+    if (score > bestScore) { bestScore = score; best = c; }
+  }
+  return toMove(best);
+}
+
 function chooseMove(board, gameType, botColor, ctx, mustContinueFrom, difficulty) {
+  if (gameType === 'connect4') return chooseConnect4Move(board, botColor, difficulty);
+
   const engine = ENGINES[gameType];
   if (!engine) return null;
 
