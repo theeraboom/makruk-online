@@ -145,6 +145,17 @@ socket.on('room_state', (state) => {
   if (themePicker) themePicker.hidden = isConnect4Game();
   const boardWrapper = document.getElementById('boardWrapper');
   if (boardWrapper) boardWrapper.classList.toggle('connect4', isConnect4Game());
+  // Tag players-bar so avatars switch to yellow/red for Connect 4
+  const playersBar = document.querySelector('.players-bar');
+  if (playersBar) playersBar.classList.toggle('connect4', isConnect4Game());
+  // Move history makes less sense for Connect 4 (just "a1, b2..." column drops)
+  const moveHistory = document.getElementById('moveHistory');
+  if (moveHistory) moveHistory.hidden = isConnect4Game();
+  // Rules summary label: "กฎการเดินหมาก" → "กฎ Connect Four"
+  const rulesSummary = document.querySelector('details.rules > summary');
+  if (rulesSummary) rulesSummary.textContent = isConnect4Game()
+    ? I18N.t('c4.rules.summary')
+    : I18N.t('rules.summary');
   board = state.board;
   currentPlayer = state.currentPlayer;
   status = state.status;
@@ -395,8 +406,8 @@ function spawnFloatingReaction(emoji) {
 function updateRoleBadge() {
   const badge = document.getElementById('roleBadge');
   if (isConnect4Game()) {
-    if (myRole === 'w') { badge.textContent = I18N.t('c4.role.y'); badge.className = 'role-badge w'; }
-    else if (myRole === 'b') { badge.textContent = I18N.t('c4.role.r'); badge.className = 'role-badge b'; }
+    if (myRole === 'w') { badge.textContent = I18N.t('c4.role.y'); badge.className = 'role-badge connect4 w'; }
+    else if (myRole === 'b') { badge.textContent = I18N.t('c4.role.r'); badge.className = 'role-badge connect4 b'; }
     else if (myRole === 'viewer') { badge.textContent = I18N.t('role.viewer'); badge.className = 'role-badge viewer'; }
     else { badge.textContent = I18N.t('role.connecting'); badge.className = 'role-badge'; }
     return;

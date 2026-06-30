@@ -811,6 +811,8 @@ html[data-theme="dark"] .info-card:hover::after { opacity: 0.35; }
 }
 .role-badge.w { background: #FFFFFF; color: #1F1611; }
 .role-badge.b { background: #18181B; color: #FFFFFF; }
+.role-badge.connect4.w { background: linear-gradient(135deg, #FFE873, #FFD11A); color: #5A4500; border-color: #B8860B; }
+.role-badge.connect4.b { background: linear-gradient(135deg, #FF8A8A, #EF4444); color: white; border-color: #7F1D1D; }
 .role-badge.viewer { background: var(--primary-soft); color: var(--primary-hover); border-color: #FCD34D; }
 
 .game-section {
@@ -866,6 +868,9 @@ html[data-theme="dark"] .info-card:hover::after { opacity: 0.35; }
 }
 .avatar.white { background: #F8F6F1; color: #1F1611; border: 1px solid var(--border-strong); }
 .avatar.black { background: #18181B; color: white; }
+/* Connect Four — avatars use yellow/red instead of white/black */
+.players-bar.connect4 .avatar.white { background: radial-gradient(circle at 38% 34%, #FFE873, #FFD11A 55%, #E0A800); color: #5A4500; border-color: #B8860B; }
+.players-bar.connect4 .avatar.black { background: radial-gradient(circle at 38% 34%, #FF8A8A, #EF4444 55%, #B91C1C); color: white; border-color: #7F1D1D; }
 .avatar.empty { background: var(--surface-2); color: var(--text-muted); border: 1px dashed var(--border-strong); }
 
 .player-name {

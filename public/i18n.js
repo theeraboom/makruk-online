@@ -168,6 +168,7 @@
       'c4.joined.b': '{name} เข้าร่วมเป็นฝ่ายแดง',
       'c4.left.w': '{name} (เหลือง) ออกจากห้อง',
       'c4.left.b': '{name} (แดง) ออกจากห้อง',
+      'c4.rules.summary': '📖 กฎ Connect Four',
 
       // Bot display names
       'bot.name.easy': '🤖 Bot (ง่าย)',
@@ -348,6 +349,7 @@
       'c4.joined.b': '{name} joined as Red',
       'c4.left.w': '{name} (Yellow) left the room',
       'c4.left.b': '{name} (Red) left the room',
+      'c4.rules.summary': '📖 Connect Four rules',
 
       'bot.name.easy': '🤖 Bot (Easy)',
       'bot.name.medium': '🤖 Bot (Medium)',
