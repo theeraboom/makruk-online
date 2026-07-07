@@ -380,8 +380,15 @@ function isRoomAbandoned(room) {
 async function restoreRooms() {
   if (!UPSTASH_URL || !UPSTASH_TOKEN) return 0;
   try {
-    const keys = await upstashExec(['KEYS', ROOM_KEY_PREFIX + '*']);
-    if (!Array.isArray(keys) || keys.length === 0) return 0;
+    // SCAN (cursor-based) instead of KEYS — non-blocking on the Redis side
+    const keys = [];
+    let cursor = '0';
+    do {
+      const page = await upstashExec(['SCAN', cursor, 'MATCH', ROOM_KEY_PREFIX + '*', 'COUNT', 100]);
+      cursor = String(page[0]);
+      if (Array.isArray(page[1])) keys.push(...page[1]);
+    } while (cursor !== '0');
+    if (keys.length === 0) return 0;
     let restored = 0;
     for (const key of keys) {
       try {
@@ -485,6 +492,44 @@ app.get('/health', (req, res) => {
     onlineUsers,
     timestamp: Date.now(),
   });
+});
+
+// ── Dynamic link previews for shared room links ──
+// LINE/FB/WhatsApp scrapers fetch /room.html?id=X; inject the real room name
+// and game type into <title> + OG tags so the preview shows the actual room.
+let roomHtmlTemplate = null;
+try { roomHtmlTemplate = fs.readFileSync(path.join(__dirname, 'public', 'room.html'), 'utf8'); }
+catch (e) { console.error('[og] cannot read room.html template:', e.message); }
+
+const GAME_LABELS_TH = {
+  chess: 'หมากรุกไทย', 'chess-intl': 'หมากรุกสากล',
+  checkers: 'หมากฮอสไทย', 'checkers-intl': 'หมากฮอสสากล', connect4: 'Connect Four',
+};
+const DEFAULT_ROOM_NAMES_TH = {
+  chess: 'วงหมากรุกไทย', 'chess-intl': 'วงหมากรุกสากล',
+  checkers: 'วงหมากฮอสไทย', 'checkers-intl': 'วงหมากฮอสสากล', connect4: 'วง Connect Four',
+};
+function escapeHtml(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+app.get('/room.html', (req, res, next) => {
+  const room = roomHtmlTemplate ? rooms.get(req.query.id) : null;
+  if (!room) return next(); // unknown room → serve static file as-is
+  const label = GAME_LABELS_TH[room.gameType] || 'หมากรุก';
+  const rawName = room.hasDefaultName ? (DEFAULT_ROOM_NAMES_TH[room.gameType] || 'วงหมากรุก') : room.name;
+  const name = escapeHtml(rawName);
+  const lock = room.password ? '🔒 ' : '';
+  const title = `${lock}${name} — ${label} | Playmakruk.com`;
+  const desc = `เข้าร่วมเล่นหรือดู${label}สดในห้อง "${name}" พร้อมแชทกับผู้ชม — ฟรี ไม่ต้องสมัคร`;
+  // Replacement callbacks avoid `$`-pattern interpretation from user-typed names
+  const html = roomHtmlTemplate
+    .replace(/<title>[^<]*<\/title>/, () => `<title>${title}</title>`)
+    .replace(/(<meta property="og:title" content=")[^"]*(")/, (m, a, b) => a + title + b)
+    .replace(/(<meta property="og:description" content=")[^"]*(")/, (m, a, b) => a + desc + b)
+    .replace(/(<meta name="twitter:title" content=")[^"]*(")/, (m, a, b) => a + title + b);
+  res.set('Cache-Control', 'no-store');
+  res.type('html').send(html);
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -633,7 +678,11 @@ io.on('connection', (socket) => {
 
   socket.on('join_room', ({ roomId, password }) => {
     const room = rooms.get(roomId);
-    if (!room) { socket.emit('error_msg', 'ไม่พบห้องนี้'); return; }
+    if (!room) {
+      socket.emit('error_msg', 'ไม่พบห้องนี้');
+      socket.emit('room_not_found', { roomId });
+      return;
+    }
 
     if (room.password && room.password !== password) {
       socket.emit('password_required', { roomId, name: room.name });

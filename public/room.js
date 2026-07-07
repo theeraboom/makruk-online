@@ -93,6 +93,10 @@ if (!userUid) {
   localStorage.setItem('makruk_uid', userUid);
 }
 const userName = localStorage.getItem('makruk_name') || '';
+// Last password that reached the server — reused on reconnect (so a player
+// who typed it in the prompt isn't re-asked) and for building share links
+let knownPw = initialPw;
+let roomIsPrivate = false;
 // Send identity + join_room. On reconnect, do the same so the new server
 // socket knows our UID/name and we get placed back in our slot.
 let isFirstConnect = true;
@@ -101,19 +105,26 @@ socket.on('connect', () => {
   if (userName) socket.emit('set_name', userName);
   if (!isFirstConnect) {
     // reconnection — re-emit join_room so server reclaims our slot
-    socket.emit('join_room', { roomId, password: initialPw });
+    socket.emit('join_room', { roomId, password: knownPw });
   }
   isFirstConnect = false;
 });
 // Initial emit (Socket.IO queues until first connect; ordering preserved)
 socket.emit('set_uid', userUid);
 if (userName) socket.emit('set_name', userName);
-socket.emit('join_room', { roomId, password: initialPw });
+socket.emit('join_room', { roomId, password: knownPw });
 
 socket.on('password_required', ({ name }) => {
   const pw = prompt(`"${name}" ${I18N.t('prompt.privatePass')}`);
   if (!pw) { window.location.href = '/'; return; }
+  knownPw = pw;
   socket.emit('join_room', { roomId, password: pw });
+});
+
+// Room no longer exists (expired / server lost it) — explain, then go home
+socket.on('room_not_found', () => {
+  showToast(I18N.t('err.notFoundRedirect'));
+  setTimeout(() => { window.location.href = '/'; }, 3000);
 });
 
 socket.on('joined', ({ role }) => {
@@ -125,6 +136,7 @@ socket.on('joined', ({ role }) => {
 socket.on('room_state', (state) => {
   lastRoomName = state.name;
   lastHasDefaultName = !!state.hasDefaultName;
+  roomIsPrivate = !!state.isPrivate;
   const displayName = state.hasDefaultName ? I18N.t('default.' + (state.gameType || 'chess')) : state.name;
   document.getElementById('roomName').textContent = displayName;
   document.title = displayName + ' — Playmakruk.com';
@@ -748,9 +760,12 @@ document.getElementById('resignBtn').onclick = () => {
 };
 
 document.getElementById('shareBtn').onclick = async () => {
-  const url = window.location.href;
+  // Always build a clean direct-to-room URL. For private rooms include the
+  // password so friends land in the room without a prompt.
+  let url = `${location.origin}/room.html?id=${encodeURIComponent(roomId)}`;
+  if (roomIsPrivate && knownPw) url += `&pw=${encodeURIComponent(knownPw)}`;
   const lang = I18N.getLang();
-  const gameTypeName = I18N.t('gt.' + gameType).replace(/^[♛♚⛀⛂]\s/, '');
+  const gameTypeName = I18N.t('gt.' + gameType).replace(/^[♛♚⛀⛂🔴]\s/, '');
   const text = lang === 'th' ? `มาดูวง${gameTypeName}ที่ ${url}` : `Watch this ${gameTypeName} game at ${url}`;
   if (navigator.share) {
     try { await navigator.share({ title: 'Playmakruk.com', text, url }); return; } catch (e) {}

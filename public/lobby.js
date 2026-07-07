@@ -144,9 +144,11 @@ document.querySelectorAll('#botOptions .tc-btn').forEach((btn) => {
   };
 });
 
+let lastCreatedPw = null;
 function createRoom() {
   const name = newRoomInput.value.trim();
   const password = newRoomPasswordInput.value.trim();
+  lastCreatedPw = password || null;
   socket.emit('create_room', {
     name,
     gameType: selectedGameType,
@@ -167,7 +169,11 @@ newRoomPasswordInput.addEventListener('keydown', (e) => {
 });
 
 socket.on('room_created', ({ id }) => {
-  window.location.href = `/room.html?id=${id}`;
+  // Carry the password into the room URL so the creator's share link
+  // lets friends enter the private room directly (no prompt).
+  window.location.href = lastCreatedPw
+    ? `/room.html?id=${id}&pw=${encodeURIComponent(lastCreatedPw)}`
+    : `/room.html?id=${id}`;
 });
 
 socket.on('rooms_list', (rooms) => {
