@@ -16,7 +16,7 @@
     'https://at1.api.radio-browser.info',
     'https://fr1.api.radio-browser.info',
   ];
-  const CACHE_KEY = 'mk_radio_stations_v3'; // v3: more blocked + improved freq regex
+  const CACHE_KEY = 'mk_radio_stations_v4'; // v4: slimmer cache (dropped unused favicon/codec/freq)
   const CACHE_TS_KEY = 'mk_radio_stations_ts';
   const CACHE_TTL = 24 * 60 * 60 * 1000; // 24h
   const LS_OPEN = 'mk_radio_open';
@@ -155,8 +155,8 @@
       background: rgba(251, 191, 36, 0.06);
     }
     html[data-theme="dark"] .radio-section-label { color: #FBBF24; background: rgba(251, 191, 36, 0.04); }
-    #radioStatus { padding: 16px; text-align: center; font-size: 13px; color: #6B5B45; }
-    html[data-theme="dark"] #radioStatus { color: #94A3B8; }
+    #radioStatus, .radio-status-msg { padding: 16px; text-align: center; font-size: 13px; color: #6B5B45; }
+    html[data-theme="dark"] #radioStatus, html[data-theme="dark"] .radio-status-msg { color: #94A3B8; }
     @media (max-width: 480px) {
       #radioPanel {
         right: 8px; left: 8px; bottom: 78px; width: auto; max-width: none;
@@ -202,6 +202,8 @@
   audio.preload = 'none';
   let currentStation = null;
   let isPlaying = false;
+  let autoResumeTried = false;
+  let pendingResume = null; // station to resume on next user gesture if autoplay blocked
 
   // ---- Refs ----
   const closeBtn = document.getElementById('radioCloseBtn');
@@ -239,14 +241,33 @@
   let stationsLoaded = false;
   let stations = [];
 
+  // Stations known to be dead (timeout / 404 / unstable) — verified with audit
+  const BLOCKED_NAMES = new Set([
+    'mcot radio buriram 92.0 fm',
+    'radio samui online',
+    'mcot อุดรธานี',
+    'top news (mobile stream)',
+    'flex 104.5',
+    'thairadio 96.5 thinking',
+    'mcot radio chiangmai fm100.75',
+    'top news',
+    'mcot 100.5',
+    'top news (live1 - low 240p)',
+    'mcot chumphon (amphoe lang suan) fm 104.75',
+    'mcot loei fm 100.00',
+    'dpradio',
+    'dpcloudev',
+  ]);
+  // Normalize name for dedup (strip whitespace, dashes, punctuation, lowercase)
+  const normName = (s) => (s || '').toLowerCase().replace(/[\s\-_.,()]/g, '');
+
   async function fetchFromApi() {
-    // Try each API host until one works
+    // Try each API host until one works.
+    // Note: no custom User-Agent header — browsers forbid it (some throw).
     const path = '/json/stations/search?countrycode=TH&hidebroken=true&order=clickcount&reverse=true&limit=80';
     for (const host of API_HOSTS) {
       try {
-        const r = await fetch(host + path, {
-          headers: { 'User-Agent': 'Playmakruk/1.0' },
-        });
+        const r = await fetch(host + path);
         if (!r.ok) continue;
         const data = await r.json();
         if (Array.isArray(data) && data.length > 0) return data;
@@ -279,60 +300,23 @@
 
     try {
       const raw = await fetchFromApi();
-      // Stations known to be dead (timeout / 404 / unstable) — verified with audit
-      const BLOCKED_NAMES = new Set([
-        'mcot radio buriram 92.0 fm',
-        'radio samui online',
-        'mcot อุดรธานี',
-        'top news (mobile stream)',
-        'flex 104.5',
-        'thairadio 96.5 thinking',
-        'mcot radio chiangmai fm100.75',
-        'top news',
-        'mcot 100.5',
-        'top news (live1 - low 240p)',
-        'mcot chumphon (amphoe lang suan) fm 104.75',
-        'mcot loei fm 100.00',
-        'dpradio',
-        'dpcloudev',
-      ]);
-      // Normalize name for dedup (strip whitespace, dashes, punctuation, lowercase)
-      const norm = (s) => (s || '').toLowerCase().replace(/[\s\-_.,()]/g, '');
-      // Convert Thai numerals to Arabic (๐๑๒๓๔๕๖๗๘๙ → 0123456789)
-      const thaiToArabic = (s) => (s || '').replace(/[๐-๙]/g, c => '๐๑๒๓๔๕๖๗๘๙'.indexOf(c).toString());
-
       const seen = new Set();
       stations = raw
         .filter(s => s.url_resolved || s.url)
         .filter(s => !BLOCKED_NAMES.has((s.name || '').toLowerCase().trim()))
         .filter(s => {
-          const k = norm(s.name);
+          const k = normName(s.name);
           if (seen.has(k)) return false;
           seen.add(k);
           return true;
         })
-        .map(s => {
-          // Extract FM frequency from name (handles Arabic + Thai numerals; e.g.,
-          // "Cool 93 FM" → 93, "Smooth 105.5" → 105.5, "97qfm" → 97, "ลูกทุ่ง ๙๐" → 90)
-          const nameNum = thaiToArabic(s.name || '');
-          const freqMatch = nameNum.match(/\b(\d{2,3}(?:\.\d)?)/); // no trailing \b — works with "97qfm"
-          let freq = freqMatch ? freqMatch[1] : null;
-          // Sanity range: FM is 87.5-108 MHz typically
-          if (freq) {
-            const f = parseFloat(freq);
-            if (f < 80 || f > 110) freq = null;
-          }
-          return {
-            uuid: s.stationuuid,
-            name: s.name,
-            url: s.url_resolved || s.url,
-            tags: s.tags || '',
-            bitrate: s.bitrate || 0,
-            codec: s.codec || '',
-            favicon: s.favicon || '',
-            freq,
-          };
-        });
+        .map(s => ({
+          uuid: s.stationuuid,
+          name: s.name,
+          url: s.url_resolved || s.url,
+          tags: s.tags || '',
+          bitrate: s.bitrate || 0,
+        }));
       localStorage.setItem(CACHE_KEY, JSON.stringify(stations));
       localStorage.setItem(CACHE_TS_KEY, String(Date.now()));
       stationsLoaded = true;
@@ -373,6 +357,7 @@
   function buildStationItem(s, isFav) {
     const item = document.createElement('div');
     item.className = 'radio-station';
+    item.dataset.uuid = s.uuid;
     if (currentStation && currentStation.uuid === s.uuid) item.classList.add('playing');
     const tags = s.tags ? s.tags.split(',').slice(0, 3).join(' • ') : '';
     const bitrate = s.bitrate ? s.bitrate + 'k' : '';
@@ -397,15 +382,22 @@
     return item;
   }
 
+  function statusDiv(text) {
+    const el = document.createElement('div');
+    el.className = 'radio-status-msg';
+    el.textContent = text;
+    return el;
+  }
+
   function renderStations() {
     list.innerHTML = '';
-    if (stations.length === 0 && getCustomStations().length === 0) {
-      list.innerHTML = '<div id="radioStatus">ไม่พบสถานี</div>';
+    const customs = getCustomStations();
+    if (stations.length === 0 && customs.length === 0) {
+      list.appendChild(statusDiv('ไม่พบสถานี'));
       return;
     }
     const query = (searchInput.value || '').trim().toLowerCase();
     const favs = new Set(getFavorites());
-    const customs = getCustomStations();
     const allStations = customs.concat(stations);
     const matches = (s) => !query || s.name.toLowerCase().includes(query) || (s.tags || '').toLowerCase().includes(query);
 
@@ -442,10 +434,7 @@
     }
 
     if (favStations.length === 0 && customNonFav.length === 0 && others.length === 0) {
-      const empty = document.createElement('div');
-      empty.id = 'radioStatus';
-      empty.textContent = 'ไม่พบสถานีที่ตรงกับ "' + query + '"';
-      list.appendChild(empty);
+      list.appendChild(statusDiv('ไม่พบสถานีที่ตรงกับ "' + query + '"'));
     }
   }
 
@@ -453,21 +442,30 @@
     isPlaying = playing;
     playBtn.textContent = playing ? '⏸' : '▶';
     pulseDot.hidden = !playing;
+    if (playing) pulseDot.style.background = ''; // back to green (amber = pending gesture)
     localStorage.setItem(LS_PLAYING, playing ? '1' : '0');
   }
 
+  // The rendered list is favorites → customs → others, so DOM order ≠ stations[]
+  // order — match by uuid, never by index.
+  function refreshPlayingHighlight() {
+    const cur = currentStation ? currentStation.uuid : null;
+    list.querySelectorAll('.radio-station').forEach((el) => {
+      el.classList.toggle('playing', el.dataset.uuid === cur);
+    });
+  }
+
   function playStation(s) {
+    pendingResume = null; // manual choice overrides any blocked auto-resume
     currentStation = s;
     nowName.textContent = s.name;
     audio.src = s.url;
     localStorage.setItem(LS_STATION, s.uuid);
+    refreshPlayingHighlight();
     audio.play().then(() => {
       playBtn.disabled = false;
       setPlayingState(true);
-      list.querySelectorAll('.radio-station').forEach((el, i) => {
-        el.classList.toggle('playing', stations[i] && stations[i].uuid === s.uuid);
-      });
-    }).catch((err) => {
+    }).catch(() => {
       playBtn.disabled = false;
       setPlayingState(false);
       nowName.textContent = '⚠️ เล่นไม่สำเร็จ — ลองสถานีอื่น';
@@ -486,6 +484,7 @@
 
   audio.onended = () => setPlayingState(false);
   audio.onerror = () => {
+    if (!currentStation) return; // spurious error from src swap/teardown
     setPlayingState(false);
     nowName.textContent = '⚠️ Stream error';
   };
@@ -502,8 +501,13 @@
     loadStations(true);
   };
 
-  // Search filter
-  searchInput.oninput = () => { if (stationsLoaded) renderStations(); };
+  // Search filter — debounced so typing doesn't rebuild 80+ rows per keystroke
+  let searchTimer = null;
+  searchInput.oninput = () => {
+    if (!stationsLoaded) return;
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(renderStations, 120);
+  };
 
   // Add custom URL: if input looks like a URL, treat as stream URL; else search
   addBtn.onclick = () => {
@@ -523,14 +527,11 @@
   };
 
   // Auto-resume: if user was playing radio before navigating, resume the same station
-  let autoResumeTried = false;
-  let pendingResume = null; // station to resume on next user gesture if autoplay blocked
   function maybeAutoResume() {
     if (autoResumeTried) return;
     autoResumeTried = true;
-    const wasPlaying = localStorage.getItem(LS_PLAYING) === '1';
     const lastUuid = localStorage.getItem(LS_STATION);
-    if (!wasPlaying || !lastUuid) return;
+    if (localStorage.getItem(LS_PLAYING) !== '1' || !lastUuid) return;
     const s = stations.find(x => x.uuid === lastUuid) || getCustomStations().find(x => x.uuid === lastUuid);
     if (!s) return;
     currentStation = s;
@@ -540,9 +541,7 @@
       playBtn.disabled = false;
       setPlayingState(true);
       nowName.textContent = s.name;
-      list.querySelectorAll('.radio-station').forEach((el, i) => {
-        el.classList.toggle('playing', stations[i] && stations[i].uuid === s.uuid);
-      });
+      refreshPlayingHighlight();
     }).catch(() => {
       // Browser blocked autoplay — schedule retry on first user gesture
       playBtn.disabled = false;
@@ -560,35 +559,26 @@
     audio.play().then(() => {
       setPlayingState(true);
       nowName.textContent = s.name;
-      pulseDot.style.background = '#22C55E';
-      list.querySelectorAll('.radio-station').forEach((el, i) => {
-        el.classList.toggle('playing', stations[i] && stations[i].uuid === s.uuid);
-      });
+      refreshPlayingHighlight();
     }).catch(() => {});
   }
   ['touchstart', 'touchend', 'pointerdown', 'mousedown', 'click'].forEach((ev) => {
     document.addEventListener(ev, gestureRetryResume, { capture: true, passive: true });
   });
 
-  // ---- Restore open state on load ----
-  // If user was playing, attempt early auto-resume from customs (without waiting for API)
+  // ---- Restore state on load ----
   const wasPlaying = localStorage.getItem(LS_PLAYING) === '1';
 
-  if (wasPlaying && !stationsLoaded) {
+  // Custom stations live in localStorage — resume them instantly, no API wait.
+  // (Does NOT mark stationsLoaded, so the full list still loads when the panel opens.)
+  if (wasPlaying) {
     const lastUuid = localStorage.getItem(LS_STATION);
-    const customStation = getCustomStations().find(x => x.uuid === lastUuid);
-    if (customStation) {
-      // Resume custom station immediately without waiting for API
-      stations = [];
-      stationsLoaded = true;
-      renderStations();
-      maybeAutoResume();
-    }
+    if (getCustomStations().some(x => x.uuid === lastUuid)) maybeAutoResume();
   }
 
   if (localStorage.getItem(LS_OPEN) === '1') {
     setTimeout(openPanel, 200);
   } else if (wasPlaying && !autoResumeTried) {
-    if (!stationsLoaded) loadStations();
+    loadStations(); // fetch (or use cache) then auto-resume the API station
   }
 })();
