@@ -16,7 +16,7 @@
     'https://at1.api.radio-browser.info',
     'https://fr1.api.radio-browser.info',
   ];
-  const CACHE_KEY = 'mk_radio_stations_v4'; // v4: slimmer cache (dropped unused favicon/codec/freq)
+  const CACHE_KEY = 'mk_radio_stations_v5'; // v5: https-only filter (http streams are mixed-content-blocked)
   const CACHE_TS_KEY = 'mk_radio_stations_ts';
   const CACHE_TTL = 24 * 60 * 60 * 1000; // 24h
   const LS_OPEN = 'mk_radio_open';
@@ -122,6 +122,8 @@
       animation: rPulse 1.4s ease-in-out infinite;
       display: inline-block;
     }
+    .radio-station.dead { opacity: 0.45; }
+    .radio-station.dead .name::after { content: ' ⚠'; color: #EF4444; }
     .radio-station .body { flex: 1; min-width: 0; }
     .radio-station .name { font-weight: 600; font-size: 13px; }
     .radio-station .meta { font-size: 11px; color: #6B5B45; margin-top: 2px; }
@@ -204,6 +206,7 @@
   let isPlaying = false;
   let autoResumeTried = false;
   let pendingResume = null; // station to resume on next user gesture if autoplay blocked
+  const deadStations = new Set(); // uuids that errored this session — greyed in the list
 
   // ---- Refs ----
   const closeBtn = document.getElementById('radioCloseBtn');
@@ -264,7 +267,8 @@
   async function fetchFromApi() {
     // Try each API host until one works.
     // Note: no custom User-Agent header — browsers forbid it (some throw).
-    const path = '/json/stations/search?countrycode=TH&hidebroken=true&order=clickcount&reverse=true&limit=80';
+    // limit=150 because ~1/3 get dropped by the https-only filter below.
+    const path = '/json/stations/search?countrycode=TH&hidebroken=true&order=clickcount&reverse=true&limit=150';
     for (const host of API_HOSTS) {
       try {
         const r = await fetch(host + path);
@@ -302,7 +306,9 @@
       const raw = await fetchFromApi();
       const seen = new Set();
       stations = raw
-        .filter(s => s.url_resolved || s.url)
+        // https only — this page is served over https, so browsers block
+        // (mixed content) every http:// stream. ~1/3 of Thai stations.
+        .filter(s => ((s.url_resolved || s.url || '')).startsWith('https://'))
         .filter(s => !BLOCKED_NAMES.has((s.name || '').toLowerCase().trim()))
         .filter(s => {
           const k = normName(s.name);
@@ -359,6 +365,7 @@
     item.className = 'radio-station';
     item.dataset.uuid = s.uuid;
     if (currentStation && currentStation.uuid === s.uuid) item.classList.add('playing');
+    if (deadStations.has(s.uuid)) item.classList.add('dead'); // still clickable — may recover
     const tags = s.tags ? s.tags.split(',').slice(0, 3).join(' • ') : '';
     const bitrate = s.bitrate ? s.bitrate + 'k' : '';
     const isCustom = s.uuid.startsWith('custom-');
@@ -455,6 +462,12 @@
     });
   }
 
+  function setDead(uuid, dead) {
+    if (dead) deadStations.add(uuid); else deadStations.delete(uuid);
+    const row = list.querySelector(`.radio-station[data-uuid="${uuid}"]`);
+    if (row) row.classList.toggle('dead', dead);
+  }
+
   function playStation(s) {
     pendingResume = null; // manual choice overrides any blocked auto-resume
     currentStation = s;
@@ -465,9 +478,12 @@
     audio.play().then(() => {
       playBtn.disabled = false;
       setPlayingState(true);
-    }).catch(() => {
+      setDead(s.uuid, false); // recovered
+    }).catch((err) => {
       playBtn.disabled = false;
       setPlayingState(false);
+      // NotAllowedError = autoplay policy (not a broken stream) — don't mark dead
+      if (!err || err.name !== 'NotAllowedError') setDead(s.uuid, true);
       nowName.textContent = '⚠️ เล่นไม่สำเร็จ — ลองสถานีอื่น';
     });
   }
@@ -486,7 +502,8 @@
   audio.onerror = () => {
     if (!currentStation) return; // spurious error from src swap/teardown
     setPlayingState(false);
-    nowName.textContent = '⚠️ Stream error';
+    setDead(currentStation.uuid, true);
+    nowName.textContent = '⚠️ สถานีนี้เล่นไม่ได้ — ลองสถานีอื่น';
   };
 
   // Persist last play position on page unload (for cross-page continuity)
@@ -515,6 +532,10 @@
     if (!val) return;
     // Detect URL
     if (/^https?:\/\//i.test(val)) {
+      // http:// streams are blocked on an https page (mixed content)
+      if (location.protocol === 'https:' && /^http:\/\//i.test(val)) {
+        if (!confirm('⚠️ ลิ้งนี้เป็น http:// ซึ่งเบราว์เซอร์จะบล็อคบนเว็บ https — สถานีอาจเล่นไม่ได้\nต้องการเพิ่มต่อไหม?')) return;
+      }
       const name = prompt('ตั้งชื่อสถานี (เช่น "Wave FM 88")', 'Custom Station');
       if (!name) return;
       addCustomStation(name.trim(), val);
