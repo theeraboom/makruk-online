@@ -70,11 +70,40 @@
     return null;
   }
 
+  // Direct attack scan — O(rays) instead of generating move lists for all 64
+  // squares. This is the hottest path (called per candidate move via isInCheck).
+  const KNIGHT_OFFSETS = [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]];
   function isSquareAttacked(board, r, c, byColor) {
-    for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) {
-      if (board[i][j] && pieceColor(board[i][j]) === byColor) {
-        const moves = getRawMoves(board, i, j);
-        if (moves.some(m => m.r === r && m.c === c)) return true;
+    // Knight
+    for (const [dr, dc] of KNIGHT_OFFSETS) {
+      const i = r + dr, j = c + dc;
+      if (inBounds(i, j) && board[i][j] === byColor + 'N') return true;
+    }
+    // Short range: King (8 adjacent), Met/Khon (diagonal 1), Khon straight-forward, Pawn diagonal-forward
+    const fwd = byColor === 'w' ? -1 : 1; // byColor's forward direction
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        if (!dr && !dc) continue;
+        const i = r + dr, j = c + dc;
+        if (!inBounds(i, j)) continue;
+        const p = board[i][j];
+        if (!p || p[0] !== byColor) continue;
+        const t = p[1];
+        if (t === 'K') return true;
+        const diag = dr !== 0 && dc !== 0;
+        // piece at (i,j) attacks (r,c) "forward" when dr === -fwd
+        if (diag && (t === 'Q' || t === 'B')) return true;
+        if (diag && dr === -fwd && t === 'P') return true;
+        if (!diag && dc === 0 && dr === -fwd && t === 'B') return true;
+      }
+    }
+    // Rook rays
+    for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+      let i = r + dr, j = c + dc;
+      while (inBounds(i, j)) {
+        const p = board[i][j];
+        if (p) { if (p[0] === byColor && p[1] === 'R') return true; break; }
+        i += dr; j += dc;
       }
     }
     return false;

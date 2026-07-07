@@ -102,11 +102,47 @@
     return null;
   }
 
+  // Direct attack scan. Also fixes two pawn bugs the old move-list approach had:
+  // 1) a pawn's forward push counted as an "attack" (it can't capture forward)
+  // 2) a pawn's diagonal attack on an EMPTY square wasn't counted — which let
+  //    castling pass through a pawn-controlled square.
+  const KNIGHT_OFFSETS = [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]];
   function isSquareAttacked(board, r, c, byColor) {
-    for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) {
-      if (board[i][j] && pieceColor(board[i][j]) === byColor) {
-        const moves = getRawMoves(board, i, j, null); // skip castling check
-        if (moves.some(m => m.r === r && m.c === c)) return true;
+    // Knight
+    for (const [dr, dc] of KNIGHT_OFFSETS) {
+      const i = r + dr, j = c + dc;
+      if (inBounds(i, j) && board[i][j] === byColor + 'N') return true;
+    }
+    // King (adjacent)
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        if (!dr && !dc) continue;
+        const i = r + dr, j = c + dc;
+        if (inBounds(i, j) && board[i][j] === byColor + 'K') return true;
+      }
+    }
+    // Pawn (diagonal-forward only)
+    const fwd = byColor === 'w' ? -1 : 1;
+    for (const dc of [-1, 1]) {
+      const i = r - fwd, j = c + dc;
+      if (inBounds(i, j) && board[i][j] === byColor + 'P') return true;
+    }
+    // Diagonal rays: Bishop / Queen
+    for (const [dr, dc] of [[-1, -1], [-1, 1], [1, -1], [1, 1]]) {
+      let i = r + dr, j = c + dc;
+      while (inBounds(i, j)) {
+        const p = board[i][j];
+        if (p) { if (p[0] === byColor && (p[1] === 'B' || p[1] === 'Q')) return true; break; }
+        i += dr; j += dc;
+      }
+    }
+    // Straight rays: Rook / Queen
+    for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+      let i = r + dr, j = c + dc;
+      while (inBounds(i, j)) {
+        const p = board[i][j];
+        if (p) { if (p[0] === byColor && (p[1] === 'R' || p[1] === 'Q')) return true; break; }
+        i += dr; j += dc;
       }
     }
     return false;

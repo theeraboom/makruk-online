@@ -510,8 +510,20 @@ function publicRoom(room) {
   };
 }
 
+// Throttled: full room list (incl. every board) goes to every client — on a
+// busy server this fired on every move in every room. Cap at ~1 emit/750ms.
+let roomListTimer = null;
+let roomListDirty = false;
 function broadcastRoomList() {
+  if (roomListTimer) { roomListDirty = true; return; }
   io.emit('rooms_list', Array.from(rooms.values()).map(publicRoom));
+  roomListTimer = setTimeout(() => {
+    roomListTimer = null;
+    if (roomListDirty) {
+      roomListDirty = false;
+      broadcastRoomList();
+    }
+  }, 750);
 }
 
 function broadcastRoomState(roomId) {
@@ -697,6 +709,15 @@ io.on('connection', (socket) => {
         startClock(room);
       }
     }
+    // Resume a paused clock (e.g. after server restart restore) once both
+    // sides are live again — otherwise a timed game stays frozen forever.
+    if (role !== 'viewer' && room.status === 'playing' && room.timeBase && !room.runningSince) {
+      const live = (cc) => {
+        const p = room.players[cc];
+        return !!p && (p.isBot || (p.id && io.sockets.sockets.get(p.id)));
+      };
+      if (live('w') && live('b')) startClock(room);
+    }
     socket.data.role = role;
 
     socket.emit('joined', { roomId, role });
@@ -820,7 +841,10 @@ io.on('connection', (socket) => {
     if (room.bot) {
       room.players[room.bot.color] = { id: 'BOT', name: 'Bot', isBot: true, botDifficulty: room.bot.difficulty };
     }
-    room.status = (room.players.w && room.players.b) ? 'playing' : 'waiting';
+    // Only count slots with a live occupant (bot, or human with an active
+    // socket) — a disconnected placeholder must not start the game.
+    const liveSlot = (p) => !!p && (p.isBot || (p.id && io.sockets.sockets.get(p.id)));
+    room.status = (liveSlot(room.players.w) && liveSlot(room.players.b)) ? 'playing' : 'waiting';
     if (room.status === 'playing') startClock(room);
     pushSystemMessage(room, 'sys.reset', { user: socket.data.user.name });
     broadcastRoomState(roomId);
@@ -855,7 +879,10 @@ io.on('connection', (socket) => {
 
     if (removed) {
       pushSystemMessage(room, 'sys.left.' + role, { name: socket.data.user.name });
-      if (room.status === 'playing') room.status = 'waiting';
+      if (room.status === 'playing') {
+        deductTime(room); // freeze the clock fairly while waiting for a reclaim
+        room.status = 'waiting';
+      }
     }
 
     // Delete room when no live humans care anymore (bot doesn't count — bot games

@@ -109,7 +109,26 @@ function getStatus(engine, board, currentColor, gameType, ctx) {
   return engine.gameStatus(board, currentColor);
 }
 
-function minimax(engine, board, depth, alpha, beta, isMax, botColor, currentColor, gameType, ctx) {
+function isCaptureMove(m) {
+  return !!(m.info && (m.info.capture || m.info.captured));
+}
+
+// Captures first — dramatically better alpha-beta pruning
+function orderMoves(moves) {
+  moves.sort((a, b) => (isCaptureMove(b) ? 1 : 0) - (isCaptureMove(a) ? 1 : 0));
+  return moves;
+}
+
+// Checkers: after a capture that can continue (กินติด), the SAME player moves
+// again, constrained to the landing piece. Recurse without flipping the turn
+// and without consuming depth (chains are forced and finite).
+function chainsOn(engine, gameType, m, newBoard) {
+  return CHECKERS_TYPES.includes(gameType)
+    && m.info && m.info.captured
+    && engine.canContinueCapture(newBoard, m.to.r, m.to.c);
+}
+
+function minimax(engine, board, depth, alpha, beta, isMax, botColor, currentColor, gameType, ctx, mustContinueFrom) {
   if (depth === 0) return evaluate(board, gameType, botColor);
 
   const status = getStatus(engine, board, currentColor, gameType, ctx);
@@ -119,15 +138,18 @@ function minimax(engine, board, depth, alpha, beta, isMax, botColor, currentColo
     return -10000 - depth;
   }
 
-  const moves = getAllLegalMoves(engine, board, currentColor, gameType, ctx, null);
+  const moves = getAllLegalMoves(engine, board, currentColor, gameType, ctx, mustContinueFrom || null);
   if (moves.length === 0) return evaluate(board, gameType, botColor);
+  orderMoves(moves);
 
   if (isMax) {
     let maxEval = -Infinity;
     for (const m of moves) {
       const nb = applyForAI(engine, board, m, gameType);
       const nctx = updateCtx(ctx, m, board, gameType);
-      const e = minimax(engine, nb, depth - 1, alpha, beta, false, botColor, oppositeColor(currentColor), gameType, nctx);
+      const e = chainsOn(engine, gameType, m, nb)
+        ? minimax(engine, nb, depth, alpha, beta, true, botColor, currentColor, gameType, nctx, { r: m.to.r, c: m.to.c })
+        : minimax(engine, nb, depth - 1, alpha, beta, false, botColor, oppositeColor(currentColor), gameType, nctx, null);
       if (e > maxEval) maxEval = e;
       if (e > alpha) alpha = e;
       if (beta <= alpha) break;
@@ -138,7 +160,9 @@ function minimax(engine, board, depth, alpha, beta, isMax, botColor, currentColo
     for (const m of moves) {
       const nb = applyForAI(engine, board, m, gameType);
       const nctx = updateCtx(ctx, m, board, gameType);
-      const e = minimax(engine, nb, depth - 1, alpha, beta, true, botColor, oppositeColor(currentColor), gameType, nctx);
+      const e = chainsOn(engine, gameType, m, nb)
+        ? minimax(engine, nb, depth, alpha, beta, false, botColor, currentColor, gameType, nctx, { r: m.to.r, c: m.to.c })
+        : minimax(engine, nb, depth - 1, alpha, beta, true, botColor, oppositeColor(currentColor), gameType, nctx, null);
       if (e < minEval) minEval = e;
       if (e < beta) beta = e;
       if (beta <= alpha) break;
@@ -278,13 +302,18 @@ function chooseMove(board, gameType, botColor, ctx, mustContinueFrom, difficulty
   }
 
   shuffleArray(moves);
+  orderMoves(moves);
   let bestMove = moves[0];
   let bestScore = -Infinity;
+  let alpha = -Infinity;
   for (const m of moves) {
     const nb = applyForAI(engine, board, m, gameType);
     const nctx = updateCtx(ctx, m, board, gameType);
-    const score = minimax(engine, nb, depth - 1, -Infinity, Infinity, false, botColor, oppositeColor(botColor), gameType, nctx);
+    const score = chainsOn(engine, gameType, m, nb)
+      ? minimax(engine, nb, depth, alpha, Infinity, true, botColor, botColor, gameType, nctx, { r: m.to.r, c: m.to.c })
+      : minimax(engine, nb, depth - 1, alpha, Infinity, false, botColor, oppositeColor(botColor), gameType, nctx, null);
     if (score > bestScore) { bestScore = score; bestMove = m; }
+    if (score > alpha) alpha = score;
   }
   return bestMove;
 }
