@@ -15,3 +15,4 @@ html:not([data-theme="dark"]) body #radioPanel{--radio-bg:#fff;--radio-soft:#f0f
 @keyframes radioWave{to{transform:scaleY(.45)}}
 @media(max-width:600px){body #radioBtn{right:12px;bottom:max(12px,env(safe-area-inset-bottom));width:150px;height:50px;padding:6px 10px;gap:8px;border-radius:15px}#radioBtn small{max-width:90px;font-size:9px}#radioBtn .radio-dock-icon{width:30px;height:30px;font-size:22px}body #radioPanel{right:12px;bottom:74px;max-height:calc(100dvh - 90px);border-radius:20px}#radioPanel #radioSearch{font-size:16px}.room-page{padding-bottom:65px}}
 @media(prefers-reduced-motion:reduce){#radioPanel .radio-art span{animation:none!important}}
+#radioVolumeHint{font-size:11px;color:var(--radio-dim);margin:0;padding:0 18px 8px;line-height:1.5}

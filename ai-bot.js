@@ -63,7 +63,7 @@ function getAllLegalMoves(engine, board, color, gameType, ctx, mustContinueFrom)
         legal = engine.getLegalMoves(board, r, c);
       }
       for (const m of legal) {
-        moves.push({ from: { r, c }, to: { r: m.r, c: m.c }, info: m });
+        moves.push({ from: { r, c }, to: { r: m.r, c: m.c }, info: m, piece: board[r][c] });
       }
     }
   }
@@ -125,7 +125,7 @@ function orderMoves(moves) {
 function chainsOn(engine, gameType, m, newBoard) {
   return CHECKERS_TYPES.includes(gameType)
     && m.info && m.info.captured
-    && engine.canContinueCapture(newBoard, m.to.r, m.to.c);
+    && engine.canContinueCapture(newBoard, m.to.r, m.to.c, m.piece?.[1] === 'M' && newBoard[m.to.r][m.to.c]?.[1] === 'K');
 }
 
 function minimax(engine, board, depth, alpha, beta, isMax, botColor, currentColor, gameType, ctx, mustContinueFrom) {

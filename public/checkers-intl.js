@@ -144,7 +144,8 @@
     return str;
   }
 
-  function canContinueCapture(board, r, c) {
+  function canContinueCapture(board, r, c, promoted = false) {
+    if (promoted) return false; // Crowning completes the turn.
     return getCaptureMoves(board, r, c).length > 0;
   }
 

@@ -42,21 +42,22 @@
     throw new Error('directory-unavailable');
   }
   class Player {
-    constructor({makeAudio,loadHls,onChange,timeout=15000}) {
-      Object.assign(this,{makeAudio,loadHls,onChange,timeout});this.state='idle';this.current=null;this.generation=0;this.volume=1;this.muted=false;
+    constructor({makeAudio,loadHls,onChange,prepareAudio,unlock,timeout=15000}) {
+      Object.assign(this,{makeAudio,loadHls,onChange,prepareAudio,unlock,timeout});this.state='idle';this.current=null;this.generation=0;this.volume=1;this.muted=false;
     }
     update(state) { this.state=state;this.onChange(this); }
     release() {
       ++this.generation;clearTimeout(this.timer);this.timer=null;
+      if(this.output){this.output.destroy();this.output=null;}
       if(this.hls){this.hls.destroy();this.hls=null;}
       if(this.audio){const a=this.audio;this.audio=null;a.onplaying=a.onwaiting=a.onstalled=a.onerror=a.onended=null;a.pause();a.removeAttribute('src');a.load();}
     }
     pause() {this.release();this.update(this.current?'paused':'idle');}
-    setVolume(value) {this.volume=Math.min(1,Math.max(0,Number(value)||0));if(this.audio)try{this.audio.volume=this.volume;}catch{} }
-    setMuted(value) {this.muted=!!value;if(this.audio)this.audio.muted=this.muted;}
+    setVolume(value) {this.volume=Math.min(1,Math.max(0,Number(value)||0));if(this.output)this.output.set(this.volume,this.muted);else if(this.audio)try{this.audio.volume=this.volume;}catch{} }
+    setMuted(value) {this.muted=!!value;if(this.audio)this.audio.muted=this.muted;if(this.output)this.output.set(this.volume,this.muted);}
     async play(next) {
       const target=station(next);if(!target)return;
-      this.release();this.current=target;const id=this.generation;
+      this.unlock?.();this.release();this.current=target;const id=this.generation;
       const audio=this.makeAudio();this.audio=audio;audio.preload='none';audio.volume=this.volume;audio.muted=this.muted;
       const active=()=>id===this.generation;
       const fail=(state='error')=>{if(active()){this.release();this.update(state);}};
@@ -66,6 +67,7 @@
       audio.onerror=()=>fail('error');audio.onended=()=>fail('ended');
       this.update('loading');arm();
       try {
+        if(this.prepareAudio){const prepared=await this.prepareAudio(target,audio);if(!active()){prepared?.output?.destroy();return;}this.output=prepared?.output||null;this.volumeSupported=prepared?.volumeSupported!==false;if(this.output)this.output.set(this.volume,this.muted);}
         if(target.hls && !audio.canPlayType('application/vnd.apple.mpegurl')) {
           const Hls=await this.loadHls();if(!active())return;
           if(!Hls.isSupported()){fail('unsupported');return;}

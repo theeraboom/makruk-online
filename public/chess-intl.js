@@ -87,7 +87,7 @@
           moves.push({ r: nr, c: nc, capture: true });
         }
         // En passant
-        if (ctx && ctx.enPassant && ctx.enPassant.r === nr && ctx.enPassant.c === nc) {
+        if (ctx && ctx.enPassant && ctx.enPassant.r === nr && ctx.enPassant.c === nc && !board[nr][nc] && board[r][nc] === (color === 'w' ? 'bP' : 'wP')) {
           moves.push({ r: nr, c: nc, capture: true, enPassant: true });
         }
       }
@@ -175,8 +175,8 @@
       newBoard[toR + dir][toC] = null;
     }
     // Promotion (default queen)
-    if (piece === 'wP' && toR === 0) newBoard[toR][toC] = 'wQ';
-    if (piece === 'bP' && toR === 7) newBoard[toR][toC] = 'bQ';
+    if (piece === 'wP' && toR === 0) newBoard[toR][toC] = 'w' + (['Q','R','B','N'].includes(special?.promotion) ? special.promotion : 'Q');
+    if (piece === 'bP' && toR === 7) newBoard[toR][toC] = 'b' + (['Q','R','B','N'].includes(special?.promotion) ? special.promotion : 'Q');
     return newBoard;
   }
 
@@ -184,8 +184,9 @@
     const piece = board[r][c];
     if (!piece) return [];
     const color = pieceColor(piece);
-    const raw = getRawMoves(board, r, c, ctx);
+    const raw = getRawMoves(board, r, c, ctx).flatMap(m => piece[1] === 'P' && (m.r === 0 || m.r === 7) ? ['Q','R','B','N'].map(promotion => ({...m,promotion})) : [m]);
     return raw.filter(m => {
+      if (pieceType(board[m.r][m.c]) === 'K') return false;
       const test = applyMove(board, r, c, m.r, m.c, m);
       return !isInCheck(test, color);
     });
@@ -219,7 +220,7 @@
     const p = pieceType(piece);
     const sep = capture ? 'x' : '-';
     let str = (p === 'P' ? '' : p) + fromSq + sep + toSq;
-    if (promoted) str += '=Q';
+    if (promoted) str += '=' + (special?.promotion || 'Q');
     return str;
   }
 
@@ -231,10 +232,19 @@
     return board;
   }
 
+  function nextContext(ctx, piece, from, to, move) {
+    const castling={...ctx.castling};
+    const color=piece[0];
+    if(piece[1]==='K'){castling[color+'K']=false;castling[color+'Q']=false;}
+    for(const [side,row] of [['w',7],['b',0]]) for(const [wing,col] of [['Q',0],['K',7]]) {
+      if((from.r===row&&from.c===col&&piece===side+'R')||(to.r===row&&to.c===col))castling[side+wing]=false;
+    }
+    return {castling,enPassant:move?.doublePawn?{r:(from.r+to.r)/2,c:from.c}:null};
+  }
   const api = {
     initialBoard, getRawMoves, getLegalMoves, applyMove, applyMoves,
     isInCheck, hasAnyLegalMove, gameStatus, pieceColor, pieceType, findKing, moveNotation,
-    isSquareAttacked,
+    isSquareAttacked, nextContext,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else global.ChessIntl = api;

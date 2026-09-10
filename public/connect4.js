@@ -20,6 +20,7 @@
    * Drop a piece into column `col`. Returns the landing row or -1 if full.
    */
   function findLandingRow(board, col) {
+    if (!Number.isInteger(col) || col < 0 || col >= COLS) return -1;
     for (let r = ROWS - 1; r >= 0; r--) {
       if (!board[r][col]) return r;
     }
@@ -55,7 +56,7 @@
     let board = initialBoard();
     let color = 'w';
     for (const m of moves) {
-      board = applyMove(board, m.col, color);
+      board = applyMove(board, m.col ?? m.to?.c, color);
       color = color === 'w' ? 'b' : 'w';
     }
     return board;

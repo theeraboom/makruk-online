@@ -25,3 +25,12 @@ test('HLS is loaded only for unsupported native playback and destroyed on stop',
  let destroyed=false,attached=false;class Hls{static isSupported(){return true}static Events={ERROR:'error'};on(){}loadSource(){}attachMedia(){attached=true}destroy(){destroyed=true}}
  const{p,audios}=harness();p.loadHls=async()=>Hls;const playing=p.play({...entry(),hls:true});await new Promise(r=>setImmediate(r));assert.equal(attached,true);audios[0].resolve();await playing;p.pause();assert.equal(destroyed,true);
 });
+test('media gain receives slider changes and stale preparation disconnects without replacing new audio',async()=>{
+ const{p,audios}=harness();const outputs=[],pending=[];
+ p.prepareAudio=()=>new Promise(resolve=>pending.push(resolve));
+ const makeOutput=()=>{const o={calls:[],destroyed:false,set(v,m){this.calls.push([v,m])},destroy(){this.destroyed=true}};outputs.push(o);return o;};
+ const first=p.play(entry('a')),second=p.play(entry('b'));
+ const old=makeOutput();pending[0]({output:old,volumeSupported:true});await first;assert.equal(old.destroyed,true);
+ const active=makeOutput();pending[1]({output:active,volumeSupported:true});await new Promise(r=>setImmediate(r));audios[1].resolve();await second;
+ p.setVolume(.25);p.setMuted(true);assert.deepEqual(active.calls.slice(-2),[[.25,false],[.25,true]]);assert.equal(p.audio,audios[1]);p.pause();assert.equal(active.destroyed,true);
+});

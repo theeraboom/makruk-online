@@ -55,6 +55,16 @@ test('real server gameplay and reconnect regressions', { timeout: 40000 }, async
     await fs.rm(dir, { recursive: true, force: true });
   });
   for (const file of ['server.js', 'ai-bot.js']) await fs.copyFile(path.join(root, file), path.join(dir, file));
+  // Fixtures exist only in this temporary, loopback-bound test server.
+  await fs.appendFile(path.join(dir,'server.js'), `
+    io.on('connection', socket => socket.on('test_fixture', fixture => {
+      const room=rooms.get(socket.data.roomId);
+      Object.assign(room,buildInitialMatchState(room.gameType,fixture.timeBase||null,fixture.timeIncrement||0),{board:fixture.board,currentPlayer:fixture.currentPlayer||'w',status:'playing'});
+      delete room.drawState;Rules.ensure(room);
+      if(fixture.quietPlies)room.drawState.quietPlies=fixture.quietPlies;
+      startClock(room);broadcastRoomState(room.id);socket.emit('fixture_ready',true);
+    }));
+  `);
   await fs.symlink(path.join(root, 'public'), path.join(dir, 'public'), 'junction');
   await fs.symlink(path.join(root, 'node_modules'), path.join(dir, 'node_modules'), 'junction');
   server = spawn(process.execPath, ['server.js'], { cwd: dir, env: { ...process.env, PORT: '0', HOST: '127.0.0.1', UPSTASH_REDIS_REST_URL: '', UPSTASH_REDIS_REST_TOKEN: '' }, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -96,6 +106,7 @@ test('real server gameplay and reconnect regressions', { timeout: 40000 }, async
       assert.equal(state.board.length, gameType === 'connect4' ? 6 : 8);
       assert.equal(state.timeBase, 5);
       assert.equal(state.timeIncrement, 3);
+      assert.equal(state.currentPlayer,gameType==='checkers-intl'?'b':'w');
     }
   });
   await t.test('private rooms reject wrong passwords and accept correct ones', async () => {
@@ -166,4 +177,51 @@ test('real server gameplay and reconnect regressions', { timeout: 40000 }, async
     assert.equal(state.currentPlayer, 'w');
     assert.equal(state.moves.length, 2);
   });
+  const blank=()=>Array.from({length:8},()=>Array(8).fill(null));
+  async function fixture(gameType,board,extra={}){
+    const a=await client('fixture_w_'+clients.length),b=await client('fixture_b_'+clients.length),id=await create(a,{gameType});
+    await join(a,id);await join(b,id);await a.emit('test_fixture',{board,...extra});await a.next('fixture_ready');
+    a.events=[];b.events=[];return{a,b,id};
+  }
+  await t.test('clock runs throughout a forced chain and increment is applied only once',async()=>{
+    const board=blank();board[5][0]='wM';board[4][1]='bM';board[2][3]='bM';board[0][7]='bM';
+    const{a}=await fixture('checkers',board,{timeBase:1,timeIncrement:2});
+    await a.emit('move',{from:{r:5,c:0},to:{r:3,c:2}});const first=await a.next('room_state',s=>s.moves.length===1);
+    assert.equal(first.currentPlayer,'w');assert.deepEqual(first.mustContinueFrom,{r:3,c:2});assert.ok(first.runningSince);assert.ok(first.whiteTime<=60000);
+    await new Promise(r=>setTimeout(r,85));await a.emit('move',{from:{r:3,c:2},to:{r:1,c:4}});const second=await a.next('room_state',s=>s.moves.length===2);
+    assert.equal(second.currentPlayer,'b');assert.equal(second.mustContinueFrom,null);assert.ok(second.whiteTime<first.whiteTime+1960);assert.ok(second.whiteTime>first.whiteTime+1800);
+  });
+  await t.test('Thai and English crowning ends a capture even when a new king could jump back',async()=>{
+    for(const game of ['checkers','checkers-intl']){const board=blank();board[2][1]='wM';board[1][2]='bM';board[1][4]='bM';const{a}=await fixture(game,board);
+      await a.emit('move',{from:{r:2,c:1},to:{r:0,c:3}});const s=await a.next('room_state',s=>s.moves.length===1);assert.equal(s.currentPlayer,'b');assert.equal(s.mustContinueFrom,null);assert.equal(s.board[0][3],'wK');}
+  });
+  await t.test('server accepts underpromotion and rejects invented promotion pieces',async()=>{
+    const board=blank();board[7][7]='wK';board[0][7]='bK';board[1][0]='wP';board[3][5]='bR';const{a}=await fixture('chess-intl',board);
+    await a.emit('move',{from:{r:1,c:0},to:{r:0,c:0},promotion:'K'});assert.match(await a.next('error_msg'),/เลื่อนขั้น/);
+    await a.emit('move',{from:{r:1,c:0},to:{r:0,c:0},promotion:'N'});const s=await a.next('room_state',s=>s.moves.length===1);assert.equal(s.board[0][0],'wN');assert.equal(s.moves[0].special.promotion,'N');assert.ok(s.moves[0].notation.endsWith('=N'));
+  });
+  await t.test('checkmate takes precedence over the 75-move rule',async()=>{
+    const board=blank();board[0][0]='bK';board[2][2]='wK';board[2][1]='wQ';const{a}=await fixture('chess-intl',board,{quietPlies:149});
+    await a.emit('move',{from:{r:2,c:1},to:{r:1,c:1}});const s=await a.next('room_state',s=>s.moves.length===1);assert.equal(s.endedReason,'checkmate');assert.equal(s.endedWinner,'w');
+  });
+  await t.test('current and announced-move draw claims end the match correctly',async()=>{
+    const board=blank();board[7][7]='wK';board[0][0]='bK';board[6][2]='wR';board[1][5]='bR';
+    const one=await fixture('chess-intl',board,{quietPlies:100});await one.a.emit('draw_action',{action:'claim'});assert.equal((await one.a.next('room_state',s=>s.status==='ended')).endedReason,'fifty');
+    const two=await fixture('chess-intl',board,{quietPlies:99});await two.a.emit('move',{from:{r:6,c:2},to:{r:5,c:2},claimDraw:true});const s=await two.a.next('room_state',s=>s.status==='ended');assert.equal(s.endedReason,'fifty');assert.equal(s.moves.length,0);assert.equal(s.board[6][2],'wR');
+  });
+  await t.test('draw offers require the other player; spectators cannot accept',async()=>{
+    const{a,b,id}=await fixture('chess',require('../public/chess').initialBoard());const viewer=await client('draw_viewer');assert.equal(await join(viewer,id),'viewer');
+    await a.emit('draw_action',{action:'offer'});await b.next('room_state',s=>s.draw.offer==='w');await viewer.emit('draw_action',{action:'accept'});await a.emit('draw_action',{action:'accept'});const unchanged=await a.next('room_state',s=>s.draw.offer==='w');assert.equal(unchanged.status,'playing');
+    await b.emit('draw_action',{action:'accept'});const result=await a.next('room_state',s=>s.status==='ended');assert.equal(result.endedReason,'agreement');assert.equal(result.endedWinner,null);
+  });
+  await t.test('Thai counting can be started only by an eligible player and is broadcast',async()=>{
+    const board=blank();board[7][7]='wK';board[0][0]='bK';board[1][2]='bR';const{a,b}=await fixture('chess',board);
+    await b.emit('draw_action',{action:'count'});await a.emit('draw_action',{action:'count'});const s=await a.next('room_state',s=>s.draw.count?.side==='w');assert.deepEqual(s.draw.count,{side:'w',type:'pieces',limit:16,value:3});await a.emit('draw_action',{action:'stop_count'});assert.equal((await a.next('room_state',s=>!s.draw.count)).draw.count,null);
+  });
+  await t.test('HTML returns a persistent shell, clean room metadata and safely escaped room names',async()=>{
+    const a=await client('meta_client'),id=await create(a,{name:'Room <title> & "friends"'});
+    const html=await(await fetch(base+'/room.html?id='+id)).text();assert.match(html,/id="appFrame"/);assert.match(html,/Room &lt;title&gt; &amp; &quot;friends&quot;/);assert.ok(html.includes('https://playmakruk.com/room.html?id='+id));assert.match(html,/og-image.png\?v=studio-20260910/);
+    const content=await(await fetch(base+'/room.html?id='+id+'&_view=content')).text();assert.ok(!content.includes('src="radio.js"'));assert.ok(content.includes('src="/navigation.js"'));
+  });
+
 });

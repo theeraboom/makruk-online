@@ -19,7 +19,7 @@ function getSymbols() { return isCheckersGame() ? CHECKERS_SYMBOLS : CHESS_SYMBO
 const params = new URLSearchParams(window.location.search);
 const roomId = params.get('id');
 const initialPw = params.get('pw') || null;
-if (!roomId) window.location.href = '/';
+if (!roomId) AppNavigation.go('/');
 
 const socket = io({
   reconnection: true,
@@ -61,6 +61,7 @@ let lastRoomName = '';
 let lastHasDefaultName = false;
 let myRole = null;
 let board = null;
+let drawInfo=null, drawHasBot=false;
 let currentPlayer = 'w';
 let status = 'waiting';
 let selected = null;
@@ -119,7 +120,7 @@ socket.emit('join_room', { roomId, password: knownPw });
 
 socket.on('password_required', ({ name }) => {
   const pw = prompt(`"${name}" ${I18N.t('prompt.privatePass')}`);
-  if (!pw) { window.location.href = '/'; return; }
+  if (!pw) { AppNavigation.go('/'); return; }
   knownPw = pw;
   socket.emit('join_room', { roomId, password: pw });
 });
@@ -127,7 +128,7 @@ socket.on('password_required', ({ name }) => {
 // Room no longer exists (expired / server lost it) — explain, then go home
 socket.on('room_not_found', () => {
   showToast(I18N.t('err.notFoundRedirect'));
-  setTimeout(() => { window.location.href = '/'; }, 3000);
+  setTimeout(() => { AppNavigation.go('/'); }, 3000);
 });
 
 socket.on('joined', ({ role, name }) => {
@@ -154,11 +155,12 @@ socket.on('room_state', (state) => {
   });
   const piecePicker = document.getElementById('piecePicker');
   if (piecePicker) piecePicker.hidden = isConnect4Game();
-  // Connect Four has fixed orientation (gravity) & no piece sets/themes
+  refreshPiecePreviews();
+  // Connect Four keeps its gravity orientation and fixed discs; the table material is selectable.
   const flipBtn = document.getElementById('flipBtn');
   if (flipBtn) flipBtn.hidden = isConnect4Game();
   const themePicker = document.querySelector('.theme-picker:not(.piece-picker)');
-  if (themePicker) themePicker.hidden = isConnect4Game();
+  if (themePicker) themePicker.hidden = false;
   const boardWrapper = document.getElementById('boardWrapper');
   if (boardWrapper) boardWrapper.classList.toggle('connect4', isConnect4Game());
   document.getElementById('boardCamera').hidden = isConnect4Game();
@@ -189,6 +191,9 @@ socket.on('room_state', (state) => {
   endedWinner = state.endedWinner;
   winCells = state.winCells || null;
   moves = state.moves || [];
+  drawInfo = state.draw || null;
+  drawHasBot=!!state.hasBot;
+  renderDrawControls();
 
   if (moves.length > lastMoveCount && prevStatus === 'playing') {
     const lastMove = moves[moves.length - 1];
@@ -388,7 +393,7 @@ socket.on('connect', () => {
 socket.on('error_msg', (msg) => {
   if (justReconnected && msg === 'ไม่พบห้องนี้') {
     showBanner(I18N.t('sys.room_expired'), 'warn');
-    setTimeout(() => { location.href = '/'; }, 2500);
+    setTimeout(() => { AppNavigation.go('/'); }, 2500);
   }
 });
 
@@ -433,6 +438,7 @@ function updateStatus() {
   const el = document.getElementById('status');
   el.className = 'status-pill';
   const lang = I18N.getLang();
+  if(status==='ended'&&endedWinner===null&&endedReason!=='draw'&&endedReason!=='stalemate'){el.textContent='🤝 '+I18N.t('draw.'+endedReason);return;}
   if (isConnect4Game()) {
     const cSide = (c) => I18N.t(c === 'w' ? 'c4.side.y' : 'c4.side.r');
     if (status === 'waiting') {
@@ -693,7 +699,11 @@ function handleClick(r, c) {
   if (selected) {
     const vm = validMoves.find((m) => m.r === r && m.c === c);
     if (vm) {
-      socket.emit('move', { from: { r: selected.r, c: selected.c }, to: { r, c } });
+      const from={r:selected.r,c:selected.c},to={r,c};
+      if (gameType==='chess-intl'&&board[from.r][from.c]?.[1]==='P'&&(r===0||r===7)) {
+        choosePromotion(from,to);return;
+      }
+      submitMove(from,to);
       if (!mustContinueFrom) { selected = null; validMoves = []; }
       render();
       return;
@@ -717,6 +727,41 @@ function handleClick(r, c) {
   }
 }
 
+function submitMove(from,to,promotion) {
+  socket.emit('move',{from,to,promotion,claimDraw:document.getElementById('claimNextMove').checked});
+}
+function choosePromotion(from,to){
+  if(document.getElementById('promotionDialog'))return;
+  const th=I18N.getLang()==='th',dialog=document.createElement('dialog');dialog.id='promotionDialog';dialog.className='studio-dialog';
+  dialog.innerHTML=`<button class="ghost dialog-close" aria-label="${th?'ยกเลิก':'Cancel'}">✕</button><h2>${th?'เลื่อนเบี้ยเป็นตัวไหน?':'Promote to which piece?'}</h2><p>${th?'เลือกตัวหมากเพื่อเดินตานี้ให้สมบูรณ์':'Choose a piece to complete your move'}</p><div class="dialog-options"></div>`;
+  for(const [type,thName,enName] of [['Q','ควีน','Queen'],['R','เรือ','Rook'],['B','บิชอป','Bishop'],['N','ม้า','Knight']]){
+    const button=document.createElement('button');button.type='button';button.dataset.promotion=type;button.innerHTML=Pieces.renderPiece(myRole+type,'chess-intl','classic')+`<span>${th?thName:enName}</span>`;
+    button.onclick=()=>{submitMove(from,to,type);selected=null;validMoves=[];dialog.close();render();};dialog.querySelector('.dialog-options').append(button);
+  }
+  dialog.querySelector('.dialog-close').onclick=()=>dialog.close();dialog.addEventListener('close',()=>dialog.remove());document.body.append(dialog);dialog.showModal();
+}
+function drawAction(action){if(socket.connected)socket.emit('draw_action',{action});}
+document.getElementById('claimDrawBtn').onclick=()=>drawAction('claim');
+document.getElementById('offerDrawBtn').onclick=()=>drawAction('offer');
+document.getElementById('countDrawBtn').onclick=()=>drawAction('count');
+document.getElementById('stopCountBtn').onclick=()=>drawAction('stop_count');
+document.getElementById('acceptDrawBtn').onclick=()=>drawAction('accept');
+document.getElementById('declineDrawBtn').onclick=()=>drawAction('decline');
+function renderDrawControls(){
+  const th=I18N.getLang()==='th',player=['w','b'].includes(myRole),active=status==='playing',mine=currentPlayer===myRole;
+  document.getElementById('drawControls').hidden=!player||!active;
+  if(!active)document.getElementById('promotionDialog')?.close();
+  const button=document.getElementById('claimDrawBtn');button.textContent=th?'ขอเสมอตามกติกา':'Claim draw';button.hidden=isConnect4Game();button.disabled=!mine||!drawInfo?.claim;
+  const offer=document.getElementById('offerDrawBtn');offer.textContent=th?'เสนอเสมอ':'Offer draw';offer.hidden=drawHasBot;offer.disabled=!!drawInfo?.offer;
+  const incoming=drawInfo?.offer&&drawInfo.offer!==myRole;
+  document.getElementById('drawOffer').hidden=!drawInfo?.offer;document.getElementById('drawOfferText').textContent=incoming?(th?'อีกฝ่ายขอเสมอ':'Opponent offers a draw'):(th?'ส่งคำขอเสมอแล้ว':'Draw offered');
+  for(const [id,label,en] of [['acceptDrawBtn','ตกลง','Accept'],['declineDrawBtn','เล่นต่อ','Decline']]){const b=document.getElementById(id);b.hidden=!incoming;b.textContent=th?label:en;}
+  const count=drawInfo?.count,eligible=drawInfo?.canCount?.[myRole];
+  const countButton=document.getElementById('countDrawBtn');countButton.hidden=!eligible||(count?.side===myRole&&count.type===eligible.type);countButton.disabled=!mine||!!mustContinueFrom;countButton.textContent=count?.type==='board'&&eligible?.type==='pieces'?(th?'เปลี่ยนเป็นนับศักดิ์หมาก':'Switch to piece count'):(th?'เริ่มนับศักดิ์':'Start counting');
+  const stop=document.getElementById('stopCountBtn');stop.hidden=count?.side!==myRole;stop.textContent=th?'หยุดนับ':'Stop counting';
+  document.getElementById('drawCountStatus').textContent=count?(th?`นับศักดิ์${count.type==='pieces'?'หมาก':'กระดาน'} ${count.value} / ${count.limit} · ฝ่าย${count.side==='w'?'ขาว':'ดำ'}`:`${count.type} count ${count.value} / ${count.limit} · ${count.side==='w'?'White':'Black'}`):drawInfo?.claim?I18N.t('draw.'+drawInfo.claim):'';
+  document.getElementById('claimNextLabel').hidden=!['chess-intl','checkers-intl','checkers'].includes(gameType);document.getElementById('claimNextText').textContent=th?'ขอเสมอถ้าตาถัดไปทำให้ครบเกณฑ์':'Claim a draw if my next move qualifies';
+}
 function legalMovesFor(r, c) {
   const engine = getEngine();
   if (isCheckersGame()) {
@@ -760,32 +805,45 @@ document.getElementById('cameraMine').onclick=()=>{flipped=myRole==='b';cameraRo
 document.getElementById('cameraOpponent').onclick=()=>{flipped=myRole!=='b';cameraRotation=0;applyCamera();render();};
 applyCamera();
 
+function closePicker(button) {
+  const details=button.closest('details'); details.open=false; details.querySelector('summary').focus();
+}
+function refreshPiecePreviews() {
+  document.querySelectorAll('#pieceOptions button').forEach(button=>{
+    button.querySelector('.ps-preview').innerHTML=Pieces.renderPiece('wK',gameType,button.dataset.pieceset);
+  });
+}
+document.querySelectorAll('.theme-picker,.sound-settings').forEach(details=>{
+  details.addEventListener('toggle',()=>{if(details.open)document.querySelectorAll('.theme-picker,.sound-settings').forEach(other=>{if(other!==details)other.open=false;});});
+  details.addEventListener('keydown',e=>{if(e.key==='Escape'){details.open=false;details.querySelector('summary').focus();}});
+});
 function applyTheme(theme) {
   boardTheme = theme;
   localStorage.setItem('makruk_theme', theme);
   document.body.dataset.boardTheme = theme;
   document.querySelectorAll('#themeOptions .theme-btn').forEach((b) => {
-    b.classList.toggle('active', b.dataset.theme === theme);
+    b.classList.toggle('active', b.dataset.theme === theme); b.setAttribute('aria-pressed',String(b.dataset.theme===theme));
   });
 }
 applyTheme(boardTheme);
 
 document.querySelectorAll('#themeOptions .theme-btn').forEach((btn) => {
-  btn.onclick = () => applyTheme(btn.dataset.theme);
+  btn.onclick = () => { applyTheme(btn.dataset.theme); closePicker(btn); playSound('move'); };
 });
 
 function applyPieceSet(set) {
   pieceSet = set;
   localStorage.setItem('makruk_pieceset', set);
   document.querySelectorAll('#pieceOptions .theme-btn').forEach((b) => {
-    b.classList.toggle('active', b.dataset.pieceset === set);
+    b.classList.toggle('active', b.dataset.pieceset === set); b.setAttribute('aria-pressed',String(b.dataset.pieceset===set));
   });
   if (board) render();
 }
 applyPieceSet(pieceSet);
+refreshPiecePreviews();
 
 document.querySelectorAll('#pieceOptions .theme-btn').forEach((btn) => {
-  btn.onclick = () => applyPieceSet(btn.dataset.pieceset);
+  btn.onclick = () => { applyPieceSet(btn.dataset.pieceset); closePicker(btn); };
 });
 
 document.getElementById('resetBtn').onclick = () => {
@@ -802,23 +860,19 @@ document.getElementById('resignBtn').onclick = () => {
   if (confirm(I18N.t('confirm.resign'))) socket.emit('resign');
 };
 
-document.getElementById('shareBtn').onclick = async () => {
-  // Always build a clean direct-to-room URL. For private rooms include the
-  // password so friends land in the room without a prompt.
-  let url = `${location.origin}/room.html?id=${encodeURIComponent(roomId)}`;
-  if (roomIsPrivate && knownPw) url += `&pw=${encodeURIComponent(knownPw)}`;
-  const lang = I18N.getLang();
-  const gameTypeName = I18N.t('gt.' + gameType).replace(/^[♛♚⛀⛂🔴]\s/, '');
-  const text = lang === 'th' ? `มาดูวง${gameTypeName}ที่ ${url}` : `Watch this ${gameTypeName} game at ${url}`;
-  if (navigator.share) {
-    try { await navigator.share({ title: 'Playmakruk.com', text, url }); return; } catch (e) {}
-  }
-  try {
-    await navigator.clipboard.writeText(url);
-    showToast(I18N.t('toast.copied'));
-  } catch (e) {
-    showToast(I18N.t('toast.copyFail') + url);
-  }
+document.getElementById('shareBtn').onclick = () => {
+  const th=I18N.getLang()==='th';
+  const urls=ShareLinks.links(location.origin,roomId,roomIsPrivate,knownPw);
+  const dialog=document.createElement('dialog');dialog.className='studio-dialog';
+  dialog.innerHTML=`<button type="button" class="ghost dialog-close" aria-label="${th?'ปิด':'Close'}">✕</button><h2>${th?'ชวนเพื่อนมาเล่น':'Invite a friend'}</h2><p>${th?'เลือกหน้าที่อยากให้เพื่อนเปิด':'Choose where your friend will arrive'}</p><button class="share-choice" data-destination="room"><strong>${th?'↗ ชวนเข้าวงนี้':'↗ Invite to this room'}</strong><span>${th?'เปิดวงที่คุณกำลังเล่นหรือดูอยู่':'Open the game you are playing or watching'}</span></button><button class="share-choice" data-destination="website"><strong>${th?'⌂ แชร์หน้าเว็บไซต์':'⌂ Share the website'}</strong><span>${th?'เปิดหน้าแรก ให้เพื่อนเลือกเกมและวงเอง':'Open the lobby to choose a game or room'}</span></button><label for="shareUrl">${th?'ลิงก์ที่จะส่ง':'Link to share'}</label><input id="shareUrl" class="share-url" readonly><p id="shareExplanation"></p><div class="dialog-actions"><button id="copyShareLink" class="ghost">${th?'คัดลอกลิงก์':'Copy link'}</button> <button id="nativeShareLink">${th?'แชร์ให้เพื่อน':'Share with a friend'}</button></div><p id="shareResult" role="status"></p>`;
+  document.body.append(dialog);let destination='room';
+  function choose(value){destination=value;dialog.querySelector('#shareUrl').value=urls[value];dialog.querySelectorAll('[data-destination]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.destination===value)));dialog.querySelector('#shareExplanation').textContent=value==='website'?(th?'เพื่อนจะเปิดหน้าแรกของ Playmakruk':'Your friend will open the Playmakruk lobby'):roomIsPrivate?(th?'วงส่วนตัว · ลิงก์นี้มีรหัสเข้าวง ส่งให้เพื่อนที่ต้องการชวนเท่านั้น':'Private room · this link includes the room password'):(th?'เพื่อนเข้ามาดูได้ และเลือกนั่งเล่นเมื่อมีที่ว่าง':'Friends can watch, or take a seat when one is available');dialog.querySelector('#shareResult').textContent='';}
+  dialog.querySelectorAll('[data-destination]').forEach(button=>button.onclick=()=>choose(button.dataset.destination));
+  dialog.querySelector('.dialog-close').onclick=()=>dialog.close();dialog.addEventListener('close',()=>dialog.remove());
+  async function copy(){try{await navigator.clipboard.writeText(urls[destination]);dialog.querySelector('#shareResult').textContent=th?'คัดลอกแล้ว':'Copied';}catch{dialog.querySelector('#shareUrl').select();dialog.querySelector('#shareResult').textContent=th?'เลือกลิงก์ไว้แล้ว กดคัดลอกได้เลย':'Select and copy the link above';}}
+  dialog.querySelector('#copyShareLink').onclick=copy;
+  dialog.querySelector('#nativeShareLink').onclick=async()=>{try{const result=await ShareLinks.send(navigator,{title:'Playmakruk',text:destination==='room'?(th?'มาเล่นด้วยกันที่วงนี้':'Join me at this table'):(th?'แวะมาเล่นหมากด้วยกัน':'Play a board game with me'),url:urls[destination]});if(result!=='cancelled')dialog.querySelector('#shareResult').textContent=result==='copied'?(th?'คัดลอกแล้ว':'Copied'):(th?'แชร์แล้ว':'Shared');}catch{await copy();}};
+  choose('room');dialog.showModal();
 };
 
 const soundBtn = document.getElementById('soundBtn');
@@ -834,200 +888,16 @@ soundBtn.onclick = () => {
   if (soundEnabled) playSound('chat');
 };
 
-let audioCtx = null;
-let noiseBuffer = null;
-function getNoiseBuffer(ctx) {
-  if (noiseBuffer) return noiseBuffer;
-  const buf = ctx.createBuffer(1, ctx.sampleRate * 0.3, ctx.sampleRate);
-  const data = buf.getChannelData(0);
-  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
-  noiseBuffer = buf;
-  return buf;
-}
-
-let audioUnlocked = false;
-let audioOutput = null; // master input node — all sounds connect here
-function ensureAudioCtx() {
-  if (!audioCtx) {
-    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; }
-    // Chain: sources → BIG GAIN (~30x) → brick-wall LIMITER → destination
-    // Limiter sits AFTER gain so we can boost hard without clipping
-    try {
-      const masterGain = audioCtx.createGain();
-      masterGain.gain.value = 30.0; // ~+30dB — much louder for mobile speakers
-      const limiter = audioCtx.createDynamicsCompressor();
-      limiter.threshold.value = -1;   // engage just below 0 dBFS
-      limiter.knee.value = 0;          // hard knee
-      limiter.ratio.value = 20;        // brick-wall limiter
-      limiter.attack.value = 0.001;
-      limiter.release.value = 0.05;
-      masterGain.connect(limiter).connect(audioCtx.destination);
-      audioOutput = masterGain;
-    } catch (e) {
-      audioOutput = audioCtx.destination;
-    }
-  }
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume().catch(() => {});
-  }
-  return audioCtx;
-}
-
-// iOS Safari / Chrome mobile: AudioContext is locked until first user gesture.
-// CRITICAL: iOS only activates AudioSession when an HTMLMediaElement plays
-// REAL audio data (with actual samples, not just a header). We generate a
-// 2-second silent WAV via Blob and loop it to keep the session alive.
-function buildSilentWavBlobUrl(seconds) {
-  const sampleRate = 8000;
-  const numSamples = Math.floor(sampleRate * seconds);
-  const dataSize = numSamples; // 8-bit mono = 1 byte per sample
-  const total = 44 + dataSize;
-  const buf = new ArrayBuffer(total);
-  const v = new DataView(buf);
-  // RIFF header
-  v.setUint32(0, 0x52494646, false);     // "RIFF"
-  v.setUint32(4, total - 8, true);
-  v.setUint32(8, 0x57415645, false);     // "WAVE"
-  // fmt chunk
-  v.setUint32(12, 0x666d7420, false);    // "fmt "
-  v.setUint32(16, 16, true);             // chunk size
-  v.setUint16(20, 1, true);              // PCM
-  v.setUint16(22, 1, true);              // mono
-  v.setUint32(24, sampleRate, true);
-  v.setUint32(28, sampleRate, true);     // byte rate
-  v.setUint16(32, 1, true);              // block align
-  v.setUint16(34, 8, true);              // bits per sample
-  // data chunk
-  v.setUint32(36, 0x64617461, false);    // "data"
-  v.setUint32(40, dataSize, true);
-  // 8-bit unsigned silence = 128 (mid-point)
-  for (let i = 44; i < total; i++) v.setUint8(i, 128);
-  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
-}
-// Pre-create silent audio at init — DOM-attached, preloaded, ready to play in
-// the very first gesture handler synchronously (iOS rule)
-const silentAudioEl = document.createElement('audio');
-silentAudioEl.setAttribute('playsinline', '');
-silentAudioEl.setAttribute('webkit-playsinline', '');
-silentAudioEl.src = buildSilentWavBlobUrl(3);
-silentAudioEl.loop = true;
-silentAudioEl.volume = 0.01;
-silentAudioEl.preload = 'auto';
-silentAudioEl.style.cssText = 'position:absolute;width:1px;height:1px;left:-9999px;';
-if (document.body) document.body.appendChild(silentAudioEl);
-else document.addEventListener('DOMContentLoaded', () => document.body.appendChild(silentAudioEl));
-function getSilentAudio() { return silentAudioEl; }
-function tryUnlockAudio() {
-  const ctx = ensureAudioCtx();
-  if (!ctx) return;
-  try {
-    // Play a near-silent oscillator through the SAME master chain — verifies pipeline works
-    const osc = ctx.createOscillator();
-    const g = ctx.createGain();
-    g.gain.value = 0.0001;
-    osc.frequency.value = 440;
-    osc.connect(g).connect(audioOutput || ctx.destination);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.02);
-  } catch (e) {}
-  // Activate iOS AudioSession via HTMLMediaElement play() — must be UNMUTED
-  try { getSilentAudio().play().catch(() => {}); } catch (e) {}
-  // Resume returns a Promise — when it resolves, mark unlocked + remove listeners
-  if (ctx.resume) {
-    ctx.resume().then(() => {
-      if (ctx.state === 'running' && !audioUnlocked) {
-        audioUnlocked = true;
-        ['touchstart', 'touchend', 'pointerdown', 'mousedown', 'click', 'keydown'].forEach((ev) => {
-          document.removeEventListener(ev, tryUnlockAudio, { capture: true });
-          document.removeEventListener(ev, tryUnlockAudio, true);
-        });
-      }
-    }).catch(() => {});
-  }
-}
-['touchstart', 'touchend', 'pointerdown', 'mousedown', 'click', 'keydown'].forEach((ev) => {
-  document.addEventListener(ev, tryUnlockAudio, { capture: true, passive: true });
-});
-
+const sfxVolume=document.getElementById('sfxVolume');
+sfxVolume.value=Number(localStorage.getItem('makruk_sfx_volume')??.65);
+function updateSfxVolume(){document.getElementById('sfxVolumeValue').value=Math.round(Number(sfxVolume.value)*100)+'%';}
+updateSfxVolume();
+sfxVolume.oninput=()=>{window.GameAudio?.setVolume(Number(sfxVolume.value));updateSfxVolume();};
+sfxVolume.onchange=()=>playSound('move');
+document.getElementById('sfxPreview').onclick=()=>{soundEnabled=true;localStorage.setItem('makruk_sound','on');updateSoundBtn();playSound('move');};
 function playSound(type) {
-  if (!soundEnabled) return;
-  try {
-    const ctx = ensureAudioCtx();
-    if (!ctx) return;
-    const now = ctx.currentTime;
-    if (type === 'move') {
-      woodClick(ctx, now, 1.8);
-    } else if (type === 'capture') {
-      woodClick(ctx, now, 2.4);
-      woodClick(ctx, now + 0.04, 1.4);
-    } else if (type === 'chat') {
-      tone(ctx, now, 880, 0.06);
-    } else if (type === 'end') {
-      tone(ctx, now, 523, 0.15);
-      tone(ctx, now + 0.13, 659, 0.15);
-      tone(ctx, now + 0.26, 784, 0.25);
-    }
-  } catch (e) {}
+  if(soundEnabled) window.GameAudio?.play(type,{gameType,theme:boardTheme});
 }
-
-function woodClick(ctx, when, intensity) {
-  intensity = intensity || 1;
-  const out = audioOutput || ctx.destination;
-  // Low "thud" — deep wood resonance
-  const osc = ctx.createOscillator();
-  const oscGain = ctx.createGain();
-  osc.frequency.setValueAtTime(150, when);
-  osc.frequency.exponentialRampToValueAtTime(60, when + 0.08);
-  osc.type = 'triangle';
-  oscGain.gain.setValueAtTime(0, when);
-  oscGain.gain.linearRampToValueAtTime(0.35 * intensity, when + 0.003);
-  oscGain.gain.exponentialRampToValueAtTime(0.001, when + 0.15);
-  osc.connect(oscGain).connect(out);
-  osc.start(when);
-  osc.stop(when + 0.16);
-
-  // Mid "click" — sharp attack via filtered noise
-  const noise = ctx.createBufferSource();
-  noise.buffer = getNoiseBuffer(ctx);
-  const filter = ctx.createBiquadFilter();
-  filter.type = 'bandpass';
-  filter.frequency.value = 1200;
-  filter.Q.value = 3;
-  const noiseGain = ctx.createGain();
-  noiseGain.gain.setValueAtTime(0, when);
-  noiseGain.gain.linearRampToValueAtTime(0.18 * intensity, when + 0.002);
-  noiseGain.gain.exponentialRampToValueAtTime(0.001, when + 0.06);
-  noise.connect(filter).connect(noiseGain).connect(out);
-  noise.start(when);
-  noise.stop(when + 0.08);
-
-  // High-end snap (click sharpness)
-  const noise2 = ctx.createBufferSource();
-  noise2.buffer = getNoiseBuffer(ctx);
-  const filter2 = ctx.createBiquadFilter();
-  filter2.type = 'highpass';
-  filter2.frequency.value = 3000;
-  const noise2Gain = ctx.createGain();
-  noise2Gain.gain.setValueAtTime(0.08 * intensity, when);
-  noise2Gain.gain.exponentialRampToValueAtTime(0.001, when + 0.025);
-  noise2.connect(filter2).connect(noise2Gain).connect(out);
-  noise2.start(when);
-  noise2.stop(when + 0.03);
-}
-
-function tone(ctx, when, freq, dur) {
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.frequency.value = freq;
-  osc.type = 'sine';
-  gain.gain.setValueAtTime(0, when);
-  gain.gain.linearRampToValueAtTime(0.15, when + 0.01);
-  gain.gain.exponentialRampToValueAtTime(0.001, when + dur);
-  osc.connect(gain).connect(audioOutput || ctx.destination);
-  osc.start(when);
-  osc.stop(when + dur);
-}
-
 const chatForm = document.getElementById('chatForm');
 const chatInput = document.getElementById('chatInput');
 chatForm.onsubmit = (e) => {
@@ -1122,3 +992,5 @@ function showToast(text) {
     setTimeout(() => t.remove(), 300);
   }, 2200);
 }
+
+document.addEventListener('langchange',renderDrawControls);

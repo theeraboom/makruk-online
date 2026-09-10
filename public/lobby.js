@@ -75,8 +75,8 @@ function updateSidePickerLabels() {
   const wBtn = document.querySelector('#userColorOptions .tc-btn[data-uc="w"]');
   const bBtn = document.querySelector('#userColorOptions .tc-btn[data-uc="b"]');
   if (!wBtn || !bBtn) return;
-  const wKey = selectedGameType === 'connect4' ? 'side.yellow' : 'side.white';
-  const bKey = selectedGameType === 'connect4' ? 'side.red' : 'side.black';
+  const wKey = selectedGameType === 'connect4' ? 'side.yellow' : selectedGameType === 'checkers-intl' ? 'side.whiteSecond' : 'side.white';
+  const bKey = selectedGameType === 'connect4' ? 'side.red' : selectedGameType === 'checkers-intl' ? 'side.blackFirst' : 'side.black';
   wBtn.setAttribute('data-i18n', wKey);
   bBtn.setAttribute('data-i18n', bKey);
   wBtn.textContent = I18N.t(wKey);
@@ -239,9 +239,9 @@ socket.on('room_created', ({ id }) => {
   clearTimeout(createTimer);
   // Carry the password into the room URL so the creator's share link
   // lets friends enter the private room directly (no prompt).
-  window.location.href = lastCreatedPw
+  AppNavigation.go(lastCreatedPw
     ? `/room.html?id=${id}&pw=${encodeURIComponent(lastCreatedPw)}`
-    : `/room.html?id=${id}`;
+    : `/room.html?id=${id}`);
 });
 
 socket.on('rooms_list', (rooms) => {
@@ -352,7 +352,7 @@ function renderRooms(rooms) {
       event.preventDefault();
       const pw = prompt(`"${displayName}" ${I18N.t('prompt.privatePass')}`);
       if (!pw) return;
-      window.location.href = `/room.html?id=${encodeURIComponent(r.id)}&pw=${encodeURIComponent(pw)}`;
+      AppNavigation.go(`/room.html?id=${encodeURIComponent(r.id)}&pw=${encodeURIComponent(pw)}`);
     };
     if (list.children[index] !== card) list.insertBefore(card, list.children[index] || null);
   });

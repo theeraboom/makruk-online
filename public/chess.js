@@ -131,6 +131,7 @@
     const color = pieceColor(piece);
     const raw = getRawMoves(board, r, c);
     return raw.filter(m => {
+      if (pieceType(board[m.r][m.c]) === 'K') return false;
       const test = applyMove(board, r, c, m.r, m.c);
       return !isInCheck(test, color);
     });

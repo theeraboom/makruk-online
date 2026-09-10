@@ -9,6 +9,7 @@ const ChessIntl = require('./public/chess-intl.js');
 const CheckersIntl = require('./public/checkers-intl.js');
 const Connect4 = require('./public/connect4.js');
 const Bot = require('./ai-bot.js');
+const Rules = require('./public/match-rules.js');
 const ENGINES = {
   chess: Chess,
   checkers: Checkers,
@@ -46,7 +47,7 @@ function buildInitialMatchState(gameType, timeBase, timeIncrement) {
   const state = {
     gameType,
     board: engine.initialBoard(),
-    currentPlayer: 'w',
+    currentPlayer: gameType === 'checkers-intl' ? 'b' : 'w',
     moves: [],
     timeBase,
     timeIncrement: timeIncrement || 0,
@@ -62,6 +63,7 @@ function buildInitialMatchState(gameType, timeBase, timeIncrement) {
     state.castling = { wK: true, wQ: true, bK: true, bQ: true };
     state.enPassant = null;
   }
+  Rules.ensure(state);
   return state;
 }
 
@@ -91,7 +93,17 @@ function endGame(room, reason, winner) {
   room.runningSince = null;
 }
 
+function finishDraw(room, reason) {
+  endGame(room, reason, null);
+  pushSystemMessage(room, reason === 'agreement' ? 'sys.drawAgreement' : 'sys.drawRule');
+}
+function finishTimeout(room, loser) {
+  const winner=Rules.timeoutWinner(room,loser);
+  endGame(room,winner?'timeout':'dead',winner);
+  pushSystemMessage(room,winner?'sys.timeout':'sys.drawRule',{loser,winner});
+}
 function processMove(room, from, to, moveInfo) {
+  Rules.ensure(room);
   const engine = ENGINES[room.gameType] || Chess;
 
   // Connect Four uses a column-drop model (no from/to piece), handle separately.
@@ -99,8 +111,7 @@ function processMove(room, from, to, moveInfo) {
     deductTime(room);
     if (room.timeBase && (room.whiteTime <= 0 || room.blackTime <= 0)) {
       const loser = room.currentPlayer;
-      endGame(room, 'timeout', loser === 'w' ? 'b' : 'w');
-      pushSystemMessage(room, 'sys.timeout', { loser, winner: loser === 'w' ? 'b' : 'w' });
+      finishTimeout(room, loser);
       return;
     }
     const col = moveInfo.col;
@@ -137,8 +148,7 @@ function processMove(room, from, to, moveInfo) {
   deductTime(room);
   if (room.timeBase && (room.whiteTime <= 0 || room.blackTime <= 0)) {
     const loser = room.currentPlayer;
-    endGame(room, 'timeout', loser === 'w' ? 'b' : 'w');
-    pushSystemMessage(room, 'sys.timeout', { loser, winner: loser === 'w' ? 'b' : 'w' });
+    finishTimeout(room, loser);
     return;
   }
 
@@ -186,14 +196,14 @@ function processMove(room, from, to, moveInfo) {
     promoted,
     notation: engine.moveNotation(movingPiece, from, to, captured, promoted, moveInfo),
     time: Date.now(),
-    special: (moveInfo && (moveInfo.castle || moveInfo.enPassant || moveInfo.doublePawn)) ? {
-      castle: moveInfo.castle, enPassant: moveInfo.enPassant, doublePawn: moveInfo.doublePawn
+    special: (moveInfo && (moveInfo.castle || moveInfo.enPassant || moveInfo.doublePawn || moveInfo.promotion)) ? {
+      castle: moveInfo.castle, enPassant: moveInfo.enPassant, doublePawn: moveInfo.doublePawn, promotion: moveInfo.promotion
     } : null,
   });
 
   let switchTurn = true;
   if (CHECKERS_TYPES.includes(room.gameType) && captured) {
-    if (engine.canContinueCapture(room.board, to.r, to.c)) {
+    if (engine.canContinueCapture(room.board, to.r, to.c, promoted)) {
       room.mustContinueFrom = { r: to.r, c: to.c };
       switchTurn = false;
     } else {
@@ -208,6 +218,7 @@ function processMove(room, from, to, moveInfo) {
     room.currentPlayer = room.currentPlayer === 'w' ? 'b' : 'w';
   }
 
+  Rules.record(room, movingPiece, captured, switchTurn);
   let status;
   if (room.gameType === 'chess-intl') {
     status = engine.gameStatus(room.board, room.currentPlayer, { castling: room.castling, enPassant: room.enPassant });
@@ -223,7 +234,10 @@ function processMove(room, from, to, moveInfo) {
       key = status.reason === 'checkmate' ? 'sys.checkmate' : 'sys.stalemate';
     }
     pushSystemMessage(room, key, { winner: status.winner });
-  } else if (switchTurn) {
+  } else if (Rules.automaticReason(room)) {
+    finishDraw(room, Rules.automaticReason(room));
+  } else {
+    // The clock keeps running during compulsory multi-jumps.
     startClock(room);
     if (status.inCheck) {
       pushSystemMessage(room, 'sys.check', { player: room.currentPlayer });
@@ -240,6 +254,9 @@ function maybeBotMove(roomId, delayMs) {
     const r = rooms.get(roomId);
     if (!r || !r.bot || r.status !== 'playing') return;
     if (r.currentPlayer !== r.bot.color) return;
+    if(r.timeBase&&r.runningSince&&(r.currentPlayer==='w'?r.whiteTime:r.blackTime)-(Date.now()-r.runningSince)<=0){finishTimeout(r,r.currentPlayer);broadcastRoomState(roomId);broadcastRoomList();persistRoom(r);return;}
+    if (Rules.claimReason(r)) { finishDraw(r,Rules.claimReason(r));broadcastRoomState(roomId);broadcastRoomList();persistRoom(r);return; }
+    if (!Rules.ensure(r).count) Rules.startCount(r,r.bot.color);
     const ctx = r.gameType === 'chess-intl' ? { castling: r.castling, enPassant: r.enPassant } : null;
     const move = Bot.chooseMove(r.board, r.gameType, r.bot.color, ctx, r.mustContinueFrom, r.bot.difficulty);
     if (!move) return;
@@ -315,6 +332,7 @@ function snapshotRoom(room) {
     castling: room.castling || null,
     enPassant: room.enPassant || null,
     winCells: room.winCells || null,
+    drawState: Rules.ensure(room),
     status: room.status,
     // Players: keep names + isBot, drop socket id (will be reclaimed on reconnect)
     // disconnectedAt timestamp lets us detect stale slots within reclaim window
@@ -497,39 +515,54 @@ app.get('/health', (req, res) => {
 // ── Dynamic link previews for shared room links ──
 // LINE/FB/WhatsApp scrapers fetch /room.html?id=X; inject the real room name
 // and game type into <title> + OG tags so the preview shows the actual room.
-let roomHtmlTemplate = null;
-try { roomHtmlTemplate = fs.readFileSync(path.join(__dirname, 'public', 'room.html'), 'utf8'); }
-catch (e) { console.error('[og] cannot read room.html template:', e.message); }
 
 const GAME_LABELS_TH = {
   chess: 'หมากรุกไทย', 'chess-intl': 'หมากรุกสากล',
-  checkers: 'หมากฮอสไทย', 'checkers-intl': 'หมากฮอสสากล', connect4: 'Connect Four',
+  checkers: 'หมากฮอสไทย', 'checkers-intl': 'หมากฮอสอังกฤษ', connect4: 'Connect Four',
 };
 const DEFAULT_ROOM_NAMES_TH = {
   chess: 'วงหมากรุกไทย', 'chess-intl': 'วงหมากรุกสากล',
-  checkers: 'วงหมากฮอสไทย', 'checkers-intl': 'วงหมากฮอสสากล', connect4: 'วง Connect Four',
+  checkers: 'วงหมากฮอสไทย', 'checkers-intl': 'วงหมากฮอสอังกฤษ', connect4: 'วง Connect Four',
 };
 function escapeHtml(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-app.get('/room.html', (req, res, next) => {
-  const room = roomHtmlTemplate ? rooms.get(req.query.id) : null;
-  if (!room) return next(); // unknown room → serve static file as-is
-  const label = GAME_LABELS_TH[room.gameType] || 'หมากรุก';
-  const rawName = room.hasDefaultName ? (DEFAULT_ROOM_NAMES_TH[room.gameType] || 'วงหมากรุก') : room.name;
-  const name = escapeHtml(rawName);
-  const lock = room.password ? '🔒 ' : '';
-  const title = `${lock}${name} — ${label} | Playmakruk.com`;
-  const desc = `เข้าร่วมเล่นหรือดู${label}สดในห้อง "${name}" พร้อมแชทกับผู้ชม — ฟรี ไม่ต้องสมัคร`;
-  // Replacement callbacks avoid `$`-pattern interpretation from user-typed names
-  const html = roomHtmlTemplate
-    .replace(/<title>[^<]*<\/title>/, () => `<title>${title}</title>`)
-    .replace(/(<meta property="og:title" content=")[^"]*(")/, (m, a, b) => a + title + b)
-    .replace(/(<meta property="og:description" content=")[^"]*(")/, (m, a, b) => a + desc + b)
-    .replace(/(<meta name="twitter:title" content=")[^"]*(")/, (m, a, b) => a + title + b);
-  res.set('Cache-Control', 'no-store');
-  res.type('html').send(html);
+function renderPage(req, html) {
+  if (req.query._view === 'content') {
+    return html.replace('</head>', '<script src="/navigation.js"></script></head>')
+      .replace(/<script src="radio(?:-core)?\.js"><\/script>/g, '')
+      .replace('<script src="i18n.js"></script>', '<script src="i18n.js"></script><script src="audio-engine.js"></script>');
+  }
+  const head = html.match(/<head>([\s\S]*?)<\/head>/)[1];
+  const fallback=html.match(/<body[^>]*>([\s\S]*?)<\/body>/)[1].replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'');
+  return `<!doctype html><html lang="th"><head>${head}<link rel="stylesheet" href="/app-shell.css"></head><body class="app-shell">
+    <iframe id="appFrame" title="Playmakruk — เกมและห้องเล่น" allow="autoplay; clipboard-write; web-share"></iframe>
+    <div id="navigationStatus" role="status">กำลังเปิดหน้า…</div>
+    <noscript><style>html,body.app-shell{height:auto;overflow:auto}.app-shell #appFrame,.app-shell #navigationStatus{display:none}</style><p>เปิด JavaScript เพื่อเล่นเกมและฟังวิทยุ</p>${fallback}</noscript>
+    <script src="/app-shell.js"></script><script src="/i18n.js"></script><script src="/audio-engine.js"></script><script src="/radio-core.js"></script><script src="/radio.js"></script>
+  </body></html>`;
+}
+app.get(HTML_PATHS, (req, res, next) => {
+  let html;
+  try { html = fs.readFileSync(path.join(__dirname,'public',req.path==='/'?'index.html':req.path.slice(1)),'utf8'); } catch {return next();}
+  const room=req.path==='/room.html'?rooms.get(req.query.id):null;
+  if(room){
+    const label=GAME_LABELS_TH[room.gameType]||'หมากรุก';
+    const rawName=room.hasDefaultName?(DEFAULT_ROOM_NAMES_TH[room.gameType]||'วงหมากรุก'):room.name;
+    const title=escapeHtml(`${room.password?'🔒 ':''}${rawName} — ${label} | Playmakruk.com`);
+    const desc=escapeHtml(`เข้าวง ${rawName} เพื่อเล่นหรือดู${label}สด พร้อมแชทกับเพื่อน`);
+    html=html.replace(/<title>[^<]*<\/title>/,()=>`<title>${title}</title>`)
+      .replace(/(<meta property="og:title" content=")[^"]*(")/,(_,a,b)=>a+title+b)
+      .replace(/(<meta property="og:description" content=")[^"]*(")/,(_,a,b)=>a+desc+b)
+      .replace(/(<meta name="twitter:title" content=")[^"]*(")/,(_,a,b)=>a+title+b)
+      .replace(/(<meta name="twitter:description" content=")[^"]*(")/,(_,a,b)=>a+desc+b);
+  }
+  if(req.path==='/room.html'&&typeof req.query.id==='string'){
+    const shareUrl='https://playmakruk.com/room.html?id='+encodeURIComponent(req.query.id);
+    html=html.replace('</head>',`<meta property="og:url" content="${escapeHtml(shareUrl)}"></head>`);
+  }
+  res.set('Cache-Control','no-store');res.type('html').send(renderPage(req,html));
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -607,6 +640,7 @@ function broadcastRoomState(roomId) {
     castling: room.castling || null,
     enPassant: room.enPassant || null,
     winCells: room.winCells || null,
+    draw: Rules.summary(room),
     hasBot: !!room.bot,
     botDifficulty: room.bot ? room.bot.difficulty : null,
     botColor: room.bot ? room.bot.color : null,
@@ -798,7 +832,7 @@ io.on('connection', (socket) => {
       socket.emit('error_msg', 'ตำแหน่งไม่ถูกต้อง');
       return;
     }
-    const { from, to, col } = payload;
+    const { from, to, col, promotion, claimDraw } = payload;
     const roomId = socket.data.roomId;
     const room = rooms.get(roomId);
     if (!room || room.status !== 'playing') return;
@@ -843,12 +877,17 @@ io.on('connection', (socket) => {
     } else {
       legal = engine.getLegalMoves(room.board, from.r, from.c);
     }
-    const moveInfo = legal.find(m => m.r === to.r && m.c === to.c);
+    if (promotion !== undefined && !['Q','R','B','N'].includes(promotion)) { socket.emit('error_msg','เลือกตัวเลื่อนขั้นไม่ถูกต้อง');return; }
+    const moveInfo = legal.find(m => m.r === to.r && m.c === to.c && (!m.promotion || m.promotion === (promotion || 'Q')));
     if (!moveInfo) {
       socket.emit('error_msg', 'เดินไม่ได้'); return;
     }
 
-    processMove(room, from, to, moveInfo);
+    // A conditional claim is checked on the announced legal move before it is played.
+    const claim = claimDraw === true ? Rules.previewClaim(room,from,to,moveInfo) : null;
+    if (claim && room.timeBase && room.runningSince && (room.currentPlayer==='w'?room.whiteTime:room.blackTime)-(Date.now()-room.runningSince)<=0) finishTimeout(room,room.currentPlayer);
+    else if (claim) finishDraw(room,claim);
+    else processMove(room, from, to, moveInfo);
     broadcastRoomState(roomId);
     broadcastRoomList();
     persistRoom(room);
@@ -864,8 +903,8 @@ io.on('connection', (socket) => {
     deductTime(room);
     const loser = socket.data.role;
     const winner = loser === 'w' ? 'b' : 'w';
-    endGame(room, 'resign', winner);
-    pushSystemMessage(room, 'sys.resign', { user: socket.data.user.name, winner });
+    if(room.gameType==='chess-intl' && Rules.timeoutWinner(room,socket.data.role)===null) finishDraw(room,'dead');
+    else {endGame(room, 'resign', winner);pushSystemMessage(room, 'sys.resign', { user: socket.data.user.name, winner });}
     broadcastRoomState(socket.data.roomId);
     broadcastRoomList();
     persistRoom(room);
@@ -896,6 +935,23 @@ io.on('connection', (socket) => {
     if (!room) return;
     if (typeof emoji !== 'string' || !ALLOWED_REACTIONS.includes(emoji)) return;
     io.to(roomId).emit('reaction', { emoji, user: socket.data.user.name, time: Date.now() });
+  });
+
+  socket.on('draw_action', (payload) => {
+    const room=rooms.get(socket.data.roomId),side=socket.data.role;
+    if(!room||room.status!=='playing'||!['w','b'].includes(side)||!payload||typeof payload!=='object')return;
+    // A draw request cannot rescue a flag that has already fallen.
+    if(room.timeBase&&room.runningSince&&(room.currentPlayer==='w'?room.whiteTime:room.blackTime)-(Date.now()-room.runningSince)<=0){finishTimeout(room,room.currentPlayer);}
+    else {
+      const d=Rules.ensure(room);
+      if(payload.action==='claim'&&room.currentPlayer===side&&Rules.claimReason(room))finishDraw(room,Rules.claimReason(room));
+      else if(payload.action==='offer'&&!room.bot&&!d.offer)d.offer=side;
+      else if(payload.action==='accept'&&d.offer&&d.offer!==side)finishDraw(room,'agreement');
+      else if(payload.action==='decline'&&d.offer&&d.offer!==side)d.offer=null;
+      else if(payload.action==='count'&&!room.mustContinueFrom){Rules.startCount(room,side);if(Rules.automaticReason(room))finishDraw(room,Rules.automaticReason(room));}
+      else if(payload.action==='stop_count')Rules.stopCount(room,side);
+    }
+    broadcastRoomState(room.id);broadcastRoomList();persistRoom(room);
   });
 
   socket.on('reset_game', () => {
@@ -972,8 +1028,7 @@ setInterval(() => {
     if (remaining <= 0) {
       const loser = room.currentPlayer;
       if (loser === 'w') room.whiteTime = 0; else room.blackTime = 0;
-      endGame(room, 'timeout', loser === 'w' ? 'b' : 'w');
-      pushSystemMessage(room, 'sys.timeout', { loser, winner: loser === 'w' ? 'b' : 'w' });
+      finishTimeout(room, loser);
       broadcastRoomState(room.id);
       broadcastRoomList();
     }

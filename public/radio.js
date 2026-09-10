@@ -16,7 +16,7 @@
   const panel=document.createElement('section');panel.id='radioPanel';panel.className='radio-studio';panel.hidden=true;panel.setAttribute('role','dialog');panel.setAttribute('aria-labelledby','radioTitle');
   panel.innerHTML=`<div class="radio-heading"><div><span class="radio-eyebrow">PLAYMAKRUK RADIO</span><h2 id="radioTitle"></h2></div><button id="radioClose" type="button">✕</button></div>
     <div class="radio-now"><div class="radio-art" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div><div class="radio-track"><strong id="radioTrack"></strong><span id="radioState" role="status"></span></div><button id="radioPlayBtn" type="button"></button></div>
-    <div class="radio-volume"><button id="radioMute" type="button"></button><input id="radioVolume" type="range" min="0" max="100" step="5"><span id="radioVolumeValue"></span></div>
+    <div class="radio-volume"><button id="radioMute" type="button"></button><input id="radioVolume" type="range" min="0" max="100" step="1"><span id="radioVolumeValue"></span></div><p id="radioVolumeHint" hidden></p>
     <div class="radio-browse"><div class="radio-search-row"><input id="radioSearch" type="search" autocomplete="off"><button id="radioRefresh" type="button">↻</button><button id="radioAdd" type="button">＋</button></div>
     <div class="radio-tabs" role="group"><button type="button" data-radio-filter="all"></button><button type="button" data-radio-filter="favorites"></button><button type="button" data-radio-filter="custom"></button></div></div>
     <form id="radioAddForm" hidden><label><span id="radioNameLabel"></span><input id="radioCustomName" maxlength="100" required></label><label><span id="radioUrlLabel"></span><input id="radioCustomUrl" type="url" placeholder="https://…" required></label><p id="radioFormError" role="alert"></p><div><button id="radioSave" type="submit"></button><button id="radioCancel" type="button"></button></div></form>
@@ -27,7 +27,15 @@
     if(hlsPromise)return hlsPromise;
     hlsPromise=new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='/vendor/hls-1.7.2.light.min.js';script.onload=()=>resolve(window.Hls);script.onerror=()=>{script.remove();hlsPromise=null;reject(new Error('hls-load'));};document.head.appendChild(script);});return hlsPromise;
   }
-  const player=new Player({makeAudio:()=>new Audio(),loadHls,onChange:p=>{
+  const corsCache=new Map();
+  async function prepareAudio(target,audio){
+    let cors=corsCache.get(target.url);
+    if(cors===undefined){const abort=new AbortController();const timeout=setTimeout(()=>abort.abort(),3500);try{const result=await fetch(target.url,{mode:'cors',signal:abort.signal});cors=result.ok;await result.body?.cancel();}catch{cors=false;}finally{clearTimeout(timeout);abort.abort();}corsCache.set(target.url,cors);}
+    const jsHls=target.hls&&!audio.canPlayType('application/vnd.apple.mpegurl');
+    if(cors||jsHls){if(cors)audio.crossOrigin='anonymous';try{const output=window.GameAudio?.media(audio);if(output)return{output,volumeSupported:true};}catch{}}
+    const previous=audio.volume;try{audio.volume=.5;}catch{}const supported=Math.abs(audio.volume-.5)<.01;audio.volume=previous;return{volumeSupported:supported};
+  }
+  const player=new Player({makeAudio:()=>new Audio(),loadHls,prepareAudio,unlock:()=>window.GameAudio?.unlock(),onChange:p=>{
     saved.set('mk_radio_playing',['playing','loading'].includes(p.state)?'1':'0');
     if(p.current){saved.set('mk_radio_station_uuid',p.current.uuid);saved.set('mk_radio_last_station',JSON.stringify(p.current));}
     renderPlayer();updateRows();
@@ -45,6 +53,7 @@
     dock.innerHTML=`<span class="radio-dock-icon" aria-hidden="true">♫</span><span><b>${t('วิทยุ','Radio')}</b><small>${escape(player.current?.name||t('เปิดเพลงระหว่างเล่น','Find your soundtrack'))}</small></span><i aria-hidden="true">${player.state==='playing'?'●':'⌃'}</i>`;
     dock.setAttribute('aria-label',t('เปิดแผงวิทยุ','Open radio player'));
     $('radioMute').textContent=player.muted?'🔇':'♪';$('radioMute').setAttribute('aria-label',player.muted?t('เปิดเสียง','Unmute'):t('ปิดเสียง','Mute'));$('radioMute').setAttribute('aria-pressed',String(player.muted));
+    $('radioVolume').disabled=player.volumeSupported===false;$('radioVolumeHint').hidden=player.volumeSupported!==false;$('radioVolumeHint').textContent=t('สถานีนี้ไม่รองรับการปรับเสียงบนอุปกรณ์นี้ ใช้ปุ่มเสียงของเครื่องได้','Use your device volume for this station on this browser.');
     $('radioVolume').value=String(Math.round(player.volume*100));$('radioVolumeValue').textContent=Math.round(player.volume*100)+'%';
   }
   function updateRows(){panel.querySelectorAll('[data-station]').forEach(row=>{const selected=row.dataset.station===player.current?.uuid;row.classList.toggle('is-current',selected);row.querySelector('.radio-select').setAttribute('aria-pressed',String(selected));row.querySelector('.radio-row-icon').textContent=selected&&player.state==='playing'?'♫':'▶';});}
@@ -70,7 +79,7 @@
   panel.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();close();}});
   $('radioPlayBtn').onclick=()=>['playing','loading'].includes(player.state)?player.pause():player.play(player.current);
   $('radioMute').onclick=()=>{player.setMuted(!player.muted);saved.set('mk_radio_muted',player.muted?'1':'0');renderPlayer();};
-  $('radioVolume').oninput=e=>{player.setVolume(Number(e.target.value)/100);saved.set('mk_radio_volume',player.volume);renderPlayer();};
+  $('radioVolume').oninput=e=>{window.GameAudio?.unlock();player.setMuted(false);saved.set('mk_radio_muted','0');player.setVolume(Number(e.target.value)/100);saved.set('mk_radio_volume',player.volume);renderPlayer();};
   $('radioSearch').oninput=renderList;$('radioRefresh').onclick=()=>load(true);
   panel.querySelectorAll('[data-radio-filter]').forEach(b=>b.onclick=()=>{filter=b.dataset.radioFilter;renderList();});
   $('radioList').onclick=e=>{

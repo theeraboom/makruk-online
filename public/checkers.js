@@ -37,6 +37,7 @@
             foundEnemy = { r: nr, c: nc };
           } else if (foundEnemy) {
             moves.push({ r: nr, c: nc, captured: foundEnemy });
+            break; // Thai kings must land immediately behind the captured piece.
           }
           nr += dr; nc += dc;
         }
@@ -172,7 +173,8 @@
     return str;
   }
 
-  function canContinueCapture(board, r, c) {
+  function canContinueCapture(board, r, c, promoted = false) {
+    if (promoted) return false; // Crowning completes the turn.
     return getCaptureMoves(board, r, c).length > 0;
   }
 
