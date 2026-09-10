@@ -543,6 +543,12 @@ function publicRoom(room) {
     hasDefaultName: !!room.hasDefaultName,
     gameType: room.gameType,
     board: room.board,
+    moveCount: room.moves.length,
+    // Public display names only; private-room identities stay behind the password.
+    players: room.password ? null : Object.fromEntries(['w', 'b'].map(color => {
+      const player = room.players[color];
+      return [color, player ? { name: player.name, isBot: !!player.isBot, botDifficulty: player.botDifficulty || null } : null];
+    })),
     playerCount: (room.players.w ? 1 : 0) + (room.players.b ? 1 : 0),
     viewerCount: room.viewers.size,
     status: room.status,
@@ -676,7 +682,12 @@ io.on('connection', (socket) => {
     broadcastRoomList();
   });
 
-  socket.on('join_room', ({ roomId, password }) => {
+  socket.on('join_room', (payload) => {
+    if (!payload || typeof payload !== 'object' || typeof payload.roomId !== 'string') {
+      socket.emit('error_msg', 'ไม่พบห้องนี้');
+      return;
+    }
+    const { roomId, password } = payload;
     const room = rooms.get(roomId);
     if (!room) {
       socket.emit('error_msg', 'ไม่พบห้องนี้');
@@ -750,8 +761,9 @@ io.on('connection', (socket) => {
     if (role !== 'viewer' && room.status === 'waiting') {
       const wHuman = room.players.w && !room.players.w.isBot;
       const bHuman = room.players.b && !room.players.b.isBot;
-      const wFilled = !!room.players.w;
-      const bFilled = !!room.players.b;
+      const isLive = (p) => !!p && (p.isBot || (p.id && io.sockets.sockets.has(p.id)));
+      const wFilled = isLive(room.players.w);
+      const bFilled = isLive(room.players.b);
       // Start when both slots are filled (either both human, or human + bot)
       if (wFilled && bFilled && (wHuman || bHuman)) {
         room.status = 'playing';
@@ -769,7 +781,7 @@ io.on('connection', (socket) => {
     }
     socket.data.role = role;
 
-    socket.emit('joined', { roomId, role });
+    socket.emit('joined', { roomId, role, name: socket.data.user.name });
     socket.emit('chat_history', room.messages);
     broadcastRoomState(roomId);
     broadcastRoomList();
@@ -781,7 +793,12 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('move', ({ from, to, col }) => {
+  socket.on('move', (payload) => {
+    if (!payload || typeof payload !== 'object') {
+      socket.emit('error_msg', 'ตำแหน่งไม่ถูกต้อง');
+      return;
+    }
+    const { from, to, col } = payload;
     const roomId = socket.data.roomId;
     const room = rooms.get(roomId);
     if (!room || room.status !== 'playing') return;
@@ -980,8 +997,8 @@ setInterval(() => {
 }, 60 * 1000); // every 60s
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`♛ หมากรุกไทยออนไลน์: http://localhost:${PORT}`);
+server.listen(PORT, process.env.HOST || undefined, () => {
+  console.log(`♛ หมากรุกไทยออนไลน์: http://localhost:${server.address().port}`);
 });
 
 // Graceful shutdown: warn clients, flush room state to Redis, then exit cleanly

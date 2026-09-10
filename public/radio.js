@@ -1,605 +1,110 @@
-/**
- * Floating Thai radio player
- * - Stations from radio-browser.info (free public API, no key)
- * - HTML5 <audio> playback — no iframe, no CORS issues
- * - Persists open state, volume, last station in localStorage
- * - Self-contained: creates its own DOM + styles on load
- */
-(function () {
-  if (window.__radioWidgetLoaded) return;
-  window.__radioWidgetLoaded = true;
-
-  const API_HOSTS = [
-    'https://de1.api.radio-browser.info',
-    'https://de2.api.radio-browser.info',
-    'https://nl1.api.radio-browser.info',
-    'https://at1.api.radio-browser.info',
-    'https://fr1.api.radio-browser.info',
-  ];
-  const CACHE_KEY = 'mk_radio_stations_v5'; // v5: https-only filter (http streams are mixed-content-blocked)
-  const CACHE_TS_KEY = 'mk_radio_stations_ts';
-  const CACHE_TTL = 24 * 60 * 60 * 1000; // 24h
-  const LS_OPEN = 'mk_radio_open';
-  const LS_STATION = 'mk_radio_station_uuid';
-  const LS_PLAYING = 'mk_radio_playing'; // '1' = was playing, auto-resume on next page
-  const LS_FAVORITES = 'mk_radio_favorites'; // JSON array of station uuids
-  const LS_CUSTOM = 'mk_radio_custom'; // JSON array of {uuid, name, url}
-
-  // ---- Inject styles ----
-  const style = document.createElement('style');
-  style.textContent = `
-    #radioBtn {
-      position: fixed; right: 16px; bottom: 16px; z-index: 9998;
-      width: 54px; height: 54px; border-radius: 50%;
-      background: linear-gradient(135deg, #FCD34D, #B45309);
-      color: #1F1611; font-size: 26px; line-height: 1;
-      border: 1.5px solid #B45309;
-      box-shadow: 0 4px 14px rgba(180, 83, 9, 0.35), 0 0 0 1px #FFF inset;
-      cursor: pointer; display: flex; align-items: center; justify-content: center;
-      transition: transform 0.15s, box-shadow 0.15s;
-      -webkit-tap-highlight-color: transparent;
-    }
-    #radioBtn:hover { transform: scale(1.06); box-shadow: 0 6px 20px rgba(180, 83, 9, 0.5); }
-    #radioBtn .pulse {
-      position: absolute; top: 4px; right: 4px;
-      width: 10px; height: 10px; border-radius: 50%;
-      background: #22C55E; box-shadow: 0 0 0 2px #FFF;
-      animation: rPulse 1.4s ease-in-out infinite;
-    }
-    @keyframes rPulse {
-      0%, 100% { transform: scale(1); opacity: 1; }
-      50% { transform: scale(1.4); opacity: 0.6; }
-    }
-    #radioPanel {
-      position: fixed; right: 16px; bottom: 80px; z-index: 9999;
-      width: 360px; max-width: calc(100vw - 32px);
-      max-height: 540px; height: calc(100vh - 120px);
-      background: #FFFCF3; color: #1F1611;
-      border: 1px solid #D4C5A0; border-radius: 14px;
-      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
-      display: flex; flex-direction: column; overflow: hidden;
-      transform-origin: bottom right;
-      transform: scale(0.92) translateY(8px); opacity: 0; pointer-events: none;
-      transition: transform 0.18s ease, opacity 0.18s ease;
-    }
-    html[data-theme="dark"] #radioPanel {
-      background: #1A2438; color: #F1F5F9; border-color: #2C3956;
-    }
-    #radioPanel.show { transform: scale(1) translateY(0); opacity: 1; pointer-events: auto; }
-    #radioPanel header {
-      display: flex; align-items: center; gap: 8px;
-      padding: 10px 12px; border-bottom: 1px solid #D4C5A0;
-      background: linear-gradient(135deg, #FCD34D, #D97706); color: #1F1611;
-      font-weight: 700; font-size: 14px;
-    }
-    html[data-theme="dark"] #radioPanel header { border-color: #2C3956; }
-    #radioPanel header .title { flex: 1; }
-    #radioPanel header button {
-      background: rgba(0,0,0,0.15); color: inherit; border: none;
-      width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
-      font-size: 14px; padding: 0; line-height: 1;
-    }
-    #radioPanel header button:hover { background: rgba(0,0,0,0.28); }
-    #radioNowPlaying {
-      padding: 10px 12px; background: rgba(251, 191, 36, 0.12);
-      font-size: 12px; display: flex; align-items: center; gap: 8px;
-      border-bottom: 1px solid #D4C5A0;
-    }
-    html[data-theme="dark"] #radioNowPlaying {
-      background: rgba(251, 191, 36, 0.08); border-color: #2C3956;
-    }
-    #radioNowPlaying .np-name { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    #radioPlayBtn {
-      width: 32px; height: 32px; border-radius: 50%;
-      background: #B45309; color: #FFF; border: none; cursor: pointer;
-      font-size: 14px; padding: 0; line-height: 1; flex-shrink: 0;
-    }
-    #radioPlayBtn:hover { background: #92400E; }
-    #radioPlayBtn:disabled { opacity: 0.4; cursor: not-allowed; }
-    #radioList {
-      flex: 1; overflow-y: auto; padding: 4px 0;
-      -webkit-overflow-scrolling: touch;
-    }
-    .radio-station {
-      padding: 10px 14px; cursor: pointer;
-      border-bottom: 1px solid rgba(212, 197, 160, 0.4);
-      transition: background 0.1s;
-      -webkit-tap-highlight-color: transparent;
-      display: flex; align-items: center; gap: 8px;
-    }
-    html[data-theme="dark"] .radio-station { border-color: rgba(44, 57, 86, 0.6); }
-    .radio-station:hover { background: rgba(251, 191, 36, 0.1); }
-    .radio-station.playing {
-      background: rgba(34, 197, 94, 0.16);
-      border-left: 3px solid #22C55E;
-      padding-left: 11px;
-    }
-    html[data-theme="dark"] .radio-station.playing { background: rgba(34, 197, 94, 0.18); }
-    .radio-station.playing .name::before {
-      content: '●';
-      color: #22C55E;
-      margin-right: 6px;
-      animation: rPulse 1.4s ease-in-out infinite;
-      display: inline-block;
-    }
-    .radio-station.dead { opacity: 0.45; }
-    .radio-station.dead .name::after { content: ' ⚠'; color: #EF4444; }
-    .radio-station .body { flex: 1; min-width: 0; }
-    .radio-station .name { font-weight: 600; font-size: 13px; }
-    .radio-station .meta { font-size: 11px; color: #6B5B45; margin-top: 2px; }
-    html[data-theme="dark"] .radio-station .meta { color: #94A3B8; }
-    .radio-fav {
-      background: transparent; border: none; cursor: pointer;
-      font-size: 18px; padding: 4px 6px; opacity: 0.4;
-      flex-shrink: 0; line-height: 1;
-    }
-    .radio-fav:hover { opacity: 1; }
-    .radio-fav.on { opacity: 1; color: #FBBF24; }
-    .radio-search {
-      padding: 8px 12px; border-bottom: 1px solid #D4C5A0;
-      display: flex; gap: 6px;
-    }
-    html[data-theme="dark"] .radio-search { border-color: #2C3956; }
-    .radio-search input {
-      flex: 1; padding: 6px 10px; font-size: 13px;
-      border: 1px solid #D4C5A0; border-radius: 6px;
-      background: #FFF; color: inherit; min-width: 0;
-    }
-    html[data-theme="dark"] .radio-search input { background: #0F1729; border-color: #2C3956; }
-    .radio-search button {
-      padding: 6px 10px; font-size: 13px; cursor: pointer;
-      background: #B45309; color: #FFF; border: none; border-radius: 6px;
-      flex-shrink: 0;
-    }
-    .radio-section-label {
-      padding: 6px 14px 2px; font-size: 10px; font-weight: 700;
-      color: #B45309; text-transform: uppercase; letter-spacing: 0.05em;
-      background: rgba(251, 191, 36, 0.06);
-    }
-    html[data-theme="dark"] .radio-section-label { color: #FBBF24; background: rgba(251, 191, 36, 0.04); }
-    #radioStatus, .radio-status-msg { padding: 16px; text-align: center; font-size: 13px; color: #6B5B45; }
-    html[data-theme="dark"] #radioStatus, html[data-theme="dark"] .radio-status-msg { color: #94A3B8; }
-    @media (max-width: 480px) {
-      #radioPanel {
-        right: 8px; left: 8px; bottom: 78px; width: auto; max-width: none;
-        height: 70vh;
-      }
-      #radioBtn { right: 12px; bottom: 12px; }
-    }
-  `;
-  document.head.appendChild(style);
-
-  // ---- Build DOM ----
-  const btn = document.createElement('button');
-  btn.id = 'radioBtn';
-  btn.title = 'Thai radio';
-  btn.innerHTML = '📻';
-  document.body.appendChild(btn);
-
-  const panel = document.createElement('div');
-  panel.id = 'radioPanel';
-  panel.innerHTML = `
-    <header>
-      <span>📻</span>
-      <span class="title">Thai Radio</span>
-      <button id="radioRefreshBtn" title="Refresh stations">↻</button>
-      <button id="radioCloseBtn" title="Close" aria-label="Close">✕</button>
-    </header>
-    <div id="radioNowPlaying">
-      <span class="np-name" id="radioNowName">— เลือกสถานี —</span>
-      <button id="radioPlayBtn" disabled>▶</button>
-    </div>
-    <div class="radio-search">
-      <input type="text" id="radioSearchInput" placeholder="ค้นหาสถานี / ใส่ Stream URL...">
-      <button id="radioAddBtn" title="Add custom URL">➕</button>
-    </div>
-    <div id="radioList"><div id="radioStatus">กำลังโหลดสถานี...</div></div>
-  `;
-  document.body.appendChild(panel);
-
-  // ---- Audio element ----
-  // No crossOrigin → maximum stream compatibility (most stations don't send CORS headers)
-  // Volume is controlled by hardware/system (iOS doesn't allow JS volume control anyway)
-  const audio = new Audio();
-  audio.preload = 'none';
-  let currentStation = null;
-  let isPlaying = false;
-  let autoResumeTried = false;
-  let pendingResume = null; // station to resume on next user gesture if autoplay blocked
-  const deadStations = new Set(); // uuids that errored this session — greyed in the list
-
-  // ---- Refs ----
-  const closeBtn = document.getElementById('radioCloseBtn');
-  const refreshBtn = document.getElementById('radioRefreshBtn');
-  const nowName = document.getElementById('radioNowName');
-  const playBtn = document.getElementById('radioPlayBtn');
-  const list = document.getElementById('radioList');
-  const status = document.getElementById('radioStatus');
-  const searchInput = document.getElementById('radioSearchInput');
-  const addBtn = document.getElementById('radioAddBtn');
-  const pulseDot = document.createElement('span');
-  pulseDot.className = 'pulse';
-  pulseDot.hidden = true;
-  btn.appendChild(pulseDot);
-
-  audio.volume = 1.0; // max — system volume controls actual loudness
-
-  // ---- Open / close ----
-  let panelOpen = false;
-  function openPanel() {
-    panelOpen = true;
-    panel.classList.add('show');
-    if (!stationsLoaded) loadStations();
-    localStorage.setItem(LS_OPEN, '1');
+/* Radio UI; directory and stream failures remain independent of the game. */
+(function(){
+  if(window.__radioWidgetLoaded)return;window.__radioWidgetLoaded=true;
+  const {station,stations,storage,fetchStations,Player}=window.RadioCore;
+  let backend;try{backend=window.localStorage;}catch{backend={};}const saved=storage(backend);
+  const cacheKey='mk_radio_stations_v5',tsKey='mk_radio_stations_ts';
+  let directory=stations(saved.json(cacheKey,[])),custom=stations(saved.json('mk_radio_custom',[]));
+  let favRaw=saved.json('mk_radio_favorites',[]);
+  let favorites=new Set(Array.isArray(favRaw)?favRaw.filter(x=>typeof x==='string'):[]);
+  let filter='all',loading=false,loadError=false,loadPromise=null,hlsPromise=null,opener=null;
+  const en=()=>window.I18N?.getLang()==='en'||document.documentElement.lang==='en';
+  const t=(th,eng)=>en()?eng:th;
+  const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const $=id=>document.getElementById(id);
+  const dock=document.createElement('button');dock.id='radioBtn';dock.type='button';dock.setAttribute('aria-controls','radioPanel');dock.setAttribute('aria-expanded','false');
+  const panel=document.createElement('section');panel.id='radioPanel';panel.className='radio-studio';panel.hidden=true;panel.setAttribute('role','dialog');panel.setAttribute('aria-labelledby','radioTitle');
+  panel.innerHTML=`<div class="radio-heading"><div><span class="radio-eyebrow">PLAYMAKRUK RADIO</span><h2 id="radioTitle"></h2></div><button id="radioClose" type="button">✕</button></div>
+    <div class="radio-now"><div class="radio-art" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div><div class="radio-track"><strong id="radioTrack"></strong><span id="radioState" role="status"></span></div><button id="radioPlayBtn" type="button"></button></div>
+    <div class="radio-volume"><button id="radioMute" type="button"></button><input id="radioVolume" type="range" min="0" max="100" step="5"><span id="radioVolumeValue"></span></div>
+    <div class="radio-browse"><div class="radio-search-row"><input id="radioSearch" type="search" autocomplete="off"><button id="radioRefresh" type="button">↻</button><button id="radioAdd" type="button">＋</button></div>
+    <div class="radio-tabs" role="group"><button type="button" data-radio-filter="all"></button><button type="button" data-radio-filter="favorites"></button><button type="button" data-radio-filter="custom"></button></div></div>
+    <form id="radioAddForm" hidden><label><span id="radioNameLabel"></span><input id="radioCustomName" maxlength="100" required></label><label><span id="radioUrlLabel"></span><input id="radioCustomUrl" type="url" placeholder="https://…" required></label><p id="radioFormError" role="alert"></p><div><button id="radioSave" type="submit"></button><button id="radioCancel" type="button"></button></div></form>
+    <p id="radioNotice" role="status" hidden></p><div id="radioList"></div><div class="radio-credit"><span id="radioCount"></span><a href="https://www.radio-browser.info/" target="_blank" rel="noopener">Radio Browser ↗</a></div>`;
+  document.body.append(dock,panel);
+  function loadHls(){
+    if(window.Hls)return Promise.resolve(window.Hls);
+    if(hlsPromise)return hlsPromise;
+    hlsPromise=new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='/vendor/hls-1.7.2.light.min.js';script.onload=()=>resolve(window.Hls);script.onerror=()=>{script.remove();hlsPromise=null;reject(new Error('hls-load'));};document.head.appendChild(script);});return hlsPromise;
   }
-  function closePanel() {
-    panelOpen = false;
-    panel.classList.remove('show');
-    localStorage.setItem(LS_OPEN, '0');
+  const player=new Player({makeAudio:()=>new Audio(),loadHls,onChange:p=>{
+    saved.set('mk_radio_playing',['playing','loading'].includes(p.state)?'1':'0');
+    if(p.current){saved.set('mk_radio_station_uuid',p.current.uuid);saved.set('mk_radio_last_station',JSON.stringify(p.current));}
+    renderPlayer();updateRows();
+    if('mediaSession' in navigator){try{navigator.mediaSession.playbackState=p.state==='playing'?'playing':'paused';if(p.current&&window.MediaMetadata)navigator.mediaSession.metadata=new MediaMetadata({title:p.current.name,artist:'Playmakruk Radio'});}catch{}}
+  }});
+  player.setVolume(Number(saved.get('mk_radio_volume','1')));player.setMuted(saved.get('mk_radio_muted')==='1');
+  function all(){return stations([...custom,...directory]);}
+  function stateLabel(){return ({idle:t('เลือกสถานีที่อยากฟัง','Choose a station'),paused:t('พักเสียงอยู่','Paused'),loading:t('กำลังเชื่อมต่อ…','Connecting…'),playing:t('กำลังฟังสด','Listening live'),blocked:t('แตะเล่นเพื่อฟังต่อ','Tap play to continue'),timeout:t('เชื่อมต่อนานเกินไป · กดเล่นเพื่อลองใหม่','Connection timed out · tap play to retry'),error:t('สถานีไม่ตอบสนอง · ลองใหม่หรือเลือกสถานีอื่น','Stream unavailable · retry or choose another'),ended:t('สตรีมหยุดแล้ว · กดเล่นเพื่อต่อใหม่','Stream ended · tap play to reconnect'),unsupported:t('เบราว์เซอร์นี้ไม่รองรับสตรีมนี้','This browser cannot play this stream')})[player.state];}
+  function renderPlayer(){
+    const active=['playing','loading'].includes(player.state);
+    $('radioTrack').textContent=player.current?.name||t('เพลงดี ๆ ระหว่างตา','A soundtrack for your next move');
+    $('radioState').textContent=stateLabel();panel.dataset.state=player.state;
+    $('radioPlayBtn').textContent=active?'Ⅱ':'▶';$('radioPlayBtn').disabled=!player.current;
+    $('radioPlayBtn').setAttribute('aria-label',active?t('หยุดวิทยุ','Pause radio'):t('เล่นวิทยุ','Play radio'));
+    dock.innerHTML=`<span class="radio-dock-icon" aria-hidden="true">♫</span><span><b>${t('วิทยุ','Radio')}</b><small>${escape(player.current?.name||t('เปิดเพลงระหว่างเล่น','Find your soundtrack'))}</small></span><i aria-hidden="true">${player.state==='playing'?'●':'⌃'}</i>`;
+    dock.setAttribute('aria-label',t('เปิดแผงวิทยุ','Open radio player'));
+    $('radioMute').textContent=player.muted?'🔇':'♪';$('radioMute').setAttribute('aria-label',player.muted?t('เปิดเสียง','Unmute'):t('ปิดเสียง','Mute'));$('radioMute').setAttribute('aria-pressed',String(player.muted));
+    $('radioVolume').value=String(Math.round(player.volume*100));$('radioVolumeValue').textContent=Math.round(player.volume*100)+'%';
   }
-  btn.onclick = () => panelOpen ? closePanel() : openPanel();
-  closeBtn.onclick = closePanel;
-
-  // ---- Stations: load from API or cache ----
-  let stationsLoaded = false;
-  let stations = [];
-
-  // Stations known to be dead (timeout / 404 / unstable) — verified with audit
-  const BLOCKED_NAMES = new Set([
-    'mcot radio buriram 92.0 fm',
-    'radio samui online',
-    'mcot อุดรธานี',
-    'top news (mobile stream)',
-    'flex 104.5',
-    'thairadio 96.5 thinking',
-    'mcot radio chiangmai fm100.75',
-    'top news',
-    'mcot 100.5',
-    'top news (live1 - low 240p)',
-    'mcot chumphon (amphoe lang suan) fm 104.75',
-    'mcot loei fm 100.00',
-    'dpradio',
-    'dpcloudev',
-  ]);
-  // Normalize name for dedup (strip whitespace, dashes, punctuation, lowercase)
-  const normName = (s) => (s || '').toLowerCase().replace(/[\s\-_.,()]/g, '');
-
-  async function fetchFromApi() {
-    // Try each API host until one works.
-    // Note: no custom User-Agent header — browsers forbid it (some throw).
-    // limit=150 because ~1/3 get dropped by the https-only filter below.
-    const path = '/json/stations/search?countrycode=TH&hidebroken=true&order=clickcount&reverse=true&limit=150';
-    for (const host of API_HOSTS) {
-      try {
-        const r = await fetch(host + path);
-        if (!r.ok) continue;
-        const data = await r.json();
-        if (Array.isArray(data) && data.length > 0) return data;
-      } catch (e) { /* try next host */ }
-    }
-    throw new Error('All API hosts failed');
+  function updateRows(){panel.querySelectorAll('[data-station]').forEach(row=>{const selected=row.dataset.station===player.current?.uuid;row.classList.toggle('is-current',selected);row.querySelector('.radio-select').setAttribute('aria-pressed',String(selected));row.querySelector('.radio-row-icon').textContent=selected&&player.state==='playing'?'♫':'▶';});}
+  function renderList(){
+    const query=$('radioSearch').value.trim().toLocaleLowerCase();
+    const list=all().filter(s=>(filter!=='favorites'||favorites.has(s.uuid))&&(filter!=='custom'||custom.some(c=>c.uuid===s.uuid))&&(!query||(s.name+' '+s.tags).toLocaleLowerCase().includes(query)));
+    $('radioList').innerHTML=list.map(s=>`<div class="radio-station" data-station="${escape(s.uuid)}"><button type="button" class="radio-select" aria-pressed="false"><span class="radio-row-icon" aria-hidden="true">▶</span><span><b>${escape(s.name)}</b><small>${escape([s.tags.split(',').slice(0,2).join(' · '),s.bitrate?s.bitrate+' kbps':'',s.hls?'HLS':s.codec].filter(Boolean).join(' · '))}</small></span></button><button type="button" class="radio-fav" aria-pressed="${favorites.has(s.uuid)}" aria-label="${escape(t('สถานีโปรด ','Favorite ')+s.name)}">${favorites.has(s.uuid)?'♥':'♡'}</button>${custom.some(c=>c.uuid===s.uuid)?`<button type="button" class="radio-delete" aria-label="${escape(t('ลบ ','Delete ')+s.name)}">×</button>`:''}</div>`).join('')||`<div class="radio-empty">${loading?t('กำลังหาสถานีให้คุณ…','Finding stations…'):filter==='favorites'?t('กด ♡ ข้างสถานีเพื่อเก็บไว้ฟัง','Tap ♡ beside a station to save it'):filter==='custom'?t('เพิ่มลิงก์สถานีของคุณด้วยปุ่ม ＋','Add your own stream using ＋'):t('ไม่พบสถานี ลองคำอื่นหรือเพิ่มลิงก์ด้วย ＋','No stations found. Try another search or add a stream with ＋')}</div>`;
+    $('radioCount').textContent=list.length+' '+t('สถานี','stations');
+    panel.querySelectorAll('[data-radio-filter]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.radioFilter===filter)));
+    $('radioNotice').hidden=!loading&&!loadError;
+    $('radioNotice').textContent=loading?t('กำลังอัปเดตรายชื่อ… สถานีที่บันทึกไว้ยังฟังได้','Updating… saved stations are still available'):t('โหลดรายชื่อใหม่ไม่ได้ กด ↻ เพื่อลองอีกครั้ง สถานีเดิมยังใช้ได้','Directory unavailable. Tap ↻ to retry; saved stations remain available.');
+    $('radioRefresh').disabled=loading;updateRows();
   }
-
-  async function loadStations(forceRefresh) {
-    status.textContent = 'กำลังโหลดสถานี...';
-    list.innerHTML = '';
-    list.appendChild(status);
-
-    // Try cache first
-    if (!forceRefresh) {
-      const ts = parseInt(localStorage.getItem(CACHE_TS_KEY), 10);
-      if (ts && (Date.now() - ts < CACHE_TTL)) {
-        try {
-          const cached = JSON.parse(localStorage.getItem(CACHE_KEY));
-          if (Array.isArray(cached) && cached.length > 0) {
-            stations = cached;
-            stationsLoaded = true;
-            renderStations();
-            maybeAutoResume();
-            return;
-          }
-        } catch (e) { /* fall through to fetch */ }
-      }
-    }
-
-    try {
-      const raw = await fetchFromApi();
-      const seen = new Set();
-      stations = raw
-        // https only — this page is served over https, so browsers block
-        // (mixed content) every http:// stream. ~1/3 of Thai stations.
-        .filter(s => ((s.url_resolved || s.url || '')).startsWith('https://'))
-        .filter(s => !BLOCKED_NAMES.has((s.name || '').toLowerCase().trim()))
-        .filter(s => {
-          const k = normName(s.name);
-          if (seen.has(k)) return false;
-          seen.add(k);
-          return true;
-        })
-        .map(s => ({
-          uuid: s.stationuuid,
-          name: s.name,
-          url: s.url_resolved || s.url,
-          tags: s.tags || '',
-          bitrate: s.bitrate || 0,
-        }));
-      localStorage.setItem(CACHE_KEY, JSON.stringify(stations));
-      localStorage.setItem(CACHE_TS_KEY, String(Date.now()));
-      stationsLoaded = true;
-      renderStations();
-      maybeAutoResume();
-    } catch (e) {
-      status.textContent = 'โหลดสถานีไม่สำเร็จ — ลองกด ↻ รีเฟรช';
-    }
+  function load(force=false){
+    if(loadPromise)return loadPromise;
+    if(!force&&directory.length&&Date.now()-Number(saved.get(tsKey,0))<86400000)return Promise.resolve();
+    loading=true;loadError=false;renderList();
+    loadPromise=fetchStations(window.fetch.bind(window),['https://de1.api.radio-browser.info','https://nl1.api.radio-browser.info','https://de2.api.radio-browser.info']).then(list=>{directory=list;saved.set(cacheKey,JSON.stringify(list));saved.set(tsKey,Date.now());}).catch(()=>{loadError=true;}).finally(()=>{loading=false;loadPromise=null;renderList();});return loadPromise;
   }
-
-  function getFavorites() {
-    try { return JSON.parse(localStorage.getItem(LS_FAVORITES)) || []; } catch (e) { return []; }
-  }
-  function setFavorites(arr) {
-    localStorage.setItem(LS_FAVORITES, JSON.stringify(arr));
-  }
-  function toggleFavorite(uuid) {
-    const favs = getFavorites();
-    const i = favs.indexOf(uuid);
-    if (i >= 0) favs.splice(i, 1); else favs.unshift(uuid);
-    setFavorites(favs);
-  }
-  function getCustomStations() {
-    try { return JSON.parse(localStorage.getItem(LS_CUSTOM)) || []; } catch (e) { return []; }
-  }
-  function addCustomStation(name, url) {
-    const customs = getCustomStations();
-    const uuid = 'custom-' + Date.now();
-    customs.unshift({ uuid, name, url, tags: 'custom', bitrate: 0, codec: '' });
-    localStorage.setItem(LS_CUSTOM, JSON.stringify(customs));
-    return uuid;
-  }
-  function removeCustomStation(uuid) {
-    const customs = getCustomStations().filter(s => s.uuid !== uuid);
-    localStorage.setItem(LS_CUSTOM, JSON.stringify(customs));
-  }
-
-  function buildStationItem(s, isFav) {
-    const item = document.createElement('div');
-    item.className = 'radio-station';
-    item.dataset.uuid = s.uuid;
-    if (currentStation && currentStation.uuid === s.uuid) item.classList.add('playing');
-    if (deadStations.has(s.uuid)) item.classList.add('dead'); // still clickable — may recover
-    const tags = s.tags ? s.tags.split(',').slice(0, 3).join(' • ') : '';
-    const bitrate = s.bitrate ? s.bitrate + 'k' : '';
-    const isCustom = s.uuid.startsWith('custom-');
-    item.innerHTML = `
-      <div class="body">
-        <div class="name"></div>
-        <div class="meta"></div>
-      </div>
-      <button class="radio-fav ${isFav ? 'on' : ''}" title="Favorite">${isFav ? '★' : '☆'}</button>
-      ${isCustom ? '<button class="radio-fav" title="Remove" data-remove="1">✕</button>' : ''}
-    `;
-    item.querySelector('.name').textContent = s.name;
-    item.querySelector('.meta').textContent = [bitrate, tags].filter(Boolean).join(' · ');
-    const favBtn = item.querySelector('.radio-fav');
-    favBtn.onclick = (e) => { e.stopPropagation(); toggleFavorite(s.uuid); renderStations(); };
-    if (isCustom) {
-      const rmBtn = item.querySelector('[data-remove]');
-      if (rmBtn) rmBtn.onclick = (e) => { e.stopPropagation(); removeCustomStation(s.uuid); renderStations(); };
-    }
-    item.onclick = () => playStation(s);
-    return item;
-  }
-
-  function statusDiv(text) {
-    const el = document.createElement('div');
-    el.className = 'radio-status-msg';
-    el.textContent = text;
-    return el;
-  }
-
-  function renderStations() {
-    list.innerHTML = '';
-    const customs = getCustomStations();
-    if (stations.length === 0 && customs.length === 0) {
-      list.appendChild(statusDiv('ไม่พบสถานี'));
-      return;
-    }
-    const query = (searchInput.value || '').trim().toLowerCase();
-    const favs = new Set(getFavorites());
-    const allStations = customs.concat(stations);
-    const matches = (s) => !query || s.name.toLowerCase().includes(query) || (s.tags || '').toLowerCase().includes(query);
-
-    // Favorites section
-    const favStations = allStations.filter(s => favs.has(s.uuid) && matches(s));
-    if (favStations.length > 0) {
-      const label = document.createElement('div');
-      label.className = 'radio-section-label';
-      label.textContent = '⭐ FAVORITES';
-      list.appendChild(label);
-      favStations.forEach(s => list.appendChild(buildStationItem(s, true)));
-    }
-
-    // Custom (non-favorited) section
-    const customNonFav = customs.filter(s => !favs.has(s.uuid) && matches(s));
-    if (customNonFav.length > 0) {
-      const label = document.createElement('div');
-      label.className = 'radio-section-label';
-      label.textContent = '➕ MY STATIONS';
-      list.appendChild(label);
-      customNonFav.forEach(s => list.appendChild(buildStationItem(s, false)));
-    }
-
-    // All other stations
-    const others = stations.filter(s => !favs.has(s.uuid) && matches(s));
-    if (others.length > 0) {
-      if (favStations.length > 0 || customNonFav.length > 0) {
-        const label = document.createElement('div');
-        label.className = 'radio-section-label';
-        label.textContent = '📻 ALL STATIONS';
-        list.appendChild(label);
-      }
-      others.forEach(s => list.appendChild(buildStationItem(s, false)));
-    }
-
-    if (favStations.length === 0 && customNonFav.length === 0 && others.length === 0) {
-      list.appendChild(statusDiv('ไม่พบสถานีที่ตรงกับ "' + query + '"'));
-    }
-  }
-
-  function setPlayingState(playing) {
-    isPlaying = playing;
-    playBtn.textContent = playing ? '⏸' : '▶';
-    pulseDot.hidden = !playing;
-    if (playing) pulseDot.style.background = ''; // back to green (amber = pending gesture)
-    localStorage.setItem(LS_PLAYING, playing ? '1' : '0');
-  }
-
-  // The rendered list is favorites → customs → others, so DOM order ≠ stations[]
-  // order — match by uuid, never by index.
-  function refreshPlayingHighlight() {
-    const cur = currentStation ? currentStation.uuid : null;
-    list.querySelectorAll('.radio-station').forEach((el) => {
-      el.classList.toggle('playing', el.dataset.uuid === cur);
-    });
-  }
-
-  function setDead(uuid, dead) {
-    if (dead) deadStations.add(uuid); else deadStations.delete(uuid);
-    const row = list.querySelector(`.radio-station[data-uuid="${uuid}"]`);
-    if (row) row.classList.toggle('dead', dead);
-  }
-
-  function playStation(s) {
-    pendingResume = null; // manual choice overrides any blocked auto-resume
-    currentStation = s;
-    nowName.textContent = s.name;
-    audio.src = s.url;
-    localStorage.setItem(LS_STATION, s.uuid);
-    refreshPlayingHighlight();
-    audio.play().then(() => {
-      playBtn.disabled = false;
-      setPlayingState(true);
-      setDead(s.uuid, false); // recovered
-    }).catch((err) => {
-      playBtn.disabled = false;
-      setPlayingState(false);
-      // NotAllowedError = autoplay policy (not a broken stream) — don't mark dead
-      if (!err || err.name !== 'NotAllowedError') setDead(s.uuid, true);
-      nowName.textContent = '⚠️ เล่นไม่สำเร็จ — ลองสถานีอื่น';
-    });
-  }
-
-  playBtn.onclick = () => {
-    if (!currentStation) return;
-    if (isPlaying) {
-      audio.pause();
-      setPlayingState(false);
-    } else {
-      audio.play().then(() => setPlayingState(true)).catch(() => {});
-    }
+  function open(){opener=document.activeElement;panel.hidden=false;dock.setAttribute('aria-expanded','true');saved.set('mk_radio_open','1');$('radioClose').focus();load();}
+  function close(){panel.hidden=true;dock.setAttribute('aria-expanded','false');saved.set('mk_radio_open','0');(opener?.isConnected?opener:dock).focus();}
+  dock.onclick=()=>panel.hidden?open():close();$('radioClose').onclick=close;
+  panel.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();close();}});
+  $('radioPlayBtn').onclick=()=>['playing','loading'].includes(player.state)?player.pause():player.play(player.current);
+  $('radioMute').onclick=()=>{player.setMuted(!player.muted);saved.set('mk_radio_muted',player.muted?'1':'0');renderPlayer();};
+  $('radioVolume').oninput=e=>{player.setVolume(Number(e.target.value)/100);saved.set('mk_radio_volume',player.volume);renderPlayer();};
+  $('radioSearch').oninput=renderList;$('radioRefresh').onclick=()=>load(true);
+  panel.querySelectorAll('[data-radio-filter]').forEach(b=>b.onclick=()=>{filter=b.dataset.radioFilter;renderList();});
+  $('radioList').onclick=e=>{
+    const row=e.target.closest('[data-station]');if(!row)return;const item=all().find(s=>s.uuid===row.dataset.station);if(!item)return;
+    if(e.target.closest('.radio-fav')){favorites.has(item.uuid)?favorites.delete(item.uuid):favorites.add(item.uuid);saved.set('mk_radio_favorites',JSON.stringify([...favorites]));renderList();}
+    else if(e.target.closest('.radio-delete')){custom=custom.filter(s=>s.uuid!==item.uuid);favorites.delete(item.uuid);saved.set('mk_radio_custom',JSON.stringify(custom));saved.set('mk_radio_favorites',JSON.stringify([...favorites]));if(player.current?.uuid===item.uuid){player.pause();player.current=null;saved.set('mk_radio_last_station','null');saved.set('mk_radio_station_uuid','');renderPlayer();}renderList();}
+    else if(e.target.closest('.radio-select')){if(player.current?.uuid===item.uuid&&['playing','loading'].includes(player.state))player.pause();else player.play(item);}
   };
-
-  audio.onended = () => setPlayingState(false);
-  audio.onerror = () => {
-    if (!currentStation) return; // spurious error from src swap/teardown
-    setPlayingState(false);
-    setDead(currentStation.uuid, true);
-    nowName.textContent = '⚠️ สถานีนี้เล่นไม่ได้ — ลองสถานีอื่น';
+  $('radioAdd').onclick=()=>{$('radioAddForm').hidden=false;$('radioCustomName').focus();};
+  $('radioCancel').onclick=()=>{$('radioAddForm').hidden=true;$('radioFormError').textContent='';$('radioAdd').focus();};
+  $('radioAddForm').onsubmit=e=>{
+    e.preventDefault();const item=station({uuid:'custom_'+Date.now().toString(36),name:$('radioCustomName').value,url:$('radioCustomUrl').value.trim()});
+    if(!item){$('radioFormError').textContent=t('ใช้ชื่อสถานีและลิงก์สตรีม HTTPS ที่ถูกต้อง','Enter a name and a valid HTTPS stream URL');return;}
+    if(all().some(s=>s.url===item.url)){$('radioFormError').textContent=t('มีลิงก์สถานีนี้แล้ว','This stream is already in your list');return;}
+    custom.push(item);saved.set('mk_radio_custom',JSON.stringify(custom));filter='custom';$('radioSearch').value='';e.target.reset();$('radioFormError').textContent='';e.target.hidden=true;renderList();$('radioAdd').focus();
   };
-
-  // Persist last play position on page unload (for cross-page continuity)
-  window.addEventListener('pagehide', () => {
-    if (isPlaying) localStorage.setItem(LS_PLAYING, '1');
-  });
-
-  refreshBtn.onclick = () => {
-    localStorage.removeItem(CACHE_KEY);
-    localStorage.removeItem(CACHE_TS_KEY);
-    stationsLoaded = false;
-    loadStations(true);
-  };
-
-  // Search filter — debounced so typing doesn't rebuild 80+ rows per keystroke
-  let searchTimer = null;
-  searchInput.oninput = () => {
-    if (!stationsLoaded) return;
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(renderStations, 120);
-  };
-
-  // Add custom URL: if input looks like a URL, treat as stream URL; else search
-  addBtn.onclick = () => {
-    const val = (searchInput.value || '').trim();
-    if (!val) return;
-    // Detect URL
-    if (/^https?:\/\//i.test(val)) {
-      // http:// streams are blocked on an https page (mixed content)
-      if (location.protocol === 'https:' && /^http:\/\//i.test(val)) {
-        if (!confirm('⚠️ ลิ้งนี้เป็น http:// ซึ่งเบราว์เซอร์จะบล็อคบนเว็บ https — สถานีอาจเล่นไม่ได้\nต้องการเพิ่มต่อไหม?')) return;
-      }
-      const name = prompt('ตั้งชื่อสถานี (เช่น "Wave FM 88")', 'Custom Station');
-      if (!name) return;
-      addCustomStation(name.trim(), val);
-      searchInput.value = '';
-      renderStations();
-    } else {
-      // Plain text → just trigger search render (already debounced by oninput)
-      renderStations();
-    }
-  };
-
-  // Auto-resume: if user was playing radio before navigating, resume the same station
-  function maybeAutoResume() {
-    if (autoResumeTried) return;
-    autoResumeTried = true;
-    const lastUuid = localStorage.getItem(LS_STATION);
-    if (localStorage.getItem(LS_PLAYING) !== '1' || !lastUuid) return;
-    const s = stations.find(x => x.uuid === lastUuid) || getCustomStations().find(x => x.uuid === lastUuid);
-    if (!s) return;
-    currentStation = s;
-    nowName.textContent = s.name + ' (กำลังเริ่ม...)';
-    audio.src = s.url;
-    audio.play().then(() => {
-      playBtn.disabled = false;
-      setPlayingState(true);
-      nowName.textContent = s.name;
-      refreshPlayingHighlight();
-    }).catch(() => {
-      // Browser blocked autoplay — schedule retry on first user gesture
-      playBtn.disabled = false;
-      nowName.textContent = s.name + ' (รอ tap เพื่อเล่นต่อ)';
-      pulseDot.hidden = false;
-      pulseDot.style.background = '#FBBF24'; // amber = needs gesture
-      pendingResume = s;
-    });
+  function translate(){
+    $('radioTitle').textContent=t('ฟังเพลิน เดินหมากสนุก','Tune in. Make your move.');
+    $('radioClose').setAttribute('aria-label',t('ปิดแผงวิทยุ','Close radio player'));
+    $('radioSearch').placeholder=t('ค้นหาสถานี แนวเพลง…','Search stations, genres…');$('radioSearch').setAttribute('aria-label',t('ค้นหาสถานีวิทยุ','Search radio stations'));
+    $('radioRefresh').setAttribute('aria-label',t('อัปเดตสถานี','Refresh stations'));$('radioAdd').setAttribute('aria-label',t('เพิ่มสถานีเอง','Add a station'));$('radioVolume').setAttribute('aria-label',t('ระดับเสียงวิทยุ','Radio volume'));
+    panel.querySelector('[data-radio-filter="all"]').textContent=t('ทั้งหมด','All');panel.querySelector('[data-radio-filter="favorites"]').textContent=t('♡ โปรด','♡ Favorites');panel.querySelector('[data-radio-filter="custom"]').textContent=t('ของฉัน','My stations');
+    $('radioNameLabel').textContent=t('ชื่อสถานี','Station name');$('radioUrlLabel').textContent=t('ลิงก์สตรีม HTTPS','HTTPS stream URL');$('radioSave').textContent=t('เพิ่มสถานี','Add station');$('radioCancel').textContent=t('ยกเลิก','Cancel');renderPlayer();renderList();
   }
-  // First user gesture after page load → retry the blocked auto-resume
-  function gestureRetryResume() {
-    if (!pendingResume) return;
-    const s = pendingResume;
-    pendingResume = null;
-    audio.play().then(() => {
-      setPlayingState(true);
-      nowName.textContent = s.name;
-      refreshPlayingHighlight();
-    }).catch(() => {});
-  }
-  ['touchstart', 'touchend', 'pointerdown', 'mousedown', 'click'].forEach((ev) => {
-    document.addEventListener(ev, gestureRetryResume, { capture: true, passive: true });
-  });
-
-  // ---- Restore state on load ----
-  const wasPlaying = localStorage.getItem(LS_PLAYING) === '1';
-
-  // Custom stations live in localStorage — resume them instantly, no API wait.
-  // (Does NOT mark stationsLoaded, so the full list still loads when the panel opens.)
-  if (wasPlaying) {
-    const lastUuid = localStorage.getItem(LS_STATION);
-    if (getCustomStations().some(x => x.uuid === lastUuid)) maybeAutoResume();
-  }
-
-  if (localStorage.getItem(LS_OPEN) === '1') {
-    setTimeout(openPanel, 200);
-  } else if (wasPlaying && !autoResumeTried) {
-    loadStations(); // fetch (or use cache) then auto-resume the API station
-  }
+  document.addEventListener('langchange',translate);
+  if('mediaSession' in navigator){for(const [action,handler]of Object.entries({play:()=>player.play(player.current),pause:()=>player.pause(),stop:()=>player.pause()})){try{navigator.mediaSession.setActionHandler(action,handler);}catch{}}}
+  window.addEventListener('offline',()=>{if(['playing','loading'].includes(player.state)){player.release();player.update('error');}});
+  const shouldResume=saved.get('mk_radio_playing')==='1';
+  player.current=station(saved.json('mk_radio_last_station',null))||all().find(s=>s.uuid===saved.get('mk_radio_station_uuid'))||null;
+  if(player.current)player.state='paused';translate();
+  if(saved.get('mk_radio_open')==='1'){panel.hidden=false;dock.setAttribute('aria-expanded','true');load();}
+  if(shouldResume&&player.current)player.play(player.current);
+  // Release live connections for back/forward cache without changing the user's resume intent.
+  window.addEventListener('pagehide',()=>{saved.set('mk_radio_playing',['playing','loading'].includes(player.state)?'1':'0');player.release();});
+  window.addEventListener('pageshow',e=>{if(e.persisted&&saved.get('mk_radio_playing')==='1'&&player.current)player.play(player.current);});
+  window.Radio={open,pause:()=>player.pause()};
 })();

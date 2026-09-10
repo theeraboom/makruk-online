@@ -26,8 +26,9 @@ if (!userUid) {
   userUid = 'u_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
   localStorage.setItem('makruk_uid', userUid);
 }
-const savedName = localStorage.getItem('makruk_name') || '';
+let savedName = localStorage.getItem('makruk_name') || '';
 nameInput.value = savedName;
+if (savedName) document.getElementById('profileName').textContent = savedName;
 // Re-send identity on every connect (initial + reconnects)
 socket.on('connect', () => {
   socket.emit('set_uid', userUid);
@@ -39,12 +40,20 @@ if (savedName) socket.emit('set_name', savedName);
 saveNameBtn.onclick = () => {
   const name = nameInput.value.trim();
   if (name) {
+    savedName = name;
     localStorage.setItem('makruk_name', name);
+    document.getElementById('profileName').textContent = name;
+    document.getElementById('profileName').removeAttribute('data-i18n');
+    document.getElementById('nameFeedback').textContent = I18N.t('name.saved');
     socket.emit('set_name', name);
     saveNameBtn.textContent = I18N.t('name.saved');
     setTimeout(() => (saveNameBtn.textContent = I18N.t('name.save')), 1500);
+  } else {
+    document.getElementById('nameFeedback').textContent = I18N.t('ui.nameRequired');
+    nameInput.focus();
   }
 };
+nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') saveNameBtn.click(); });
 
 const newRoomInput = document.getElementById('newRoomName');
 const newRoomPasswordInput = document.getElementById('newRoomPassword');
@@ -79,8 +88,8 @@ document.querySelectorAll('#gameTypeOptions .tc-btn').forEach((btn) => {
     document.querySelectorAll('#gameTypeOptions .tc-btn').forEach((b) => b.classList.remove('active'));
     btn.classList.add('active');
     selectedGameType = btn.dataset.gt;
-    newRoomInput.placeholder = I18N.t('create.roomName') + ' (' + I18N.t('gt.' + selectedGameType) + ')';
     updateSidePickerLabels();
+    syncSetup();
   };
 });
 
@@ -90,16 +99,22 @@ document.querySelectorAll('#tcBaseOptions .tc-btn').forEach((btn) => {
     btn.classList.add('active');
     const tc = btn.dataset.tc;
     selectedTimeBase = tc ? Number(tc) : null;
-    incRow.hidden = !selectedTimeBase;
-    if (!selectedTimeBase) selectedTimeIncrement = 0;
+
+    if (!selectedTimeBase) {
+      selectedTimeIncrement = 0;
+      document.querySelectorAll('#tcIncOptions .tc-btn').forEach(b => b.classList.toggle('active', b.dataset.tc === '0'));
+    }
+    syncSetup();
   };
 });
 
 document.querySelectorAll('#tcIncOptions .tc-btn').forEach((btn) => {
   btn.onclick = () => {
+    if (!selectedTimeBase) return;
     document.querySelectorAll('#tcIncOptions .tc-btn').forEach((b) => b.classList.remove('active'));
     btn.classList.add('active');
     selectedTimeIncrement = Number(btn.dataset.tc);
+    syncSetup();
   };
 });
 
@@ -110,6 +125,7 @@ document.querySelectorAll('#userColorOptions .tc-btn').forEach((btn) => {
     document.querySelectorAll('#userColorOptions .tc-btn').forEach((b) => b.classList.remove('active'));
     btn.classList.add('active');
     selectedUserColor = btn.dataset.uc;
+    syncSetup();
   };
 });
 
@@ -118,34 +134,85 @@ let selectedBotDifficulty = 'medium';
 const botEnabledInput = document.getElementById('botEnabled');
 const botOptions = document.getElementById('botOptions');
 function setBotEnabled(on) {
-  botEnabled = on;
-  botEnabledInput.checked = on;
-  if (!on) {
-    document.querySelectorAll('#botOptions .tc-btn').forEach((b) => b.classList.remove('active'));
+  botEnabled = !!on;
+  botEnabledInput.checked = botEnabled;
+  document.getElementById('botDifficultyRow').hidden = !botEnabled;
+  document.querySelectorAll('#opponentOptions button').forEach(b => {
+    const active = (b.dataset.mode === 'bot') === botEnabled;
+    b.classList.toggle('active', active);
+    b.setAttribute('aria-pressed', String(active));
+  });
+  document.querySelectorAll('#botOptions .tc-btn').forEach(b => b.classList.toggle('active', b.dataset.bd === selectedBotDifficulty));
+  syncSetup();
+}
+botEnabledInput.onchange = () => setBotEnabled(botEnabledInput.checked);
+document.querySelectorAll('#opponentOptions button').forEach(b => {
+  b.onclick = () => setBotEnabled(b.dataset.mode === 'bot');
+});
+document.querySelectorAll('#botOptions .tc-btn').forEach(btn => {
+  btn.onclick = () => { selectedBotDifficulty = btn.dataset.bd; setBotEnabled(true); };
+});
+
+let creatingRoom = false;
+let createTimer = null;
+let connectionState = 'connecting';
+let lastRooms = [];
+function syncSetup() {
+  document.querySelectorAll('#tcIncOptions button').forEach(btn => {
+    btn.disabled = !selectedTimeBase;
+    btn.setAttribute('aria-describedby', 'incrementHint');
+  });
+  document.getElementById('incrementHint').textContent = I18N.t(selectedTimeBase ? 'ui.incrementHelp' : 'ui.incrementHint');
+  document.querySelectorAll('.tc-btn').forEach(b => b.setAttribute('aria-pressed', String(b.classList.contains('active'))));
+  document.getElementById('selectedGameName').textContent = I18N.t('game.' + selectedGameType);
+  document.getElementById('createLabel').textContent = I18N.t(creatingRoom ? 'ui.creating' : botEnabled ? 'ui.createBot' : 'ui.createFriend');
+  document.getElementById('playHint').textContent = I18N.t(botEnabled ? 'ui.botHint' : 'ui.friendHint');
+  document.getElementById('setupSummary').textContent = [
+    botEnabled ? I18N.t('ui.bot') + ' · ' + I18N.t('bot.' + selectedBotDifficulty) : I18N.t('ui.friend'),
+    formatTimeControl(selectedTimeBase, selectedTimeIncrement) || I18N.t('tc.none'),
+    ...(newRoomPasswordInput.value.trim() ? [I18N.t('ui.private')] : [])
+  ].join(' • ');
+  createBtn.disabled = creatingRoom || !socket.connected;
+  createBtn.setAttribute('aria-busy', String(creatingRoom));
+  const chip = document.getElementById('connectionStatus');
+  chip.classList.toggle('offline', connectionState !== 'online');
+  document.getElementById('connectionLabel').textContent = I18N.t('ui.' + connectionState);
+  if (savedName) {
+    const profile = document.getElementById('profileName');
+    profile.removeAttribute('data-i18n');
+    profile.textContent = savedName;
   }
 }
-botEnabledInput.onchange = () => {
-  setBotEnabled(botEnabledInput.checked);
-  if (botEnabledInput.checked) {
-    // Reset difficulty default to easy when user manually checks
-    document.querySelectorAll('#botOptions .tc-btn').forEach((b) => b.classList.remove('active'));
-    const easyBtn = document.querySelector('#botOptions .tc-btn[data-bd="easy"]');
-    if (easyBtn) easyBtn.classList.add('active');
-    selectedBotDifficulty = 'easy';
-  }
-};
-
-document.querySelectorAll('#botOptions .tc-btn').forEach((btn) => {
-  btn.onclick = () => {
-    document.querySelectorAll('#botOptions .tc-btn').forEach((b) => b.classList.remove('active'));
-    btn.classList.add('active');
-    selectedBotDifficulty = btn.dataset.bd;
-    setBotEnabled(true);
-  };
+function resetCreate(errorKey) {
+  clearTimeout(createTimer);
+  creatingRoom = false;
+  const error = document.getElementById('createError');
+  error.hidden = !errorKey;
+  error.textContent = errorKey ? I18N.t(errorKey) : '';
+  syncSetup();
+}
+newRoomPasswordInput.addEventListener('input', syncSetup);
+document.addEventListener('DOMContentLoaded', syncSetup);
+document.addEventListener('langchange', () => { syncSetup(); updateSidePickerLabels(); renderRooms(lastRooms); });
+socket.on('connect', () => { connectionState = 'online'; resetCreate(); });
+socket.on('disconnect', () => { connectionState = 'offline'; resetCreate('ui.connectError'); });
+socket.on('connect_error', () => {
+  connectionState = 'offline';
+  document.getElementById('roomsList').setAttribute('aria-busy', 'false');
+  resetCreate('ui.connectError');
 });
+socket.on('error_msg', () => { if (creatingRoom) resetCreate('ui.createError'); });
 
 let lastCreatedPw = null;
 function createRoom() {
+  if (creatingRoom) return;
+  if (!socket.connected) { resetCreate('ui.connectError'); return; }
+  creatingRoom = true;
+  document.getElementById('createError').hidden = true;
+  syncSetup();
+  createTimer = setTimeout(() => resetCreate('ui.createError'), 12000);
+  // Save a name typed in the profile even if the player did not press Save.
+  if (nameInput.value.trim() && nameInput.value.trim() !== savedName) saveNameBtn.click();
   const name = newRoomInput.value.trim();
   const password = newRoomPasswordInput.value.trim();
   lastCreatedPw = password || null;
@@ -169,6 +236,7 @@ newRoomPasswordInput.addEventListener('keydown', (e) => {
 });
 
 socket.on('room_created', ({ id }) => {
+  clearTimeout(createTimer);
   // Carry the password into the room URL so the creator's share link
   // lets friends enter the private room directly (no prompt).
   window.location.href = lastCreatedPw
@@ -177,6 +245,8 @@ socket.on('room_created', ({ id }) => {
 });
 
 socket.on('rooms_list', (rooms) => {
+  lastRooms = rooms;
+  document.getElementById('roomsList').setAttribute('aria-busy', 'false');
   renderStats(rooms);
   renderRooms(rooms);
 });
@@ -203,12 +273,7 @@ document.addEventListener('langchange', () => {
     const o = document.getElementById('statOnline');
     if (o) o.textContent = lastSiteStats.onlineUsers.toLocaleString(I18N.getLang() === 'th' ? 'th-TH' : 'en-US');
   }
-  // Update placeholder when active button selected
-  const activeBtn = document.querySelector('#gameTypeOptions .tc-btn.active');
-  if (activeBtn) {
-    selectedGameType = activeBtn.dataset.gt;
-    newRoomInput.placeholder = I18N.t('create.roomName') + ' (' + I18N.t('gt.' + selectedGameType) + ')';
-  }
+
 });
 
 function renderStats(rooms) {
@@ -224,77 +289,72 @@ function renderRooms(rooms) {
   if (!rooms || rooms.length === 0) {
     list.innerHTML = `
       <div class="empty">
-        <div class="empty-icon">♟</div>
-        <div>${I18N.t('rooms.empty')}</div>
+        <div class="empty-icon" aria-hidden="true">♙</div>
+        <h3>${I18N.t('ui.emptyTitle')}</h3>
+        <p>${I18N.t('rooms.empty')}</p>
+        <button type="button" class="ghost" id="emptyPractice">${I18N.t('ui.emptyAction')}</button>
       </div>`;
+    document.getElementById('emptyPractice').onclick = () => {
+      setBotEnabled(true);
+      createBtn.scrollIntoView({ block: 'center', behavior: 'instant' });
+      createBtn.focus({ preventScroll: true });
+    };
     return;
   }
-  list.innerHTML = '';
-  rooms.forEach((r) => {
-    const card = document.createElement('div');
-    card.className = 'room-card';
-
-    let statusBadge = '';
-    if (r.status === 'waiting') {
-      statusBadge = `<span class="badge waiting">${I18N.t('room.waiting')}</span>`;
-    } else if (r.status === 'playing') {
-      statusBadge = `<span class="badge live"><span class="live-dot"></span>${I18N.t('room.live').replace('🔴 ', '')}</span>`;
-    } else {
-      statusBadge = `<span class="badge ended">${I18N.t('room.ended')}</span>`;
-    }
-
-    const turnIcon = r.currentPlayer === 'w' ? '⚪' : '⚫';
-    const turnPill = r.status === 'playing'
-      ? `<span class="thumb-pill">${turnIcon} ${r.currentPlayer === 'w' ? I18N.t('room.turnW') : I18N.t('room.turnB')}</span>`
-      : '';
-    const tcPill = formatTimeControl(r.timeBase, r.timeIncrement);
-    const tcPillHTML = tcPill ? `<span class="thumb-pill">⏱ ${tcPill}</span>` : '';
-    const lockBadge = r.isPrivate ? `<span class="thumb-pill private">${I18N.t('room.private')}</span>` : '';
-    const botBadge = r.hasBot ? `<span class="thumb-pill bot-badge">${I18N.t('bot.name.' + r.botDifficulty)}</span>` : '';
+  // Keep the outer links stable as boards update, preserving keyboard focus.
+  const existing = new Map([...list.querySelectorAll('.room-card')].map(card => [card.dataset.roomId, card]));
+  list.querySelector('.empty')?.remove();
+  const roomIds = new Set(rooms.map(r => r.id));
+  for (const card of [...list.children]) {
+    if (!roomIds.has(card.dataset.roomId)) card.remove();
+  }
+  rooms.forEach((r, index) => {
+    const card = existing.get(r.id) || document.createElement('a');
+    card.className = 'room-card room-card-v2';
+    card.dataset.roomId = r.id;
+    card.dataset.status = r.status;
+    card.href = '/room.html?id=' + encodeURIComponent(r.id);
     const displayName = r.hasDefaultName ? I18N.t('default.' + r.gameType) : r.name;
-    const gtBadge = `<span class="thumb-pill game-type">${I18N.t('gt.' + r.gameType)}</span>`;
-
+    const canJoin = r.status === 'waiting' && r.playerCount < 2;
+    const actionLabel = I18N.t(canJoin ? 'ui.join' : 'ui.watch');
+    const isC4 = r.gameType === 'connect4';
+    const art = r.gameType === 'chess' ? 'thai' : r.gameType === 'chess-intl' ? 'chess' : isC4 ? 'connect4' : 'checkers';
+    const stateKey = r.status === 'playing' ? 'ui.roomLive' : r.status === 'waiting' ? (canJoin ? 'ui.roomWaiting' : 'ui.playersReturning') : 'ui.roomEnded';
+    const time = formatTimeControl(r.timeBase, r.timeIncrement) || I18N.t('tc.none');
+    const turn = r.status === 'playing'
+      ? I18N.t(isC4 ? (r.currentPlayer === 'w' ? 'c4.turnY' : 'c4.turnR') : (r.currentPlayer === 'w' ? 'room.turnW' : 'room.turnB'))
+      : I18N.t(canJoin ? 'ui.seatOpen' : r.status === 'waiting' ? 'ui.playersReturning' : 'ui.finished');
+    card.setAttribute('aria-label', actionLabel + ': ' + displayName);
+    function playerSlot(color) {
+      const player = r.players?.[color];
+      const name = r.isPrivate ? I18N.t('ui.hiddenPlayer') : player
+        ? (player.isBot ? I18N.t('bot.name.' + player.botDifficulty) : player.name)
+        : I18N.t('player.waiting');
+      const initial = r.isPrivate ? '•' : player?.isBot ? 'AI' : player ? Array.from(player.name.trim())[0] || '?' : '+';
+      return `<span class="room-player ${color} ${!player && !r.isPrivate ? 'vacant' : ''}"><span class="room-player-avatar" aria-hidden="true">${escapeHtml(initial)}</span><span class="room-player-name">${escapeHtml(name)}</span></span>`;
+    }
     card.innerHTML = `
-      <div class="room-thumb">
-        ${renderMiniBoard(r.board, r.gameType)}
-        <div class="thumb-overlay">
-          <div class="thumb-overlay-top">
-            ${statusBadge}
-            <div style="display:flex;gap:4px;flex-direction:column;align-items:flex-end">
-              <span class="thumb-pill">👁 ${r.viewerCount}</span>
-              ${tcPillHTML}
-              ${lockBadge}
-              ${botBadge}
-            </div>
-          </div>
-          <div class="thumb-overlay-bottom">
-            <div style="display:flex;gap:4px;flex-direction:column;align-items:flex-start">
-              ${gtBadge}
-              ${turnPill}
-            </div>
-            <span class="thumb-pill">👥 ${r.playerCount}/2</span>
-          </div>
-        </div>
+      <div class="room-preview ${isC4 ? 'c4-preview' : ''}">
+        <img class="room-scenery" src="img/game-${art}-3d.webp" alt="" loading="lazy" width="720" height="480">
+        <div class="room-status-row"><span class="room-state ${r.status}"><span class="live-dot" aria-hidden="true"></span>${I18N.t(stateKey)}</span><span class="room-audience">${r.viewerCount} ${I18N.t('room.viewers')}</span></div>
+        <div class="room-live-board" aria-hidden="true">${renderMiniBoard(r.board, r.gameType)}</div>
+        <span class="room-time-tag">${escapeHtml(time)}</span>
+        ${r.isPrivate ? `<span class="room-lock-tag">${I18N.t('room.private')}</span>` : ''}
       </div>
       <div class="room-card-body">
-        <div class="room-name">${escapeHtml(displayName)}</div>
-        <div class="room-meta">
-          <span>${r.status === 'waiting' ? I18N.t('room.waiting').replace(/^[⏳]\s/, '') : (r.status === 'playing' ? I18N.t('room.live').replace(/^[🔴]\s/, '') : I18N.t('room.ended').replace(/^[✓]\s/, ''))}</span>
-          <span>•</span>
-          <span>${r.viewerCount} ${I18N.t('room.viewers')}</span>
-        </div>
-      </div>
-    `;
-    card.onclick = () => {
-      if (r.isPrivate) {
-        const pw = prompt(`"${displayName}" ${I18N.t('prompt.privatePass')}`);
-        if (!pw) return;
-        window.location.href = `/room.html?id=${r.id}&pw=${encodeURIComponent(pw)}`;
-      } else {
-        window.location.href = `/room.html?id=${r.id}`;
-      }
+        <div class="room-game-line"><span>${I18N.t('game.' + r.gameType)}</span><span>${r.moveCount || 0} ${I18N.t('ui.movesUnit')}</span></div>
+        <h3 class="room-name">${escapeHtml(displayName)}</h3>
+        <div class="room-matchup">${playerSlot('w')}<span class="room-versus" aria-hidden="true">VS</span>${playerSlot('b')}</div>
+        <div class="room-entry-row"><span class="room-turn"><span class="turn-dot ${r.currentPlayer === 'b' ? 'b' : 'w'} ${isC4 ? 'c4' : ''}" aria-hidden="true"></span>${turn}</span><span class="room-enter">${actionLabel}<span aria-hidden="true">↗</span></span></div>
+      </div>`;
+    card.onclick = event => {
+      if (!r.isPrivate) return;
+      event.preventDefault();
+      const pw = prompt(`"${displayName}" ${I18N.t('prompt.privatePass')}`);
+      if (!pw) return;
+      window.location.href = `/room.html?id=${encodeURIComponent(r.id)}&pw=${encodeURIComponent(pw)}`;
     };
-    list.appendChild(card);
+    if (list.children[index] !== card) list.insertBefore(card, list.children[index] || null);
   });
 }
 
@@ -314,7 +374,7 @@ function renderMiniBoard(board, gameType) {
     for (let c = 0; c < 8; c++) {
       const sqClass = (r + c) % 2 === 0 ? 'mb-light' : 'mb-dark';
       const piece = board[r][c];
-      const sym = piece ? (symbols[piece] || '') : '';
+      const sym = piece ? Pieces.renderPiece(piece, gameType, 'studio') : '';
       const colorClass = piece ? (piece[0] === 'w' ? 'mb-w' : 'mb-b') : '';
       html += `<div class="mb-sq ${sqClass} ${colorClass}">${sym}</div>`;
     }

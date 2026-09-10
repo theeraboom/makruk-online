@@ -1,12 +1,12 @@
 (function () {
   // Apply saved theme as early as possible to avoid flash
-  // Default = light (only switch to dark when user explicitly chose it)
+  // The game lobby defaults to dark; preserve an explicitly saved light preference.
   try {
-    if (localStorage.getItem('makruk_dark') === '1') {
+    if (localStorage.getItem('makruk_dark') !== '0') {
       document.documentElement.setAttribute('data-theme', 'dark');
     }
   } catch (e) {
-    // Default = light, no attribute needed
+    document.documentElement.setAttribute('data-theme', 'dark');
   }
 
   function isDark() {
@@ -15,8 +15,9 @@
 
   function updateBtn(btn) {
     if (!btn) return;
-    btn.textContent = isDark() ? '☀️' : '🌙';
+    btn.textContent = isDark() ? '☀' : '☾';
     btn.title = isDark() ? 'Light mode' : 'Dark mode';
+    btn.setAttribute('aria-label', btn.title);
     btn.setAttribute('aria-pressed', isDark() ? 'true' : 'false');
   }
 

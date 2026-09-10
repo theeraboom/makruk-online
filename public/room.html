@@ -6,7 +6,7 @@
 <title>วงเล่น — เล่นหมากรุก หมากฮอส ออนไลน์</title>
 <meta name="description" content="ห้องเล่นหมากรุก/หมากฮอสออนไลน์สด พร้อมแชทระหว่างผู้เล่นและผู้ชม — เปิดวิทยุไทยฟังขณะเล่นได้">
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#B45309">
+<meta name="theme-color" content="#174b3c">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231F2937'/%3E%3Ctext x='50%25' y='54%25' font-size='44' text-anchor='middle' dominant-baseline='middle' fill='%23FBBF24'%3E♛%3C/text%3E%3C/svg%3E">
 <link rel="apple-touch-icon" href="/og-image.png">
 
@@ -27,6 +27,10 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&family=Sarabun:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Noto+Sans+Symbols+2&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="refresh.css">
+<link rel="stylesheet" href="arena.css">
+<link rel="stylesheet" href="radio.css">
+<script src="theme.js"></script>
 </head>
 <body class="room-page">
   <header>
@@ -45,11 +49,7 @@
   </header>
 
   <main>
-    <a href="/" class="ad-slot ad-leaderboard ad-self">
-      <img src="img/ad-leaderboard.svg" alt="Playmakruk.com - หมากรุก หมากฮอส ออนไลน์">
-    </a>
-
-    <div class="room-grid">
+<div class="room-grid">
       <section class="game-section">
         <div class="players-bar">
           <div class="player-info" id="playerW">
@@ -59,7 +59,7 @@
               <span class="clock" id="clockW" hidden>--:--</span>
             </div>
           </div>
-          <div class="status-pill" id="status" data-i18n="player.waiting">รอผู้เล่น</div>
+          <div class="status-pill" id="status" role="status" data-i18n="player.waiting">รอผู้เล่น</div>
           <div class="player-info right" id="playerB">
             <div class="avatar black" id="avatarB">?</div>
             <div class="player-meta">
@@ -69,8 +69,14 @@
           </div>
         </div>
 
-        <div class="board-wrapper" id="boardWrapper">
-          <div class="board" id="board"></div>
+        <div class="board-camera" id="boardCamera">
+          <div class="camera-top"><span data-i18n="camera.title">มุมมองกระดาน</span><div class="camera-presets"><button type="button" id="camera3D" data-i18n="camera.3d">3D</button><button type="button" id="cameraTop" data-i18n="camera.top">มองจากด้านบน</button><button type="button" id="cameraMine" data-i18n="camera.mine">ฝั่งตัวเอง</button><button type="button" id="cameraOpponent" data-i18n="camera.opponent">ฝั่งตรงข้าม</button></div></div>
+          <div class="camera-sliders"><label><span data-i18n="camera.tilt">ความเอียง</span><input id="cameraTilt" type="range" min="0" max="45" step="1" value="24"><output id="cameraTiltValue">24°</output></label><label><span data-i18n="camera.rotate">หมุนรอบกระดาน</span><input id="cameraRotation" type="range" min="-180" max="180" step="5" value="0"><output id="cameraRotationValue">0°</output></label></div>
+        </div>
+        <div class="board-stage" id="boardStage">
+          <div class="board-wrapper" id="boardWrapper">
+            <div class="board" id="board"></div>
+          </div>
         </div>
 
         <div class="game-controls">
@@ -79,9 +85,12 @@
           <button id="flipBtn" class="ghost" data-i18n="btn.flip">↕ หมุนกระดาน</button>
           <button id="shareBtn" class="ghost" data-i18n="btn.share">🔗 แชร์</button>
           <button id="soundBtn" class="ghost" title="Sound">🔔</button>
-          <details class="theme-picker">
+          <details class="theme-picker board-theme-picker" open>
             <summary class="ghost" data-i18n="btn.theme">🎨 ธีม</summary>
             <div class="theme-options" id="themeOptions">
+              <button type="button" class="theme-btn" data-theme="darkwood"><span class="swatch sw-darkwood"></span><span data-i18n="theme.darkwood">ไม้เข้ม</span></button>
+              <button type="button" class="theme-btn" data-theme="marble"><span class="swatch sw-marble"></span><span data-i18n="theme.marble">หินอ่อน</span></button>
+              <button type="button" class="theme-btn" data-theme="neon"><span class="swatch sw-neon"></span><span data-i18n="theme.neon">นีออน</span></button>
               <button type="button" class="theme-btn" data-theme="wood"><span class="swatch sw-wood"></span><span data-i18n="theme.wood">ไม้</span></button>
               <button type="button" class="theme-btn" data-theme="green"><span class="swatch sw-green"></span><span data-i18n="theme.green">เขียว</span></button>
               <button type="button" class="theme-btn" data-theme="blue"><span class="swatch sw-blue"></span><span data-i18n="theme.blue">น้ำเงิน</span></button>
@@ -92,6 +101,7 @@
           <details class="theme-picker piece-picker" id="piecePicker" hidden>
             <summary class="ghost" data-i18n="btn.pieces">♟ ตัวหมาก</summary>
             <div class="theme-options" id="pieceOptions">
+              <button type="button" class="theme-btn" data-pieceset="studio"><span class="ps-preview">✦</span><span data-i18n="pieces.studio">สตูดิโอ 3D</span></button>
               <button type="button" class="theme-btn" data-pieceset="classic"><span class="ps-preview">♚</span><span data-i18n="pieces.classic">คลาสสิก</span></button>
               <button type="button" class="theme-btn" data-pieceset="thai-carved"><span class="ps-preview ps-preview-svg">▲</span><span data-i18n="pieces.thai-carved">ไทยแกะสลัก</span></button>
               <button type="button" class="theme-btn" data-pieceset="thai-letters"><span class="ps-preview ps-preview-letter">ข</span><span data-i18n="pieces.thai-letters">อักษรไทย</span></button>
@@ -100,16 +110,6 @@
           </details>
         </div>
 
-        <div class="reaction-bar" id="reactionBar">
-          <button class="reaction-btn" data-emoji="👍" title="ดี">👍</button>
-          <button class="reaction-btn" data-emoji="🔥" title="เด็ด">🔥</button>
-          <button class="reaction-btn" data-emoji="👏" title="ปรบมือ">👏</button>
-          <button class="reaction-btn" data-emoji="😱" title="ตกใจ">😱</button>
-          <button class="reaction-btn" data-emoji="🤔" title="คิดหนัก">🤔</button>
-          <button class="reaction-btn" data-emoji="♟" title="หมาก">♟</button>
-          <button class="reaction-btn" data-emoji="❤️" title="ใจ">❤️</button>
-          <button class="reaction-btn" data-emoji="🎉" title="ฉลอง">🎉</button>
-        </div>
 
         <details class="move-history" id="moveHistory">
           <summary><span data-i18n="history.title">📜 ประวัติการเดิน</span> <span id="moveCount" class="move-count"></span></summary>
@@ -201,10 +201,7 @@
           <p style="margin-top:12px"><a href="/rules.html" data-i18n="rules.readFull">อ่านประวัติและกติกาเต็ม →</a></p>
         </details>
 
-        <a href="/" class="ad-slot ad-leaderboard ad-self" style="margin-top: 8px;">
-          <img src="img/ad-leaderboard.svg" alt="Playmakruk.com - หมากรุก หมากฮอส ออนไลน์">
-        </a>
-      </section>
+    </section>
 
       <aside class="room-sidebar">
         <div class="viewers-card">
@@ -221,18 +218,29 @@
             <span class="chat-live"></span>
             <span data-i18n="chat.live">แชทสด</span>
             <span class="chat-count" id="chatCount"></span>
+            <button type="button" id="roomRadioBtn" class="ghost" data-i18n="chat.radio">♫ เปิดวิทยุ</button>
           </div>
-          <div class="chat-messages" id="chatMessages"></div>
-          <form class="chat-form" id="chatForm">
-            <input id="chatInput" data-i18n-placeholder="chat.placeholder" placeholder="พิมพ์ข้อความ..." maxlength="300" autocomplete="off">
-            <button type="submit" class="primary" data-i18n="chat.send">ส่ง</button>
-          </form>
+          <div class="chat-messages" id="chatMessages" role="log" aria-live="polite" aria-relevant="additions" aria-label="Chat"></div>
+          <button type="button" id="chatNewMessages" class="chat-new" hidden data-i18n="chat.newMessages">↓ ข้อความใหม่</button>
+        <div class="reaction-bar" id="reactionBar">
+          <button class="reaction-btn" data-emoji="👍" title="ดี">👍</button>
+          <button class="reaction-btn" data-emoji="🔥" title="เด็ด">🔥</button>
+          <button class="reaction-btn" data-emoji="👏" title="ปรบมือ">👏</button>
+          <button class="reaction-btn" data-emoji="😱" title="ตกใจ">😱</button>
+          <button class="reaction-btn" data-emoji="🤔" title="คิดหนัก">🤔</button>
+          <button class="reaction-btn" data-emoji="♟" title="หมาก">♟</button>
+          <button class="reaction-btn" data-emoji="❤️" title="ใจ">❤️</button>
+          <button class="reaction-btn" data-emoji="🎉" title="ฉลอง">🎉</button>
         </div>
 
-        <a href="/" class="ad-slot ad-rectangle ad-self">
-          <img src="img/ad-rectangle.svg" alt="Playmakruk.com - หมากรุก หมากฮอส ออนไลน์">
-        </a>
-      </aside>
+          <form class="chat-form" id="chatForm">
+            <textarea rows="1" aria-label="Chat message" id="chatInput" data-i18n-placeholder="chat.placeholder" placeholder="พิมพ์ข้อความ..." maxlength="300" autocomplete="off"></textarea>
+            <button type="submit" class="primary" data-i18n="chat.send">ส่ง</button>
+          </form>
+          <p class="chat-help" data-i18n="chat.help">Enter เพื่อส่ง · Shift + Enter ขึ้นบรรทัดใหม่</p>
+        </div>
+
+    </aside>
     </div>
 
     <footer>
@@ -249,7 +257,6 @@
 
   <div class="reaction-overlay" id="reactionOverlay"></div>
 
-  <script src="theme.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="i18n.js"></script>
   <script src="chess.js"></script>
@@ -259,6 +266,7 @@
   <script src="connect4.js"></script>
   <script src="pieces.js"></script>
   <script src="room.js"></script>
-  <script src="radio.js"></script>
+  <script src="radio-core.js"></script>
+<script src="radio.js"></script>
 </body>
 </html>

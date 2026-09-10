@@ -8,7 +8,7 @@
 <meta name="keywords" content="หมากรุกไทย, หมากรุกสากล, หมากฮอสไทย, หมากฮอสสากล, หมากรุกออนไลน์, หมากฮอสออนไลน์, เล่นกับ Bot, Makruk, Makhos, Chess, Checkers, Draughts, Thai chess, English checkers, เล่นหมากรุก, เล่นหมากฮอส, makruk online, AI bot หมากรุก, เกมหมากรุกฟรี, วิทยุไทยออนไลน์, ฟังวิทยุออนไลน์">
 <meta name="author" content="theeraboom">
 <meta name="robots" content="index, follow, max-image-preview:large">
-<meta name="theme-color" content="#B45309">
+<meta name="theme-color" content="#174b3c">
 <link rel="canonical" href="https://playmakruk.com/">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231F2937'/%3E%3Ctext x='50%25' y='54%25' font-size='44' text-anchor='middle' dominant-baseline='middle' fill='%23FBBF24'%3E♛%3C/text%3E%3C/svg%3E">
 <link rel="apple-touch-icon" href="/og-image.png">
@@ -35,6 +35,10 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&family=Sarabun:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Noto+Sans+Symbols+2&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="refresh.css">
+<link rel="stylesheet" href="arena.css">
+<link rel="stylesheet" href="radio.css">
+<script src="theme.js"></script>
 
 <script type="application/ld+json">
 {
@@ -149,166 +153,81 @@
 </script>
 </head>
 <body class="lobby-page">
+  <a class="skip-link" href="#main" data-i18n="ui.skip">ข้ามไปเนื้อหา</a>
   <header>
-    <a href="/" class="logo">
-      <div class="logo-mark">♛</div>
-      <div class="logo-text">
-        Playmakruk.com
-        <small data-i18n="logo.tagline">หมากรุก / หมากฮอส ออนไลน์</small>
-      </div>
+    <a href="/" class="logo" aria-label="Playmakruk">
+      <div class="logo-mark" aria-hidden="true">♞</div>
+      <div class="logo-text">playmakruk<span class="brand-dot">.</span><small data-i18n="logo.tagline">วงหมากของทุกคน</small></div>
     </a>
+    <nav class="main-nav" aria-label="Main navigation">
+      <a href="/" class="current" aria-current="page" data-i18n="ui.play">เล่นหมาก</a>
+      <a href="/rules.html" data-i18n="ui.rules">เรียนรู้กติกา</a>
+    </nav>
     <div class="header-spacer"></div>
     <div class="user-bar">
-      <input id="nameInput" maxlength="24" data-i18n-placeholder="name.placeholder" placeholder="ตั้งชื่อของคุณ">
-      <button id="saveName" class="ghost" data-i18n="name.save">บันทึก</button>
-      <button id="langToggleBtn" class="ghost lang-toggle" title="Change language">🌐 EN</button>
-      <button id="darkToggleBtn" class="ghost dark-toggle" title="Dark mode">🌙</button>
+      <details class="profile-menu">
+        <summary><span class="profile-avatar" aria-hidden="true">♙</span><span id="profileName" data-i18n="ui.profile">ชื่อผู้เล่น</span><span aria-hidden="true">⌄</span></summary>
+        <div class="profile-popover">
+          <label for="nameInput" data-i18n="name.placeholder">ตั้งชื่อของคุณ</label>
+          <input id="nameInput" maxlength="24" autocomplete="nickname" data-i18n-placeholder="name.placeholder" placeholder="ตั้งชื่อของคุณ">
+          <button id="saveName" class="primary" data-i18n="name.save">บันทึก</button>
+          <span id="nameFeedback" class="sr-only" role="status"></span>
+        </div>
+      </details>
+      <button id="langToggleBtn" class="ghost lang-toggle" title="Change language">EN</button>
+      <button id="darkToggleBtn" class="ghost dark-toggle" title="Dark mode" aria-label="Dark mode">☾</button>
     </div>
   </header>
-
-  <main>
-    <section class="hero">
-      <div class="hero-text">
-        <h1 class="hero-title" data-i18n="hero.title">เล่นหมากรุก หมากฮอส ออนไลน์</h1>
-        <p class="hero-sub" data-i18n="hero.sub">นั่งเล่น ยืนดู คุยกันสนุกๆ บรรยากาศเป็นกันเอง — สองคนเล่น คนอื่นๆ ยืนดูล้อมวง พูดคุยเชียร์กันได้ทุกเมื่อ</p>
-        <div class="hero-stats">
-          <div class="stat-chip"><span class="live-dot"></span><strong id="statRooms">0</strong> <span data-i18n="stat.rooms">ห้องเปิด</span></div>
-          <div class="stat-chip">👥 <strong id="statPlayers">0</strong> <span data-i18n="stat.players">กำลังเล่น</span></div>
-          <div class="stat-chip">👁 <strong id="statViewers">0</strong> <span data-i18n="stat.viewers">กำลังดู</span></div>
-          <div class="stat-chip">🟢 <strong id="statOnline">0</strong> <span data-i18n="stat.online">ออนไลน์ตอนนี้</span></div>
-        </div>
-        <div class="hero-board" aria-hidden="true">
-          <img src="img/hero-board.png" alt="">
-        </div>
+  <main id="main">
+    <noscript>กรุณาเปิด JavaScript เพื่อเล่นเกม / Please enable JavaScript to play.</noscript>
+    <section class="welcome" aria-labelledby="welcomeTitle">
+      <div>
+        <p class="eyebrow" data-i18n="ui.eyebrow">พักสักตา มาเล่นหมากกัน</p>
+        <h1 id="welcomeTitle" data-i18n="ui.title">เลือกเกม แล้วเปิดวงกัน</h1>
+        <p class="welcome-sub" data-i18n="ui.subtitle">เล่นกับเพื่อน ฝึกกับ AI หรือแวะมาดูวงอื่น — ฟรี ไม่ต้องสมัคร</p>
       </div>
-      <div class="hero-actions">
-        <div class="time-control-row">
-          <span class="tc-label" data-i18n="create.gameType">🎲 ประเภทเกม</span>
-          <div class="tc-options" id="gameTypeOptions">
-            <button type="button" class="tc-btn active" data-gt="chess" data-i18n="gt.chess">♛ หมากรุกไทย</button>
-            <button type="button" class="tc-btn" data-gt="chess-intl" data-i18n="gt.chess-intl">♚ หมากรุกสากล</button>
-            <button type="button" class="tc-btn" data-gt="checkers" data-i18n="gt.checkers">⛂ หมากฮอสไทย</button>
-            <button type="button" class="tc-btn" data-gt="checkers-intl" data-i18n="gt.checkers-intl">⛀ หมากฮอสสากล</button>
-            <button type="button" class="tc-btn" data-gt="connect4" data-i18n="gt.connect4">🔴 Connect Four</button>
-          </div>
-        </div>
-
-        <input id="newRoomName" data-i18n-placeholder="create.roomName" placeholder="ตั้งชื่อห้อง" maxlength="40">
-
-        <div class="time-control-row">
-          <span class="tc-label" data-i18n="create.timeBase">⏱ เวลารวมต่อฝ่าย</span>
-          <div class="tc-options" id="tcBaseOptions">
-            <button type="button" class="tc-btn active" data-tc="" data-i18n="tc.none">ไม่จับ</button>
-            <button type="button" class="tc-btn" data-tc="1">1m</button>
-            <button type="button" class="tc-btn" data-tc="3">3m</button>
-            <button type="button" class="tc-btn" data-tc="5">5m</button>
-            <button type="button" class="tc-btn" data-tc="10">10m</button>
-            <button type="button" class="tc-btn" data-tc="15">15m</button>
-            <button type="button" class="tc-btn" data-tc="30">30m</button>
-            <button type="button" class="tc-btn" data-tc="60">1h</button>
-            <button type="button" class="tc-btn" data-tc="90">90m</button>
-          </div>
-        </div>
-
-        <div class="time-control-row" id="incRow" hidden>
-          <span class="tc-label" data-i18n="create.timeIncrement">➕ เพิ่มต่อตา</span>
-          <div class="tc-options" id="tcIncOptions">
-            <button type="button" class="tc-btn active" data-tc="0" data-i18n="tc.noinc">ไม่เพิ่ม</button>
-            <button type="button" class="tc-btn" data-tc="2">+2s</button>
-            <button type="button" class="tc-btn" data-tc="3">+3s</button>
-            <button type="button" class="tc-btn" data-tc="5">+5s</button>
-            <button type="button" class="tc-btn" data-tc="10">+10s</button>
-            <button type="button" class="tc-btn" data-tc="15">+15s</button>
-            <button type="button" class="tc-btn" data-tc="30">+30s</button>
-          </div>
-        </div>
-
-        <div class="time-control-row">
-          <span class="tc-label"><span data-i18n="create.password">🔒 รหัสห้อง</span> <span class="tc-hint" data-i18n="create.password.hint">(ใส่ถ้าอยากให้เป็นห้องส่วนตัว)</span></span>
-          <input id="newRoomPassword" data-i18n-placeholder="create.password.placeholder" placeholder="ปล่อยว่าง = ห้องสาธารณะ" maxlength="40" type="text">
-        </div>
-
-        <div class="time-control-row">
-          <span class="tc-label" data-i18n="create.userColor">🎭 ฝ่ายของคุณ</span>
-          <div class="tc-options" id="userColorOptions">
-            <button type="button" class="tc-btn active" data-uc="w" data-i18n="side.white">⚪ ขาว (เดินก่อน)</button>
-            <button type="button" class="tc-btn" data-uc="b" data-i18n="side.black">⚫ ดำ</button>
-          </div>
-        </div>
-
-        <div class="time-control-row">
-          <span class="tc-label">
-            <label class="bot-toggle-label">
-              <input type="checkbox" id="botEnabled"> <span data-i18n="create.bot">🤖 เล่นกับ Bot (ฝึกซ้อมคนเดียว)</span>
-            </label>
-          </span>
-          <div class="tc-options" id="botOptions">
-            <button type="button" class="tc-btn" data-bd="easy" data-i18n="bot.easy">😊 ง่าย</button>
-            <button type="button" class="tc-btn" data-bd="medium" data-i18n="bot.medium">🤔 กลาง</button>
-            <button type="button" class="tc-btn" data-bd="hard" data-i18n="bot.hard">🔥 ยาก</button>
-          </div>
-        </div>
-
-        <button id="createBtn" class="primary" data-i18n="create.button">+ เปิดวงเล่นใหม่</button>
-      </div>
+      <div class="connection-chip" id="connectionStatus" role="status"><span class="live-dot"></span><span id="connectionLabel" data-i18n="ui.connecting">กำลังเชื่อมต่อ</span><strong id="statOnline">—</strong></div>
     </section>
-
-    <a href="/" class="ad-slot ad-leaderboard ad-self">
-      <img src="img/ad-leaderboard.svg" alt="Playmakruk.com - หมากรุก หมากฮอส ออนไลน์">
-    </a>
-
-    <div class="lobby-grid">
-      <section>
-        <div class="section-header">
-          <h2><span class="live-dot"></span><span data-i18n="rooms.heading">วงที่กำลังเล่นอยู่</span></h2>
-        </div>
-        <div id="roomsList" class="rooms-list">
-          <div class="empty">
-            <div class="empty-icon">♟</div>
-            <div data-i18n="rooms.empty">ยังไม่มีวงเปิด — เปิดวงใหม่ได้เลย</div>
-          </div>
+    <div class="lobby-workspace">
+      <section class="game-library" aria-labelledby="gameHeading">
+        <div class="section-header"><h2 id="gameHeading"><span class="step-number">01</span><span data-i18n="ui.chooseGame">เลือกเกมของคุณ</span></h2><span class="section-caption" data-i18n="ui.fiveGames">5 เกมกระดาน</span></div>
+        <div class="game-catalog" id="gameTypeOptions" role="group" aria-labelledby="gameHeading">
+          <button type="button" class="tc-btn game-choice featured active" data-gt="chess" aria-pressed="true">
+            <span class="game-copy"><span class="game-category">THE ORIGINAL THAI GAME</span><strong data-i18n="game.chess">หมากรุกไทย</strong><span class="game-description" data-i18n="game.chess.desc">เสน่ห์หมากไทย ในทุกตาเดิน</span><span class="selected-tag"><span data-i18n="ui.selected">เลือกแล้ว ✓</span><span aria-hidden="true">↗</span></span></span>
+            <img src="img/game-thai-3d.webp" class="featured-board" alt="" width="1536" height="1024">
+          </button>
+          <button type="button" class="tc-btn game-choice" data-gt="chess-intl" aria-pressed="false"><span class="game-art chess-art"><img src="img/game-chess-3d.webp" width="640" height="426" alt="" loading="eager"></span><span class="game-copy"><strong data-i18n="game.chess-intl">หมากรุกสากล</strong><span class="game-description">International Chess</span></span><span class="choice-check" aria-hidden="true">✓</span></button>
+          <button type="button" class="tc-btn game-choice" data-gt="checkers" aria-pressed="false"><span class="game-art checkers-art"><img src="img/game-checkers-3d.webp" width="640" height="426" alt="" loading="eager"></span><span class="game-copy"><strong data-i18n="game.checkers">หมากฮอสไทย</strong><span class="game-description">Thai Checkers</span></span><span class="choice-check" aria-hidden="true">✓</span></button>
+          <button type="button" class="tc-btn game-choice" data-gt="checkers-intl" aria-pressed="false"><span class="game-art intl-art"><img src="img/game-checkers-3d.webp" width="640" height="426" alt="" loading="eager"></span><span class="game-copy"><strong data-i18n="game.checkers-intl">หมากฮอสสากล</strong><span class="game-description">English Checkers</span></span><span class="choice-check" aria-hidden="true">✓</span></button>
+          <button type="button" class="tc-btn game-choice" data-gt="connect4" aria-pressed="false"><span class="game-art connect-art"><img src="img/game-connect4-3d.webp" width="640" height="426" alt="" loading="eager"></span><span class="game-copy"><strong>Connect Four</strong><span class="game-description" data-i18n="game.connect4.desc">เรียงสี่ให้ได้ก่อน</span></span><span class="choice-check" aria-hidden="true">✓</span></button>
         </div>
       </section>
-
-      <aside class="lobby-sidebar">
-        <a href="/" class="ad-slot ad-rectangle ad-self">
-          <img src="img/ad-rectangle.svg" alt="Playmakruk.com - หมากรุก หมากฮอส ออนไลน์">
-        </a>
-
-        <div class="info-card">
-          <h3 data-i18n="how.title">🎮 วิธีเปิดวง</h3>
-          <ul class="how-list">
-            <li data-i18n-html="how.1"><strong>🤝 เล่นกับเพื่อน</strong> — เปิดวงใหม่ แชร์ลิ้งค์ให้เพื่อน 2 คนแรกได้เล่น คนถัดไปดู+แชทได้เลย</li>
-            <li data-i18n-html="how.2"><strong>🤖 ฝึกซ้อมกับ AI Bot</strong> — ติ๊ก "เล่นกับ Bot" ตอนสร้างห้อง เลือกได้ 3 ระดับ ง่าย / กลาง / ยาก</li>
-            <li data-i18n-html="how.3"><strong>🔒 ห้องส่วนตัว</strong> — ตั้งรหัสตอนสร้างวง แชร์ลิ้งค์ + รหัสให้เพื่อน เฉพาะคนที่มีรหัสเข้าได้ (ทั้งผู้เล่นและคนดู)</li>
-          </ul>
-        </div>
-
-        <div class="info-card">
-          <h3 data-i18n="rulesShort.title">♟ กฎทั้ง 5 เกม ฉบับย่อ</h3>
-          <div data-only="th">
-            <p><strong>♛ หมากรุกไทย:</strong> 16 ตัว เบี้ยเริ่มแถว 3 เม็ดทแยง 1 ช่อง โคนทแยง 4 ทิศ + ตรงหน้า 1 มีนับศักดิ์</p>
-            <p><strong>♚ หมากรุกสากล:</strong> 16 ตัว เบี้ยเริ่มแถว 2 Queen ไกลทุกทิศ มี Castling, En Passant, เลื่อนเลือกได้ 4 ตัว</p>
-            <p><strong>⛂ หมากฮอสไทย:</strong> 8 ตัว 2 แถว เดินทแยงข้างหน้า บังคับกิน + กินติด เข้าฮอสเป็นขุนบินไกล</p>
-            <p><strong>⛀ หมากฮอสสากล:</strong> 12 ตัว 3 แถว กฎคล้ายไทย แต่ขุนเดิน 1 ช่อง 4 ทิศ ไม่บินไกล</p>
-            <p><strong>🔴 Connect Four:</strong> กระดาน 6×7 ผลัดกันหย่อนหมากจากบน เป้าหมายต่อกัน 4 ตัวเป็นแนวนอน/ตั้ง/ทแยง ได้เริ่มเล่นเร็ว ใช้กลยุทธ์</p>
-          </div>
-          <div data-only="en">
-            <p><strong>♛ Thai Chess:</strong> 16 pieces, pawns start on rank 3, Met moves 1 diagonal, Khon moves diagonal + 1 forward, has counting rule.</p>
-            <p><strong>♚ International Chess:</strong> 16 pieces, pawns start on rank 2, Queen moves long range, has Castling, En Passant, choose 4 pieces for promotion.</p>
-            <p><strong>⛂ Thai Checkers:</strong> 8 pieces in 2 rows, only diagonal-forward, forced capture + multi-jumps, "Ker hos" promotes to flying King.</p>
-            <p><strong>⛀ English Checkers:</strong> 12 pieces in 3 rows, similar to Thai but King moves only 1 diagonal square in 4 directions (not flying).</p>
-            <p><strong>🔴 Connect Four:</strong> 6×7 grid, take turns dropping coins from the top. First to align 4 horizontally / vertically / diagonally wins. Quick to learn, strategic to master.</p>
-          </div>
-          <p><a href="/rules.html" data-i18n="rulesShort.read">อ่านประวัติและกติกาเต็ม →</a></p>
-        </div>
-
-        <a href="/" class="ad-slot ad-rectangle ad-self">
-          <img src="img/ad-rectangle.svg" alt="Playmakruk.com - หมากรุก หมากฮอส ออนไลน์">
-        </a>
-      </aside>
+      <section class="play-panel" aria-labelledby="playHeading">
+        <div class="section-header"><h2 id="playHeading"><span class="step-number">02</span><span data-i18n="ui.ready">ตั้งวงพร้อมเล่น</span></h2></div>
+        <div class="selected-game-line"><span data-i18n="ui.yourGame">เกมที่เลือก</span><strong id="selectedGameName">หมากรุกไทย</strong></div>
+        <fieldset class="setup-field"><legend data-i18n="ui.opponent">อยากเล่นกับใคร?</legend><div class="opponent-options" id="opponentOptions"><button type="button" class="opponent-choice active" data-mode="friend" aria-pressed="true"><span aria-hidden="true">♙ ♙</span><span data-i18n="ui.friend">เล่นกับเพื่อน</span></button><button type="button" class="opponent-choice" data-mode="bot" aria-pressed="false"><span aria-hidden="true">✦</span><span data-i18n="ui.bot">ฝึกกับ AI</span></button></div></fieldset>
+        <input type="checkbox" id="botEnabled" hidden>
+        <div class="time-control-row" id="botDifficultyRow" hidden><span class="tc-label" id="difficultyLabel" data-i18n="ui.difficulty">ระดับความยาก</span><div class="tc-options" id="botOptions" role="group" aria-labelledby="difficultyLabel"><button type="button" class="tc-btn" data-bd="easy" data-i18n="bot.easy">ง่าย</button><button type="button" class="tc-btn active" data-bd="medium" data-i18n="bot.medium">กลาง</button><button type="button" class="tc-btn" data-bd="hard" data-i18n="bot.hard">ยาก</button></div></div>
+        <div class="time-control-row"><span class="tc-label" id="timeLabel" data-i18n="create.timeBase">เวลาต่อฝ่าย</span><div class="tc-options time-options" id="tcBaseOptions" role="group" aria-labelledby="timeLabel"><button type="button" class="tc-btn active" data-tc="" data-i18n="tc.none">ไม่จับเวลา</button><button type="button" class="tc-btn" data-tc="1">1m</button><button type="button" class="tc-btn" data-tc="3">3m</button><button type="button" class="tc-btn" data-tc="5">5m</button><button type="button" class="tc-btn" data-tc="10">10m</button><button type="button" class="tc-btn" data-tc="15">15m</button><button type="button" class="tc-btn" data-tc="30">30m</button><button type="button" class="tc-btn" data-tc="60">1h</button><button type="button" class="tc-btn" data-tc="90">90m</button></div></div>
+        <section class="advanced-settings" aria-labelledby="roomSettingsHeading"><div class="settings-heading"><h3 id="roomSettingsHeading" data-i18n="ui.settings">รายละเอียดห้อง</h3><span class="advanced-hint" data-i18n="ui.optional">ไม่บังคับ</span></div><div class="advanced-content">
+          <div class="time-control-row" id="incRow"><span class="tc-label" id="incLabel" data-i18n="create.timeIncrement">เพิ่มเวลาต่อตา</span><div class="tc-options" id="tcIncOptions" role="group" aria-labelledby="incLabel"><button type="button" class="tc-btn active" data-tc="0" data-i18n="tc.noinc">ไม่เพิ่ม</button><button type="button" class="tc-btn" data-tc="2">+2s</button><button type="button" class="tc-btn" data-tc="3">+3s</button><button type="button" class="tc-btn" data-tc="5">+5s</button><button type="button" class="tc-btn" data-tc="10">+10s</button><button type="button" class="tc-btn" data-tc="15">+15s</button><button type="button" class="tc-btn" data-tc="30">+30s</button></div><p class="field-hint" id="incrementHint" data-i18n="ui.incrementHint">เลือกเวลาต่อฝ่ายด้านบน เพื่อใช้เวลาเพิ่ม</p></div>
+          <div class="time-control-row"><label class="tc-label" for="newRoomName" data-i18n="create.roomName">ชื่อห้อง</label><input id="newRoomName" data-i18n-placeholder="ui.roomPlaceholder" placeholder="ปล่อยว่าง ใช้ชื่อเกมได้เลย" maxlength="40"></div>
+          <div class="time-control-row"><label class="tc-label" for="newRoomPassword" data-i18n="create.password">รหัสห้องส่วนตัว</label><input id="newRoomPassword" type="password" autocomplete="new-password" data-i18n-placeholder="create.password.placeholder" placeholder="ปล่อยว่าง = ห้องสาธารณะ" maxlength="40"></div>
+          <div class="time-control-row"><span class="tc-label" id="sideLabel" data-i18n="create.userColor">ฝ่ายของคุณ</span><div class="tc-options" id="userColorOptions" role="group" aria-labelledby="sideLabel"><button type="button" class="tc-btn active" data-uc="w" data-i18n="side.white">ขาว (เดินก่อน)</button><button type="button" class="tc-btn" data-uc="b" data-i18n="side.black">ดำ</button></div></div>
+        </div></section>
+        <p class="setup-summary" id="setupSummary"></p>
+        <button id="createBtn" class="primary start-game" disabled><span id="createLabel" data-i18n="ui.createFriend">เปิดวงชวนเพื่อน</span><span aria-hidden="true">↗</span></button>
+        <p class="play-hint" id="playHint" data-i18n="ui.friendHint">สร้างห้องแล้วส่งลิงก์ให้เพื่อนได้ทันที</p>
+        <p id="createError" class="form-error" role="alert" hidden></p>
+      </section>
+      <section class="live-rooms" id="liveRooms" aria-labelledby="roomsHeading">
+        <div class="section-header"><h2 id="roomsHeading"><span class="live-dot"></span><span data-i18n="rooms.heading">แวะเข้าวง</span></h2><span class="section-caption"><strong id="statRooms">0</strong> <span data-i18n="stat.rooms">ห้องเปิด</span></span></div>
+        <div class="room-stats"><span><strong id="statPlayers">0</strong> <span data-i18n="stat.players">กำลังเล่น</span></span><span><strong id="statViewers">0</strong> <span data-i18n="stat.viewers">กำลังดู</span></span><span data-i18n="ui.spectateHint">เข้าร่วมเล่น หรือดูและแชทได้</span></div>
+        <div id="roomsList" class="rooms-list" aria-busy="true"><div class="empty"><div class="empty-icon" aria-hidden="true">♙</div><p data-i18n="ui.loadingRooms">กำลังค้นหาวง…</p></div></div>
+      </section>
+      <aside class="lobby-guide"><span class="guide-symbol" aria-hidden="true">♧</span><div><h3 data-i18n="ui.bringFriends">วงเล็ก ๆ ความสนุกไม่จำกัด</h3><p data-i18n="ui.guide">สองคนเล่น เพื่อนคนอื่นเข้ามาดูและคุยกันได้ พร้อมวิทยุให้ฟังระหว่างเล่น</p><a href="/rules.html" data-i18n="ui.learn">มือใหม่? เริ่มจากกติกา →</a></div></aside>
     </div>
-
+    <details class="guide-library"><summary data-i18n="ui.aboutGames">รู้จักเกมทั้ง 5 แบบ และวิธีเล่น</summary>
     <section class="seo-intro">
       <div class="seo-card">
         <h2 data-only="th">♛ หมากรุกไทย</h2>
@@ -372,6 +291,7 @@
       </div>
     </section>
 
+    </details>
     <footer>
       <div class="footer-row">
         <a href="/rules.html" data-i18n="footer.rules">กฎหมากรุก / หมากฮอส</a>
@@ -382,10 +302,11 @@
     </footer>
   </main>
 
-  <script src="theme.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="i18n.js"></script>
+  <script src="pieces.js"></script>
   <script src="lobby.js"></script>
-  <script src="radio.js"></script>
+  <script src="radio-core.js"></script>
+<script src="radio.js"></script>
 </body>
 </html>

@@ -23,6 +23,14 @@
   function renderPiece(piece, gameType, pieceSet) {
     if (!piece) return '';
     const type = piece[1];
+    if (pieceSet === 'studio') {
+      const checkers = gameType === 'checkers' || gameType === 'checkers-intl';
+      const index = checkers ? (type === 'K' ? 1 : 0) : ['K','Q','B','N','R','P'].indexOf(type);
+      if (index < 0) return '';
+      const atlas = checkers ? 'checkers' : gameType === 'chess-intl' ? 'international' : 'thai';
+      return `<span aria-hidden="true" class="piece-sprite sprite-${atlas}" style="background-position:${index * (checkers ? 100 : 20)}% ${piece[0] === 'b' ? 100 : 0}%"></span>`;
+    }
+
     if (gameType === 'checkers' || gameType === 'checkers-intl') {
       return CHECKERS_UNICODE[piece] || '';
     }

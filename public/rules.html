@@ -7,7 +7,7 @@
 <meta name="description" content="กฎหมากรุกไทย/สากล หมากฮอสไทย/สากล ประวัติ การเดินตัวหมาก กฎนับศักดิ์ การกินติด การหงาย และเปรียบเทียบกฎทั้ง 5 เกม — เล่นออนไลน์ฟรีกับ AI Bot พร้อมวิทยุไทยให้ฟัง">
 <meta name="keywords" content="กฎหมากรุกไทย, ประวัติหมากรุกไทย, Makruk rules, กฎหมากฮอสไทย, ประวัติหมากฮอส, Makhos rules, วิธีเล่นหมากรุกไทย, วิธีเล่นหมากฮอส, นับศักดิ์, เม็ด, โคน, ขุน, เบี้ย, หงาย, กินติด, กฎหมากรุกสากล, English checkers rules">
 <meta name="robots" content="index, follow, max-image-preview:large">
-<meta name="theme-color" content="#B45309">
+<meta name="theme-color" content="#174b3c">
 <link rel="canonical" href="https://playmakruk.com/rules.html">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231F2937'/%3E%3Ctext x='50%25' y='54%25' font-size='44' text-anchor='middle' dominant-baseline='middle' fill='%23FBBF24'%3E♛%3C/text%3E%3C/svg%3E">
 <link rel="apple-touch-icon" href="/og-image.png">
@@ -33,6 +33,10 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&family=Sarabun:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Noto+Sans+Symbols+2&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="refresh.css">
+<link rel="stylesheet" href="arena.css">
+<link rel="stylesheet" href="radio.css">
+<script src="theme.js"></script>
 
 <script type="application/ld+json">
 {
@@ -817,10 +821,10 @@
     </footer>
   </main>
 
-  <script src="theme.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="i18n.js"></script>
-  <script src="radio.js"></script>
+  <script src="radio-core.js"></script>
+<script src="radio.js"></script>
   <script>
     const socket = io();
     document.getElementById('langToggleBtn').onclick = () => I18N.toggleLang();

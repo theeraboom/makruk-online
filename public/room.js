@@ -32,6 +32,7 @@ const socket = io({
 });
 document.getElementById('langToggleBtn').onclick = () => I18N.toggleLang();
 document.addEventListener('langchange', () => {
+  document.getElementById('roomGameTypeLabel').textContent = I18N.t('game.' + gameType);
   updateRoleBadge();
   updateStatus();
   if (board) render();
@@ -65,6 +66,7 @@ let status = 'waiting';
 let selected = null;
 let validMoves = [];
 let flipped = false;
+let hasJoinedView = false;
 let chatMsgCount = 0;
 let gameType = 'chess';
 let mustContinueFrom = null;
@@ -83,7 +85,7 @@ let winCells = null;          // connect4: winning 4-in-a-row cells to highlight
 let c4AnimatedCount = 0;      // connect4: # of drops already animated (avoid re-animating on re-render)
 let soundEnabled = localStorage.getItem('makruk_sound') !== 'off';
 let boardTheme = localStorage.getItem('makruk_theme') || 'wood';
-let pieceSet = localStorage.getItem('makruk_pieceset') || 'classic';
+let pieceSet = localStorage.getItem('makruk_pieceset') || 'studio';
 if (pieceSet === 'thai-shell' || pieceSet === 'thai-temple' || pieceSet === 'thai-real') pieceSet = 'classic';
 
 // Persistent UID so slot reclaim works even for anonymous users across reconnects
@@ -93,6 +95,7 @@ if (!userUid) {
   localStorage.setItem('makruk_uid', userUid);
 }
 const userName = localStorage.getItem('makruk_name') || '';
+let currentDisplayName = userName;
 // Last password that reached the server — reused on reconnect (so a player
 // who typed it in the prompt isn't re-asked) and for building share links
 let knownPw = initialPw;
@@ -127,9 +130,11 @@ socket.on('room_not_found', () => {
   setTimeout(() => { window.location.href = '/'; }, 3000);
 });
 
-socket.on('joined', ({ role }) => {
+socket.on('joined', ({ role, name }) => {
   myRole = role;
-  if (role === 'b') flipped = true;
+  currentDisplayName = typeof name === 'string' ? name : userName;
+  if (!hasJoinedView) { flipped = role === 'b'; hasJoinedView = true; }
+  applyCamera();
   updateRoleBadge();
 });
 
@@ -143,13 +148,12 @@ socket.on('room_state', (state) => {
   const prevStatus = status;
   gameType = state.gameType || 'chess';
   const labelEl = document.getElementById('roomGameTypeLabel');
-  const gameLabels = { 'chess': 'หมากรุกไทย', 'chess-intl': 'หมากรุกสากล', 'checkers': 'หมากฮอสไทย', 'checkers-intl': 'หมากฮอสสากล', 'connect4': 'Connect Four' };
-  if (labelEl) labelEl.textContent = gameLabels[gameType] || 'Playmakruk.com';
+  if (labelEl) labelEl.textContent = I18N.t('game.' + gameType);
   document.querySelectorAll('.rule-list').forEach((el) => {
     el.hidden = !el.classList.contains('rl-' + gameType);
   });
   const piecePicker = document.getElementById('piecePicker');
-  if (piecePicker) piecePicker.hidden = isCheckersGame() || isConnect4Game();
+  if (piecePicker) piecePicker.hidden = isConnect4Game();
   // Connect Four has fixed orientation (gravity) & no piece sets/themes
   const flipBtn = document.getElementById('flipBtn');
   if (flipBtn) flipBtn.hidden = isConnect4Game();
@@ -157,6 +161,8 @@ socket.on('room_state', (state) => {
   if (themePicker) themePicker.hidden = isConnect4Game();
   const boardWrapper = document.getElementById('boardWrapper');
   if (boardWrapper) boardWrapper.classList.toggle('connect4', isConnect4Game());
+  document.getElementById('boardCamera').hidden = isConnect4Game();
+  applyCamera();
   // Tag players-bar so avatars switch to yellow/red for Connect 4
   const playersBar = document.querySelector('.players-bar');
   if (playersBar) playersBar.classList.toggle('connect4', isConnect4Game());
@@ -286,6 +292,7 @@ socket.on('chat_history', (msgs) => {
   c.innerHTML = '';
   chatMsgCount = 0;
   msgs.forEach((m) => appendChat(m));
+  scrollChatToEnd();
 });
 
 socket.on('chat_message', (msg) => {
@@ -373,14 +380,6 @@ socket.on('connect', () => {
     wasConnected = true;
     justReconnected = true;
     setTimeout(() => { justReconnected = false; }, 5000);
-    // Re-join the same room with same password
-    const params = new URLSearchParams(location.search);
-    const roomId = params.get('id');
-    const password = params.get('pw') || sessionStorage.getItem('mk_pw_' + roomId) || '';
-    if (roomId) {
-      if (userName) socket.emit('set_name', userName);
-      socket.emit('join_room', { roomId, password });
-    }
     showBanner(I18N.t('sys.reconnected'), 'ok', 2500);
   }
 });
@@ -571,6 +570,8 @@ function render() {
       if (vm) sq.classList.add((vm.capture || vm.captured) ? 'valid-capture' : 'valid-move');
       if (kingPos && kingPos.r === r && kingPos.c === c) sq.classList.add('check');
 
+      const last = moves[moves.length - 1];
+      if (last && [last.from, last.to].some(pos => pos && pos.r === r && pos.c === c)) sq.classList.add('last-move');
       const piece = board[r][c];
       if (piece) {
         sq.innerHTML = Pieces.renderPiece(piece, gameType, pieceSet);
@@ -592,7 +593,18 @@ function render() {
         sq.appendChild(rankLabel);
       }
 
+      sq.setAttribute('role', 'button');
+      sq.setAttribute('aria-label', 'abcdefgh'[c] + (8-r) + (piece ? ' · ' + (gameType === 'chess' ? Pieces.THAI_LETTERS[piece[1]] : piece[1]) + ' · ' + I18N.t('side.short.' + piece[0]) : ''));
+      sq.tabIndex = i === 7 && j === 0 ? 0 : -1;
+      sq.dataset.row = i; sq.dataset.col = j;
       sq.onclick = () => handleClick(r, c);
+      sq.onkeydown = e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClick(r,c); const replacement = boardEl.querySelector(`[data-row="${i}"][data-col="${j}"]`); if(replacement){replacement.tabIndex=0;replacement.focus();} return; }
+        const delta = {ArrowUp:[-1,0],ArrowDown:[1,0],ArrowLeft:[0,-1],ArrowRight:[0,1]}[e.key];
+        if (!delta) return; e.preventDefault();
+        const next = boardEl.querySelector(`[data-row="${Math.max(0,Math.min(7,i+delta[0]))}"][data-col="${Math.max(0,Math.min(7,j+delta[1]))}"]`);
+        if(next){boardEl.querySelectorAll('.square').forEach(el=>el.tabIndex=-1);next.tabIndex=0;next.focus();}
+      };
       boardEl.appendChild(sq);
     }
   }
@@ -665,12 +677,14 @@ function hoverColumn(col, on) {
 
 function dropColumn(col) {
   if (!isConnect4Game()) return;
+  if (!socket.connected) { showToast(I18N.t('ui.connectError')); return; }
   if (status !== 'playing' || myRole !== currentPlayer) return;
   if (Connect4.findLandingRow(board, col) < 0) return; // column full
   socket.emit('move', { col });
 }
 
 function handleClick(r, c) {
+  if (!socket.connected) { showToast(I18N.t('ui.connectError')); return; }
   if (status !== 'playing') return;
   if (myRole !== currentPlayer) return;
 
@@ -716,8 +730,35 @@ function legalMovesFor(r, c) {
 
 document.getElementById('flipBtn').onclick = () => {
   flipped = !flipped;
+  cameraRotation = 0; applyCamera();
   render();
 };
+
+let cameraTilt = Number(localStorage.getItem('makruk_camera_tilt') ?? 24);
+let cameraRotation = Number(localStorage.getItem('makruk_camera_rotation') ?? 0);
+function applyCamera() {
+  cameraTilt = Math.max(0, Math.min(45, Number.isFinite(cameraTilt) ? cameraTilt : 24));
+  cameraRotation = Math.max(-180, Math.min(180, Number.isFinite(cameraRotation) ? cameraRotation : 0));
+  const tilt = isConnect4Game() ? 0 : cameraTilt;
+  const angle = isConnect4Game() ? 0 : cameraRotation;
+  const radians = angle * Math.PI / 180;
+  const scale = (tilt ? .93 : 1) / (Math.abs(Math.sin(radians)) + Math.abs(Math.cos(radians)));
+  const stage = document.getElementById('boardStage');
+  stage.style.setProperty('--stage-ratio', isConnect4Game() ? .92 : tilt ? Math.cos(tilt*Math.PI/180)*.93+.11 : 1.04);
+  stage.style.setProperty('--camera-tilt', tilt+'deg');stage.style.setProperty('--camera-rotation', angle+'deg');stage.style.setProperty('--camera-scale', scale);
+  document.getElementById('cameraTilt').value=cameraTilt;document.getElementById('cameraRotation').value=cameraRotation;
+  document.getElementById('cameraTiltValue').value=cameraTilt+'°';document.getElementById('cameraRotationValue').value=cameraRotation+'°';
+  document.getElementById('cameraTop').setAttribute('aria-pressed', String(!tilt));document.getElementById('camera3D').setAttribute('aria-pressed', String(tilt>0));
+  document.getElementById('cameraMine').setAttribute('aria-pressed',String(flipped === (myRole==='b')));document.getElementById('cameraOpponent').setAttribute('aria-pressed',String(flipped !== (myRole==='b')));
+  localStorage.setItem('makruk_camera_tilt',cameraTilt);localStorage.setItem('makruk_camera_rotation',cameraRotation);
+}
+document.getElementById('cameraTilt').oninput=e=>{cameraTilt=Number(e.target.value);applyCamera();};
+document.getElementById('cameraRotation').oninput=e=>{cameraRotation=Number(e.target.value);applyCamera();};
+document.getElementById('camera3D').onclick=()=>{cameraTilt=30;cameraRotation=-10;applyCamera();};
+document.getElementById('cameraTop').onclick=()=>{cameraTilt=0;cameraRotation=0;applyCamera();};
+document.getElementById('cameraMine').onclick=()=>{flipped=myRole==='b';cameraRotation=0;applyCamera();render();};
+document.getElementById('cameraOpponent').onclick=()=>{flipped=myRole!=='b';cameraRotation=0;applyCamera();render();};
+applyCamera();
 
 function applyTheme(theme) {
   boardTheme = theme;
@@ -752,10 +793,12 @@ document.getElementById('resetBtn').onclick = () => {
     showToast(I18N.t('err.playerOnly'));
     return;
   }
+  if (!socket.connected) { showToast(I18N.t('ui.connectError')); return; }
   if (confirm(I18N.t('confirm.reset'))) socket.emit('reset_game');
 };
 
 document.getElementById('resignBtn').onclick = () => {
+  if (!socket.connected) { showToast(I18N.t('ui.connectError')); return; }
   if (confirm(I18N.t('confirm.resign'))) socket.emit('resign');
 };
 
@@ -991,9 +1034,22 @@ chatForm.onsubmit = (e) => {
   e.preventDefault();
   const t = chatInput.value.trim();
   if (!t) return;
+  if (!socket.connected) { showToast(I18N.t('ui.connectError')); return; }
   socket.emit('chat', t);
   chatInput.value = '';
+  chatInput.style.height = '';
+  scrollChatToEnd();
 };
+
+chatInput.addEventListener('keydown', e => {
+  if(e.key === 'Enter' && !e.shiftKey && !e.isComposing){e.preventDefault();chatForm.requestSubmit();}
+});
+chatInput.addEventListener('input',()=>{chatInput.style.height='auto';chatInput.style.height=Math.min(chatInput.scrollHeight,110)+'px';});
+const chatNew = document.getElementById('chatNewMessages');
+function scrollChatToEnd(){const c=document.getElementById('chatMessages');c.scrollTop=c.scrollHeight;chatNew.hidden=true;}
+chatNew.onclick=scrollChatToEnd;
+document.getElementById('chatMessages').addEventListener('scroll',e=>{const c=e.target;if(c.scrollHeight-c.scrollTop-c.clientHeight<55)chatNew.hidden=true;});
+document.getElementById('roomRadioBtn').onclick=()=>window.Radio?.open();
 
 function formatSystemMessage(msg) {
   if (msg.key) {
@@ -1026,6 +1082,8 @@ function refreshChatMessages() {
 
 function appendChat(msg) {
   const c = document.getElementById('chatMessages');
+  const nearEnd = c.scrollHeight - c.scrollTop - c.clientHeight < 70;
+  const own = msg.type === 'chat' && msg.user === currentDisplayName && msg.role === myRole;
   const div = document.createElement('div');
   if (msg.type === 'system') {
     div.className = 'msg system';
@@ -1035,19 +1093,20 @@ function appendChat(msg) {
       div.setAttribute('data-params', JSON.stringify(msg.params || {}));
     }
   } else {
-    div.className = 'msg ' + (msg.role || 'viewer');
+    div.className = 'msg ' + (msg.role || 'viewer') + (own ? ' own' : '');
     const roleEmoji = msg.role === 'w' ? '⚪' : msg.role === 'b' ? '⚫' : '👁';
     const userSpan = document.createElement('span');
     userSpan.className = 'msg-user';
     userSpan.textContent = roleEmoji + ' ' + msg.user;
     const textSpan = document.createElement('span');
     textSpan.className = 'msg-text';
-    textSpan.textContent = ': ' + msg.text;
+    textSpan.textContent = msg.text;
     div.appendChild(userSpan);
+    if (Number.isFinite(msg.time)) { const time=document.createElement('time');time.className='msg-time';time.dateTime=new Date(msg.time).toISOString();time.textContent=new Date(msg.time).toLocaleTimeString(I18N.getLang()==='en'?'en-US':'th-TH',{hour:'2-digit',minute:'2-digit'});div.appendChild(time); }
     div.appendChild(textSpan);
   }
   c.appendChild(div);
-  c.scrollTop = c.scrollHeight;
+  if (nearEnd || own) scrollChatToEnd(); else chatNew.hidden=false;
   chatMsgCount++;
   document.getElementById('chatCount').textContent = chatMsgCount + ' ' + I18N.t('chat.messages');
 }
