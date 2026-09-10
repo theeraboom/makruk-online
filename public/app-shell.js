@@ -6,7 +6,7 @@
     window.Radio?.close(false);
     if(frame.contentWindow)frame.contentWindow.location.replace(url.href);else frame.src=url.href;
   }
-  window.PlaymakrukShell={navigate(value){const url=clean(value);if(url.href===current)return;history.pushState({playmakruk:true},'',url.href);load(url.href);},ready(value,title){if(clean(value).href!==current)return;document.title=title;document.getElementById('navigationStatus').hidden=true;}};
+  window.PlaymakrukShell={version:document.querySelector('meta[name="playmakruk-build"]')?.content,navigate(value){const url=clean(value);if(url.href===current)return;history.pushState({playmakruk:true},'',url.href);load(url.href);},ready(value,title){if(clean(value).href!==current)return;document.title=title;document.getElementById('navigationStatus').hidden=true;}};
   history.replaceState({playmakruk:true},'',clean(location.href).href);
   window.addEventListener('popstate',()=>load(location.href));
   frame.addEventListener('load',()=>{document.getElementById('navigationStatus').hidden=true;});

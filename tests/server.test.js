@@ -221,7 +221,13 @@ test('real server gameplay and reconnect regressions', { timeout: 40000 }, async
   await t.test('HTML returns a persistent shell, clean room metadata and safely escaped room names',async()=>{
     const a=await client('meta_client'),id=await create(a,{name:'Room <title> & "friends"'});
     const html=await(await fetch(base+'/room.html?id='+id)).text();assert.match(html,/id="appFrame"/);assert.match(html,/Room &lt;title&gt; &amp; &quot;friends&quot;/);assert.ok(html.includes('https://playmakruk.com/room.html?id='+id));assert.match(html,/og-image.png\?v=studio-20260910/);
-    const content=await(await fetch(base+'/room.html?id='+id+'&_view=content')).text();assert.ok(!content.includes('src="radio.js"'));assert.ok(content.includes('src="/navigation.js"'));
+    const content=await(await fetch(base+'/room.html?id='+id+'&_view=content')).text();assert.ok(!/src="radio(?:-core)?\.js/.test(content));assert.match(content,/src="\/navigation\.js\?v=[a-f0-9]{12}"/);
+    const version=html.match(/name="playmakruk-build" content="([a-f0-9]{12})"/)[1];
+    for(const page of [html,content]){const scripts=[...page.matchAll(/src="([^" ]+\.js[^" ]*)"/g)].map(x=>x[1]);assert.ok(scripts.length>0);assert.ok(scripts.every(url=>url.endsWith('?v='+version)));assert.ok(page.includes('radio.css?v='+version));}
+  });
+  await t.test('lobby fallback never nests noscript and cannot leak the old lobby under the room',async()=>{
+    const html=await(await fetch(base+'/')).text();assert.equal((html.match(/<noscript\b/g)||[]).length,1);assert.equal((html.match(/<\/noscript>/g)||[]).length,1);
+    const after=html.split('</noscript>')[1];assert.ok(!after.includes('<main'));assert.ok(!after.includes('YOUR NEXT MOVE'));
   });
 
 });

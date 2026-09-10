@@ -2,6 +2,10 @@
 (function(){
   let host=null;try{if(parent!==window&&parent.PlaymakrukShell)host=parent.PlaymakrukShell;}catch{}
   function publicUrl(value=location.href){const url=new URL(value,location.href);url.searchParams.delete('_view');return url;}
+  const version=document.querySelector('meta[name="playmakruk-build"]')?.content;
+  // An old persistent shell can otherwise retain the previous radio forever.
+  // Upgrade on the next page navigation while preserving the room URL/identity.
+  if(host&&version&&host.version!==version){parent.location.replace(publicUrl().href);return;}
   window.AppNavigation={go(value){const url=publicUrl(value);if(host)host.navigate(url.href);else location.assign(url.href);},publicUrl};
   if(!host){if(parent===window&&new URL(location.href).searchParams.has('_view'))location.replace(publicUrl().href);return;}
   window.Radio={open:()=>parent.Radio?.open(),pause:()=>parent.Radio?.pause()};

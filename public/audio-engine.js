@@ -5,8 +5,17 @@
   if(typeof module!=='undefined'&&module.exports){module.exports={level,material};return;}
   try{if(parent!==window&&parent.PlaymakrukShell)return;}catch{}
   let context=null,noise=null;
-  function getContext(){if(!context){const AudioCtx=root.AudioContext||root.webkitAudioContext;if(!AudioCtx)return null;context=new AudioCtx();}return context;}
-  function unlock(){const c=getContext();if(c?.state==='suspended')c.resume().catch(()=>{});}
+  function getContext(){if(!context||context.state==='closed'){const AudioCtx=root.AudioContext||root.webkitAudioContext;if(!AudioCtx)return null;context=new AudioCtx();}return context;}
+  async function unlock(){
+    try{
+      // iOS otherwise treats Web Audio as a muted game/ambient session even
+      // when the user explicitly presses the sound preview button.
+      if(root.navigator?.audioSession)root.navigator.audioSession.type='playback';
+      const c=getContext();if(!c)return false;if(c.state==='running')return true;
+      let timer;try{await Promise.race([c.resume(),new Promise(resolve=>{timer=setTimeout(resolve,1200);})]);}finally{clearTimeout(timer);}
+      return c.state==='running';
+    }catch{return false;}
+  }
   function noiseBuffer(c){if(noise?.sampleRate===c.sampleRate)return noise;noise=c.createBuffer(1,Math.floor(c.sampleRate*.25),c.sampleRate);const data=noise.getChannelData(0);let seed=9173;for(let i=0;i<data.length;i++){seed=(seed*16807)%2147483647;data[i]=seed/1073741824-1;}return noise;}
   function strike(c,out,time,kind,strength=1){
     const profiles={wood:{tones:[185,520,1180],decay:.065,noise:1600},stone:{tones:[440,1550,3020],decay:.12,noise:3400},glass:{tones:[650,1950,4110],decay:.17,noise:2800},plastic:{tones:[310,770,1830],decay:.045,noise:2200}};
@@ -21,8 +30,8 @@
     else if(type==='chat')chime(c,out,now,740,.085,.035);
     else if(type==='end'){[523.25,659.25,783.99].forEach((f,i)=>chime(c,out,now+i*.095,f,.28,.07));}
   }
-  function volume(){try{return Number(localStorage.getItem('makruk_sfx_volume')??.65);}catch{return .65;}}
-  function play(type,options={}){try{const c=getContext();if(!c)return;unlock();const out=c.createGain();out.gain.value=level(volume());out.connect(c.destination);render(c,out,type,options);setTimeout(()=>out.disconnect(),1100);}catch{}}
+  function volume(){try{const v=Number(localStorage.getItem('makruk_sfx_volume')??.65);return Number.isFinite(v)?Math.max(0,Math.min(1,v)):.65;}catch{return .65;}}
+  async function play(type,options={}){try{if(!await unlock())return false;const c=getContext();const out=c.createGain();out.gain.value=level(volume());out.connect(c.destination);render(c,out,type,options);setTimeout(()=>out.disconnect(),1100);return true;}catch{return false;}}
   function media(audio){const c=getContext();if(!c)return null;const source=c.createMediaElementSource(audio),gain=c.createGain();source.connect(gain).connect(c.destination);return{set(value,muted){audio.volume=1;gain.gain.cancelScheduledValues(c.currentTime);gain.gain.setTargetAtTime(muted?0:level(value),c.currentTime,.018);},destroy(){source.disconnect();gain.disconnect();},gain,context:c};}
   root.GameAudio={unlock,getContext,play,render,media,level,material,volume,setVolume(value){try{localStorage.setItem('makruk_sfx_volume',Math.max(0,Math.min(1,Number(value)||0)));}catch{}}};
 })(typeof window!=='undefined'?window:globalThis);

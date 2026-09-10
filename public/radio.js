@@ -13,7 +13,7 @@
   const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const $=id=>document.getElementById(id);
   const dock=document.createElement('button');dock.id='radioBtn';dock.type='button';dock.setAttribute('aria-controls','radioPanel');dock.setAttribute('aria-expanded','false');
-  dock.innerHTML='<span class="radio-dock-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m5 6 13-4"/><rect x="3" y="6" width="18" height="15" rx="4"/><circle cx="9" cy="14" r="3"/><path d="M15 11h3m-3 4h3"/></svg></span><i class="radio-playing-dot" aria-hidden="true"></i>';
+  dock.innerHTML='<span class="radio-dock-icon" aria-hidden="true">♫</span><i class="radio-playing-dot" aria-hidden="true"></i>';
   const panel=document.createElement('section');panel.id='radioPanel';panel.className='radio-studio';panel.hidden=true;panel.setAttribute('role','dialog');panel.setAttribute('aria-labelledby','radioTitle');
   panel.innerHTML=`<div class="radio-heading"><div><span class="radio-eyebrow">PLAYMAKRUK RADIO</span><h2 id="radioTitle"></h2></div><button id="radioClose" type="button">✕</button></div>
     <div class="radio-now"><div class="radio-art" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div><div class="radio-track"><strong id="radioTrack"></strong><span id="radioState" role="status"></span></div><button id="radioPlayBtn" type="button"></button></div>
@@ -34,7 +34,9 @@
     // can play outside Web Audio, so a gain-only control may change no sound.
     const previous=audio.volume;let nativeVolume=false;
     try{audio.volume=.5;nativeVolume=Math.abs(audio.volume-.5)<.01;audio.volume=previous;}catch{}
-    if(nativeVolume)return{volumeSupported:true};
+    // iPhone/iPad can report a writable volume without changing the hardware
+    // playback level. Safari and Chrome on iOS both require the gain path.
+    if(nativeVolume&&!window.RadioCore.fixedMobileVolume(navigator))return{volumeSupported:true};
     let cors=corsCache.get(target.url);
     if(cors===undefined){const abort=new AbortController();const timeout=setTimeout(()=>abort.abort(),3500);try{const result=await fetch(target.url,{mode:'cors',signal:abort.signal});cors=result.ok;await result.body?.cancel();}catch{cors=false;}finally{clearTimeout(timeout);abort.abort();}corsCache.set(target.url,cors);}
     // Devices with fixed media volume need decoded audio through a GainNode.

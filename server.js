@@ -2,6 +2,13 @@ const express = require('express');
 const http = require('http');
 const path = require('path');
 const fs = require('fs');
+const assetHash = require('node:crypto').createHash('sha256');
+assetHash.update(fs.readFileSync(__filename));
+for (const name of fs.readdirSync(path.join(__dirname,'public')).filter(name=>/\.(?:js|css|html)$/.test(name)).sort()) assetHash.update(name).update(fs.readFileSync(path.join(__dirname,'public',name)));
+const ASSET_VERSION = assetHash.digest('hex').slice(0,12);
+function versionAssets(html) {
+  return html.replace(/\b(src|href)="([^"?]+\.(?:js|css))"/g,(match,attr,url)=>/^(?:https?:)?\/\//.test(url)?match:`${attr}="${url}?v=${ASSET_VERSION}"`);
+}
 const { Server } = require('socket.io');
 const Chess = require('./public/chess.js');
 const Checkers = require('./public/checkers.js');
@@ -529,19 +536,24 @@ function escapeHtml(s) {
 }
 
 function renderPage(req, html) {
+  html=html.replace('</head>',`<meta name="playmakruk-build" content="${ASSET_VERSION}"></head>`);
   if (req.query._view === 'content') {
-    return html.replace('</head>', '<script src="/navigation.js"></script></head>')
+    return versionAssets(html.replace('</head>', '<script src="/navigation.js"></script></head>')
       .replace(/<script src="radio(?:-core)?\.js"><\/script>/g, '')
-      .replace('<script src="i18n.js"></script>', '<script src="i18n.js"></script><script src="audio-engine.js"></script>');
+      .replace('<script src="i18n.js"></script>', '<script src="i18n.js"></script><script src="audio-engine.js"></script>'));
   }
   const head = html.match(/<head>([\s\S]*?)<\/head>/)[1];
-  const fallback=html.match(/<body[^>]*>([\s\S]*?)<\/body>/)[1].replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'');
-  return `<!doctype html><html lang="th"><head>${head}<link rel="stylesheet" href="/app-shell.css"></head><body class="app-shell">
+  // A nested </noscript> terminates the shell fallback early in JS-enabled
+  // browsers and leaks the remaining lobby into the live page underneath it.
+  const fallback=html.match(/<body[^>]*>([\s\S]*?)<\/body>/)[1]
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'')
+    .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi,'');
+  return versionAssets(`<!doctype html><html lang="th"><head>${head}<link rel="stylesheet" href="/app-shell.css"></head><body class="app-shell">
     <iframe id="appFrame" title="Playmakruk — เกมและห้องเล่น" allow="autoplay; clipboard-write; web-share"></iframe>
     <div id="navigationStatus" role="status">กำลังเปิดหน้า…</div>
     <noscript><style>html,body.app-shell{height:auto;overflow:auto}.app-shell #appFrame,.app-shell #navigationStatus{display:none}</style><p>เปิด JavaScript เพื่อเล่นเกมและฟังวิทยุ</p>${fallback}</noscript>
     <script src="/app-shell.js"></script><script src="/i18n.js"></script><script src="/audio-engine.js"></script><script src="/radio-core.js"></script><script src="/radio.js"></script>
-  </body></html>`;
+  </body></html>`);
 }
 app.get(HTML_PATHS, (req, res, next) => {
   let html;

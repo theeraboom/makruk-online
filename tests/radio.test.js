@@ -1,5 +1,13 @@
 const {test}=require('node:test');const assert=require('node:assert/strict');
 const {stations,station,storage,fetchStations,Player}=require('../public/radio-core');
+const {fixedMobileVolume}=require('../public/radio-core');
+test('iPhone, iPad desktop mode, and Chrome iOS require gain instead of reported native volume',()=>{
+ assert.equal(fixedMobileVolume({userAgent:'iPhone Version/18 Safari'}),true);
+ assert.equal(fixedMobileVolume({userAgent:'iPhone CriOS/130 Mobile Safari'}),true);
+ assert.equal(fixedMobileVolume({platform:'MacIntel',maxTouchPoints:5}),true);
+ assert.equal(fixedMobileVolume({platform:'MacIntel',maxTouchPoints:0}),false);
+ assert.equal(fixedMobileVolume({userAgent:'Android Chrome Mobile'}),false);
+});
 const entry=(uuid='a')=>({uuid,name:uuid,url:'https://radio.example/'+uuid});
 function harness(timeout=80){const audios=[],changes=[];const p=new Player({timeout,loadHls:async()=>{throw Error('unused');},makeAudio:()=>{let resolve,reject;const pending=new Promise((yes,no)=>{resolve=yes;reject=no;});const a={volume:1,canPlayType:()=>'',play:()=>pending,pause(){this.paused=true;},removeAttribute(){},load(){},resolve,reject};audios.push(a);return a;},onChange:x=>changes.push(x.state)});return{p,audios,changes};}
 test('station validation tolerates corrupt storage and removes insecure or duplicate stream URLs',()=>{

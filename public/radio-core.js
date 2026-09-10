@@ -14,6 +14,9 @@
   function radioOnly(raw) {
     return !/\b(?:tv|television|video|h\.?26[45])\b/i.test([raw?.name,raw?.tags,raw?.codec].join(' '));
   }
+  function fixedMobileVolume(nav={}) {
+    return /iPhone|iPad|iPod/i.test(nav.userAgent||'')||(/Mac/i.test(nav.platform||'')&&nav.maxTouchPoints>1);
+  }
   function stations(raw) {
     const seen = new Set();
     return (Array.isArray(raw)?raw:[]).filter(radioOnly).map(station).filter(s=> {
@@ -84,6 +87,6 @@
       }
     }
   }
-  const api={station,stations,storage,fetchStations,Player};
+  const api={station,stations,storage,fetchStations,Player,fixedMobileVolume};
   if(typeof module!=='undefined' && module.exports)module.exports=api;else root.RadioCore=api;
 })(typeof window!=='undefined'?window:globalThis);

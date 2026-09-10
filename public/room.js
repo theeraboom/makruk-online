@@ -889,14 +889,27 @@ soundBtn.onclick = () => {
 };
 
 const sfxVolume=document.getElementById('sfxVolume');
-sfxVolume.value=Number(localStorage.getItem('makruk_sfx_volume')??.65);
-function updateSfxVolume(){document.getElementById('sfxVolumeValue').value=Math.round(Number(sfxVolume.value)*100)+'%';}
+sfxVolume.value=window.GameAudio?.volume()??.65;
+function updateSfxVolume(){document.getElementById('sfxVolumeValue').value=Math.round(Number(sfxVolume.value)*100)+'%';document.getElementById('sfxDown').setAttribute('aria-label',I18N.getLang()==='th'?'ลดเสียงเดินหมาก':'Lower game sound');document.getElementById('sfxUp').setAttribute('aria-label',I18N.getLang()==='th'?'เพิ่มเสียงเดินหมาก':'Raise game sound');}
 updateSfxVolume();
-sfxVolume.oninput=()=>{window.GameAudio?.setVolume(Number(sfxVolume.value));updateSfxVolume();};
-sfxVolume.onchange=()=>playSound('move');
-document.getElementById('sfxPreview').onclick=()=>{soundEnabled=true;localStorage.setItem('makruk_sound','on');updateSoundBtn();playSound('move');};
+function setSfxVolume(value){sfxVolume.value=Math.max(0,Math.min(1,value));window.GameAudio?.setVolume(Number(sfxVolume.value));soundEnabled=true;localStorage.setItem('makruk_sound','on');updateSoundBtn();updateSfxVolume();document.getElementById('sfxStatus').hidden=true;window.GameAudio?.unlock();}
+sfxVolume.oninput=()=>setSfxVolume(Number(sfxVolume.value));
+sfxVolume.onchange=()=>{setSfxVolume(Number(sfxVolume.value));playSound('move');};
+document.getElementById('sfxDown').onclick=()=>{setSfxVolume(Number(sfxVolume.value)-.1);playSound('move');};
+document.getElementById('sfxUp').onclick=()=>{setSfxVolume(Number(sfxVolume.value)+.1);playSound('move');};
+let sfxStatusTimer;
+document.getElementById('sfxPreview').onclick=async()=>{
+  const message=document.getElementById('sfxStatus'),th=I18N.getLang()==='th';clearTimeout(sfxStatusTimer);message.hidden=false;
+  if(Number(sfxVolume.value)===0){message.textContent=th?'ระดับเสียงเป็น 0% กด + เพื่อเพิ่มเสียง':'Volume is 0%. Press + to raise it.';return;}
+  soundEnabled=true;localStorage.setItem('makruk_sound','on');updateSoundBtn();window.GameAudio?.setVolume(Number(sfxVolume.value));
+  message.textContent=th?'กำลังเปิดเสียง…':'Starting audio…';
+  const played=await playSound('move');
+  message.textContent=played?(th?'เล่นเสียงตัวอย่างแล้ว':'Preview played'):(th?'ยังเปิดเสียงไม่ได้ ลองแตะปุ่มลองฟังอีกครั้ง':'Audio could not start. Tap Preview again.');
+  if(played)sfxStatusTimer=setTimeout(()=>{message.hidden=true;},1400);
+};
 function playSound(type) {
-  if(soundEnabled) window.GameAudio?.play(type,{gameType,theme:boardTheme});
+  if(soundEnabled)return window.GameAudio?.play(type,{gameType,theme:boardTheme});
+  return Promise.resolve(false);
 }
 const chatForm = document.getElementById('chatForm');
 const chatInput = document.getElementById('chatInput');
