@@ -34,3 +34,15 @@ test('media gain receives slider changes and stale preparation disconnects witho
  const active=makeOutput();pending[1]({output:active,volumeSupported:true});await new Promise(r=>setImmediate(r));audios[1].resolve();await second;
  p.setVolume(.25);p.setMuted(true);assert.deepEqual(active.calls.slice(-2),[[.25,false],[.25,true]]);assert.equal(p.audio,audios[1]);p.pause();assert.equal(active.destroyed,true);
 });
+test('native volume changes the media element, survives mute and is restored after replay',async()=>{
+ const{p,audios}=harness();p.setVolume(.8);const playing=p.play(entry());audios[0].resolve();await playing;
+ assert.ok(Math.abs(p.audio.volume-.64)<1e-9);p.setVolume(.2);assert.ok(Math.abs(p.audio.volume-.04)<1e-9);
+ p.setMuted(true);assert.equal(p.audio.muted,true);p.setMuted(false);assert.equal(p.audio.muted,false);assert.ok(Math.abs(p.audio.volume-.04)<1e-9);
+ p.pause();const replay=p.play(entry());audios[1].resolve();await replay;assert.ok(Math.abs(p.audio.volume-.04)<1e-9);p.pause();
+});
+test('fixed-volume devices can select MSE HLS even when native HLS is available',async()=>{
+ let attached=false;class Hls{static isSupported(){return true}static Events={ERROR:'error'};on(){}loadSource(){}attachMedia(){attached=true}destroy(){}}
+ const{p,audios}=harness();const make=p.makeAudio;p.makeAudio=()=>{const a=make();a.canPlayType=()=>'probably';return a;};
+ p.loadHls=async()=>Hls;p.prepareAudio=async()=>({useHls:true,volumeSupported:true,output:{set(){},destroy(){}}});
+ const playing=p.play({...entry(),hls:true});await new Promise(r=>setImmediate(r));assert.equal(attached,true);assert.equal(audios[0].disableRemotePlayback,true);audios[0].resolve();await playing;p.pause();
+});

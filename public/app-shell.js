@@ -3,6 +3,7 @@
   const routes=new Set(['/','/index.html','/room.html','/rules.html']);
   function clean(value){const url=new URL(value,location.href);url.searchParams.delete('_view');if(url.origin!==location.origin||!routes.has(url.pathname))throw Error('Unsupported app route');return url;}
   function load(value){const url=clean(value);current=url.href;url.searchParams.set('_view','content');document.getElementById('navigationStatus').hidden=false;
+    window.Radio?.close(false);
     if(frame.contentWindow)frame.contentWindow.location.replace(url.href);else frame.src=url.href;
   }
   window.PlaymakrukShell={navigate(value){const url=clean(value);if(url.href===current)return;history.pushState({playmakruk:true},'',url.href);load(url.href);},ready(value,title){if(clean(value).href!==current)return;document.title=title;document.getElementById('navigationStatus').hidden=true;}};

@@ -12,7 +12,7 @@
     event.preventDefault();host.navigate(url.href);
   });
   const unlock=()=>parent.GameAudio?.unlock();
-  document.addEventListener('pointerdown',unlock,{capture:true,passive:true});document.addEventListener('keydown',unlock,{capture:true});
+  document.addEventListener('pointerdown',()=>{unlock();parent.Radio?.close(false);},{capture:true,passive:true});document.addEventListener('keydown',e=>{unlock();if(e.key==='Escape')parent.Radio?.close(false);},{capture:true});
   document.addEventListener('langchange',()=>{const lang=window.I18N?.getLang();if(lang&&parent.I18N?.getLang()!==lang)parent.I18N.setLang(lang);});
   document.addEventListener('themechange',()=>{const dark=document.documentElement.dataset.theme==='dark';if(dark)parent.document.documentElement.dataset.theme='dark';else parent.document.documentElement.removeAttribute('data-theme');});
   document.addEventListener('DOMContentLoaded',()=>{host.ready(publicUrl().href,document.title);});
