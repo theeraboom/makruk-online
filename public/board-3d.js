@@ -14,8 +14,6 @@ const PALETTES = {
   purple: ['#e1cfea','#77548d','#4f345f','#d4b9e3','#392f43'],
   gray: ['#cfced0','#5c6269','#3a4148','#b8bec3','#30343a']
 };
-const THAI = {K:'ขุน',Q:'เม็ด',B:'โคน',N:'ม้า',R:'เรือ',P:'เบี้ย'};
-const INTERNATIONAL = {K:'ราชา',Q:'ราชินี',B:'บิชอป',N:'ม้า',R:'เรือ',P:'เบี้ย'};
 const deg = Math.PI / 180;
 
 // Deterministic surface grain: no downloads, and the material stays the same
@@ -71,7 +69,7 @@ function inscription(parent,text,color,w,h,x,y,z,rotation=-Math.PI/2) {
   const o=mesh(new T.PlaneGeometry(w,h),new T.MeshBasicMaterial({map:labelTexture(text,color),transparent:true,depthWrite:false,side:T.DoubleSide}),parent,x,y,z);
   o.rotation.x=rotation;o.castShadow=false;return o;
 }
-function makePiece(code,game,set) {
+function makePiece(code,game,set,lang) {
   if((game==='chess'||game==='chess-intl')&&set!=='outline'&&set!=='thai-letters') {
     const piece=sculptedPiece(code,game,set);if(piece)return piece;
   }
@@ -86,7 +84,7 @@ function makePiece(code,game,set) {
     lathe(group,[[0,0],[.34,0],[.38,.04],[.38,height-.025],[.34,height],[0,height]],body);
     ring(group,.34,.015,trim,.065);ring(group,.29,.018,trim,height+.003);
     if(type==='K')ring(group,.34,.015,trim,.22);
-    if(set==='thai-letters'){inscription(group,type==='K'?'ฮอส':'เบี้ย',white?'#543829':'#fff1c9',.58,.3,0,height+.02,0);group.rotation.y=white?0:Math.PI;}
+    if(set==='thai-letters'){inscription(group,window.Pieces.getName(code,game,lang),white?'#543829':'#fff1c9',.58,.3,0,height+.02,0);group.rotation.y=white?0:Math.PI;}
     else if(type==='K')inscription(group,'♛',white?'#745024':'#ffe0a0',.5,.25,0,height+.02,0);
     else ring(group,.19,.009,detail,height+.005);
     if(carved){ring(group,.345,.008,detail,height*.5);ring(group,.245,.01,trim,height+.005);}
@@ -94,7 +92,7 @@ function makePiece(code,game,set) {
   }
   if(set==='thai-letters') {
     lathe(group,[[0,0],[.34,0],[.36,.06],[.35,.19],[.29,.25],[0,.25]],body);ring(group,.31,.02,trim,.225);
-    inscription(group,(game==='chess-intl'?INTERNATIONAL:THAI)[type]||type,white?'#543829':'#fff1c9',.59,.3,0,.257,0);group.rotation.y=white?0:Math.PI;return group;
+    inscription(group,window.Pieces.getName(code,game,lang),white?'#543829':'#fff1c9',.59,.3,0,.257,0);group.rotation.y=white?0:Math.PI;return group;
   }
   const thai=game==='chess';
   if(thai&&type==='P') {
@@ -258,7 +256,7 @@ export class BoardScene {
   update(state) {
     if(this.disposed||!state.board)return;const old=this.snapshot;
     const newTable=!old||old.theme!==state.theme||old.gameType!==state.gameType||old.scenery!==state.scenery;
-    const newPieces=!old||old.pieceSet!==state.pieceSet||old.gameType!==state.gameType;
+    const newPieces=!old||old.pieceSet!==state.pieceSet||old.gameType!==state.gameType||(state.pieceSet==='thai-letters'&&old.lang!==state.lang);
     if(newTable)this.buildTable(state.gameType,state.theme,state.scenery);
     if(newPieces){disposeTree(this.pieceLayer);this.pieces.clear();this.animations=[];}
     const c4=state.gameType==='connect4';
@@ -277,7 +275,7 @@ export class BoardScene {
       if(object&&object.userData.code!==code){this.pieceLayer.remove(object);disposeTree(object);this.pieces.delete(key);object=null;}
       if(!object){
         if(c4){object=new T.Group();const color=code==='Y'?'#ffc631':'#d7384c',material=mat(color,.27,.13);const coin=mesh(new T.CylinderGeometry(.365,.365,.25,40),material,object);coin.rotation.x=Math.PI/2;for(const z of [-.133,.133]){const ringMesh=mesh(new T.TorusGeometry(.275,.014,8,36),material,object,0,0,z);ringMesh.castShadow=false;}}
-        else object=makePiece(code,state.gameType,state.pieceSet);
+        else object=makePiece(code,state.gameType,state.pieceSet,state.lang);
         object.userData.code=code;this.pieces.set(key,object);this.pieceLayer.add(object);
       }
       object.userData.square={r,c};const destination=c4?new T.Vector3(c-3,5.7-r,0):new T.Vector3(c-3.5,.055,r-3.5);

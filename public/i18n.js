@@ -405,7 +405,7 @@
     'chat.newMessages': '↓ New messages',
     'chat.radio': '♫ Radio',
     'chat.help': 'Enter to send · Shift + Enter for a new line',
-      'pieces.thai-letters': 'Thai Letters',
+      'pieces.thai-letters': 'English Names',
       'viewers.count': 'watching',
 
       'chat.live': 'Live chat',

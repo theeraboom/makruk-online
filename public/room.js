@@ -36,6 +36,7 @@ document.addEventListener('langchange', () => {
   updateRoleBadge();
   updateStatus();
   if (board) render();
+  refreshPiecePreviews();
   updatePlayerSlot('W', lastPlayers.w);
   updatePlayerSlot('B', lastPlayers.b);
   if (lastSiteStats) updateFooterStats();
@@ -605,7 +606,7 @@ function render() {
       }
 
       sq.setAttribute('role', 'button');
-      sq.setAttribute('aria-label', 'abcdefgh'[c] + (8-r) + (piece ? ' · ' + (gameType === 'chess' ? Pieces.THAI_LETTERS[piece[1]] : piece[1]) + ' · ' + I18N.t('side.short.' + piece[0]) : ''));
+      sq.setAttribute('aria-label', 'abcdefgh'[c] + (8-r) + (piece ? ' · ' + Pieces.getName(piece, gameType) + ' · ' + I18N.t('side.short.' + piece[0]) : ''));
       sq.tabIndex = i === 7 && j === 0 ? 0 : -1;
       sq.dataset.row = i; sq.dataset.col = j;
       sq.onclick = () => handleClick(r, c);
@@ -808,7 +809,7 @@ function applyCamera(moveScene=false) {
 function updateScene() {
   if(!boardScene||!board)return;
   const engine=getEngine(),check=!isCheckersGame()&&!isConnect4Game()&&engine.isInCheck?.(board,currentPlayer)?engine.findKing(board,currentPlayer):null;
-  boardScene.update({board,gameType,theme:boardTheme,scenery:RoomScenes.isVisible(),pieceSet,selected:selected||mustContinueFrom,validMoves,lastMove:moves.at(-1),moveCount:moves.length,winCells,check,flipped});
+  boardScene.update({board,gameType,theme:boardTheme,scenery:RoomScenes.isVisible(),pieceSet,lang:I18N.getLang(),selected:selected||mustContinueFrom,validMoves,lastMove:moves.at(-1),moveCount:moves.length,winCells,check,flipped});
 }
 document.addEventListener('roomscenechange',updateScene);
 function setSceneMode(enabled) {

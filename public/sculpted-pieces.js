@@ -104,9 +104,9 @@ export function sculptedPiece(code,game,set) {
   const white=code[0]==='w',type=code[1],body=material(white,set);
   const group=game==='chess'?thaiPiece(type,body,set):new T.Group();
   if(game==='chess-intl')add(group,templates.get(type).clone(),body);
-  // The knight's head points toward its opponent. Its shape is fully sculpted
-  // on both sides, including the jaw, eye sockets, muzzle, ears and mane.
-  if(type==='N')group.rotation.y=white?Math.PI:0;
+  // The source horse faces -Z: white advances toward decreasing board rows,
+  // while black advances toward +Z. Keep this independent of the camera.
+  if(type==='N')group.rotation.y=white?0:Math.PI;
   groundContact(group,type,game);
   group.userData.sculpted=true;return group;
 }
