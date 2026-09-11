@@ -89,7 +89,7 @@ let boardTheme = localStorage.getItem('makruk_theme') || 'wood';
 // Each newly opened board starts with the 3D studio pieces. The picker can
 // still change the appearance for the current game.
 let pieceSet = 'studio';
-let boardScene = null, use3D = true, sceneFailed = false;
+let boardScene = null, use3D = true, sceneFailed = false, sceneLoading = false;
 
 // Persistent UID so slot reclaim works even for anonymous users across reconnects
 let userUid = localStorage.getItem('makruk_uid');
@@ -825,6 +825,8 @@ function sceneUnavailable() {
   document.getElementById('cameraMode').disabled=true;document.getElementById('camera3D').disabled=true;
 }
 async function initScene() {
+  if(sceneLoading||boardScene)return;
+  sceneLoading=true;
   try {
     const build=document.querySelector('meta[name="playmakruk-build"]')?.content||'local';
     const {BoardScene}=await import('/board-3d.js?v='+encodeURIComponent(build));
@@ -837,6 +839,7 @@ async function initScene() {
     });
     setSceneMode(use3D);updateScene();
   } catch(error) { console.warn('3D board unavailable:',error.message);sceneUnavailable(); }
+  finally { sceneLoading=false; }
 }
 function preset(tilt,side) {
   if(side!==undefined)flipped=side;
@@ -869,7 +872,8 @@ document.addEventListener('langchange',()=>{
   document.getElementById('cameraInstructions').textContent=I18N.getLang()==='th'?'แตะตัวหมากแล้วแตะช่องเพื่อเดิน · ลากเพื่อหมุน · จีบสองนิ้วหรือเลื่อนล้อเมาส์เพื่อซูม':'Tap a piece, then its destination. Drag to orbit. Pinch or scroll to zoom.';
   setSceneMode(use3D);
 });
-window.addEventListener('pagehide',()=>{boardScene?.dispose();boardScene=null;});
+window.addEventListener('pagehide',()=>{boardScene?.dispose();boardScene=null;document.getElementById('boardStage').classList.remove('has-3d');});
+window.addEventListener('pageshow',event=>{if(event.persisted&&!sceneFailed)initScene();});
 applyCamera();
 initScene();
 
