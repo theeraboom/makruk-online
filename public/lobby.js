@@ -42,6 +42,8 @@ const profileForm=document.getElementById('profileForm');
 function updateProfileButton(){
   const action=document.getElementById('profileAction'),name=document.getElementById('profileName');
   const key=savedName?'profile.edit':'profile.set';action.dataset.i18n=key;action.textContent=I18N.t(key);
+  const shortAction=document.getElementById('profileActionShort');shortAction.dataset.i18n=key+'Short';shortAction.textContent=I18N.t(key+'Short');
+  document.getElementById('profileButton').setAttribute('aria-label',I18N.t(key)+(savedName?' · '+savedName:''));
   name.textContent=savedName;name.hidden=!savedName;
 }
 function savePlayerName(){

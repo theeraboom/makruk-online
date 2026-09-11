@@ -283,6 +283,7 @@ html.app-content{overscroll-behavior-y:contain}
 .profile-avatar svg{width:23px;height:23px;}
 .profile-copy{display:flex;flex-direction:column;min-width:0;gap:1px;}
 #profileAction{display:block;font:500 12px/1.5 'Prompt',sans-serif;white-space:nowrap;}
+#profileActionShort{display:none;}
 .profile-button #profileName{display:block;font-size:12px;max-width:150px;color:var(--text-muted);}
 .profile-edit{margin-left:auto;font-size:19px;color:var(--text-muted);}
 .profile-dialog{width:min(400px,calc(100% - 32px));max-height:calc(100dvh - 32px);overflow:auto;margin:auto;padding:26px;border:1px solid var(--border-strong);border-radius:23px;background:var(--surface);color:var(--text);box-shadow:0 24px 70px #0005;}
@@ -300,17 +301,18 @@ html.app-content{overscroll-behavior-y:contain}
 .profile-feedback:empty{display:none;}
 .profile-dialog #saveName{width:100%;min-height:48px;margin-top:12px;border-radius:12px;font:500 15px 'Prompt',sans-serif;}
 @media(max-width:600px){
-  .lobby-page>header{display:grid;grid-template-columns:minmax(0,1fr) 40px 40px;gap:7px;padding:10px 14px;}
-  .lobby-page>header .logo{grid-row:1;grid-column:1;}
+  .lobby-page>header{display:flex;flex-wrap:nowrap;gap:8px;padding:10px 12px;}
+  .lobby-page>header .logo{flex:1;min-width:0;font-size:18px;gap:6px;white-space:nowrap;}
+  .lobby-page>header .logo-mark{width:30px;height:34px;flex-shrink:0;font-size:24px;}
+  .lobby-page>header .logo-text small{display:none;}
   .lobby-page>header .header-spacer,.lobby-page>header .main-nav{display:none;}
-  .lobby-page>header .user-bar{display:contents;}
-  .lobby-page>header #langToggleBtn{grid-row:1;grid-column:2;min-height:40px;font-size:13px;border:1px solid var(--border);background:var(--surface-2);border-radius:10px;}
-  .lobby-page>header #darkToggleBtn{grid-row:1;grid-column:3;min-height:40px;}
-  .lobby-page>header .profile-button{grid-row:2;grid-column:1/-1;min-height:43px;padding:5px 10px;}
-  .profile-copy{flex-direction:row;align-items:center;gap:10px;flex:1;}
-  .profile-button #profileName{max-width:135px;}
-  .profile-button .profile-avatar{width:27px;height:27px;}
-  #profileAction{font-size:13px;}
+  .lobby-page>header .user-bar{display:flex;flex-shrink:0;gap:4px;}
+  .lobby-page>header #langToggleBtn,.lobby-page>header #darkToggleBtn{width:36px;min-width:36px;min-height:40px;padding:6px;}
+  .lobby-page>header #langToggleBtn{font-size:13px;border:1px solid var(--border);background:var(--surface-2);border-radius:10px;}
+  .lobby-page>header .profile-button{width:auto;min-height:40px;padding:6px 10px;border-radius:10px;}
+  .profile-button .profile-avatar,.profile-button .profile-edit,.profile-button #profileName,.profile-button #profileAction{display:none;}
+  .profile-button #profileActionShort{display:block;font:500 12px/1.5 'Prompt',sans-serif;white-space:nowrap;}
   .profile-dialog{padding:23px;}
 }
+@media(max-width:360px){.lobby-page>header .logo-mark{display:none;}.lobby-page>header .logo{font-size:17px;}}
 @media(max-height:450px){.profile-dialog{padding:18px 22px;}.profile-dialog-icon{display:none;}.profile-dialog h2{font-size:19px;margin:0;}.profile-dialog #profileHint{margin-bottom:3px;}.profile-dialog form{gap:5px;}.profile-dialog #saveName{margin-top:5px;}.profile-dialog #nameInput{min-height:44px;}}
