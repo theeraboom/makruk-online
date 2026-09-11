@@ -86,8 +86,9 @@ let winCells = null;          // connect4: winning 4-in-a-row cells to highlight
 let c4AnimatedCount = 0;      // connect4: # of drops already animated (avoid re-animating on re-render)
 let soundEnabled = localStorage.getItem('makruk_sound') !== 'off';
 let boardTheme = localStorage.getItem('makruk_theme') || 'wood';
-let pieceSet = localStorage.getItem('makruk_pieceset') || 'studio';
-if (pieceSet === 'thai-shell' || pieceSet === 'thai-temple' || pieceSet === 'thai-real') pieceSet = 'classic';
+// Each newly opened board starts with the 3D studio pieces. The picker can
+// still change the appearance for the current game.
+let pieceSet = 'studio';
 
 // Persistent UID so slot reclaim works even for anonymous users across reconnects
 let userUid = localStorage.getItem('makruk_uid');
@@ -779,8 +780,8 @@ document.getElementById('flipBtn').onclick = () => {
   render();
 };
 
-let cameraTilt = Number(localStorage.getItem('makruk_camera_tilt') ?? 24);
-let cameraRotation = Number(localStorage.getItem('makruk_camera_rotation') ?? 0);
+let cameraTilt = 24;
+let cameraRotation = 0;
 function applyCamera() {
   cameraTilt = Math.max(0, Math.min(45, Number.isFinite(cameraTilt) ? cameraTilt : 24));
   cameraRotation = Math.max(-180, Math.min(180, Number.isFinite(cameraRotation) ? cameraRotation : 0));

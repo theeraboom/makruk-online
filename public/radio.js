@@ -17,7 +17,6 @@
   const panel=document.createElement('section');panel.id='radioPanel';panel.className='radio-studio';panel.hidden=true;panel.setAttribute('role','dialog');panel.setAttribute('aria-labelledby','radioTitle');
   panel.innerHTML=`<div class="radio-heading"><div><span class="radio-eyebrow">PLAYMAKRUK RADIO</span><h2 id="radioTitle"></h2></div><button id="radioClose" type="button">✕</button></div>
     <div class="radio-now"><div class="radio-art" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div><div class="radio-track"><strong id="radioTrack"></strong><span id="radioState" role="status"></span></div><button id="radioPlayBtn" type="button"></button></div>
-    <div class="radio-volume"><button id="radioMute" type="button"></button><button id="radioVolumeDown" type="button">−</button><input id="radioVolume" type="range" min="0" max="100" step="1"><button id="radioVolumeUp" type="button">＋</button><output id="radioVolumeValue" for="radioVolume"></output></div><p id="radioVolumeHint" hidden></p>
     <div class="radio-browse"><div class="radio-search-row"><input id="radioSearch" type="search" autocomplete="off"><button id="radioRefresh" type="button">↻</button><button id="radioAdd" type="button">＋</button></div>
     <div class="radio-tabs" role="group"><button type="button" data-radio-filter="all"></button><button type="button" data-radio-filter="favorites"></button><button type="button" data-radio-filter="custom"></button></div></div>
     <form id="radioAddForm" hidden><label><span id="radioNameLabel"></span><input id="radioCustomName" maxlength="100" required></label><label><span id="radioUrlLabel"></span><input id="radioCustomUrl" type="url" placeholder="https://…" required></label><p id="radioFormError" role="alert"></p><div><button id="radioSave" type="submit"></button><button id="radioCancel" type="button"></button></div></form>
@@ -28,31 +27,14 @@
     if(hlsPromise)return hlsPromise;
     hlsPromise=new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='/vendor/hls-1.7.2.light.min.js';script.onload=()=>resolve(window.Hls);script.onerror=()=>{script.remove();hlsPromise=null;reject(new Error('hls-load'));};document.head.appendChild(script);});return hlsPromise;
   }
-  const corsCache=new Map();
-  async function prepareAudio(target,audio){
-    // Use the media element's own volume when available. Safari's native HLS
-    // can play outside Web Audio, so a gain-only control may change no sound.
-    const previous=audio.volume;let nativeVolume=false;
-    try{audio.volume=.5;nativeVolume=Math.abs(audio.volume-.5)<.01;audio.volume=previous;}catch{}
-    // iPhone/iPad can report a writable volume without changing the hardware
-    // playback level. Safari and Chrome on iOS both require the gain path.
-    if(nativeVolume&&!window.RadioCore.fixedMobileVolume(navigator))return{volumeSupported:true};
-    let cors=corsCache.get(target.url);
-    if(cors===undefined){const abort=new AbortController();const timeout=setTimeout(()=>abort.abort(),3500);try{const result=await fetch(target.url,{mode:'cors',signal:abort.signal});cors=result.ok;await result.body?.cancel();}catch{cors=false;}finally{clearTimeout(timeout);abort.abort();}corsCache.set(target.url,cors);}
-    // Devices with fixed media volume need decoded audio through a GainNode.
-    // Native HLS cannot provide that on WebKit; use MSE when supported.
-    let useHls=false;
-    if(target.hls&&cors){try{const Hls=await loadHls();useHls=Hls.isSupported();}catch{}}
-    if((cors&&!target.hls)||useHls){audio.crossOrigin='anonymous';try{const output=window.GameAudio?.media(audio);if(output)return{output,useHls,volumeSupported:true};}catch{}}
-    return{useHls,volumeSupported:false};
-  }
-  const player=new Player({makeAudio:()=>new Audio(),loadHls,prepareAudio,unlock:()=>window.GameAudio?.unlock(),onChange:p=>{
+  const player=new Player({makeAudio:()=>new Audio(),loadHls,unlock:()=>window.GameAudio?.unlock(),onChange:p=>{
     saved.set('mk_radio_playing',['playing','loading'].includes(p.state)?'1':'0');
     if(p.current){saved.set('mk_radio_station_uuid',p.current.uuid);saved.set('mk_radio_last_station',JSON.stringify(p.current));}
     renderPlayer();updateRows();
     if('mediaSession' in navigator){try{navigator.mediaSession.playbackState=p.state==='playing'?'playing':'paused';if(p.current&&window.MediaMetadata)navigator.mediaSession.metadata=new MediaMetadata({title:p.current.name,artist:'Playmakruk Radio'});}catch{}}
   }});
-  player.setVolume(Number(saved.get('mk_radio_volume','1')));player.setMuted(saved.get('mk_radio_muted')==='1');
+  // Device controls own loudness; discard old in-widget attenuation/mute.
+  player.setVolume(1);player.setMuted(false);saved.set('mk_radio_volume','1');saved.set('mk_radio_muted','0');
   function all(){return stations([...custom,...directory]);}
   function stateLabel(){return ({idle:t('เลือกสถานีที่อยากฟัง','Choose a station'),paused:t('พักเสียงอยู่','Paused'),loading:t('กำลังเชื่อมต่อ…','Connecting…'),playing:t('กำลังฟังสด','Listening live'),blocked:t('แตะเล่นเพื่อฟังต่อ','Tap play to continue'),timeout:t('เชื่อมต่อนานเกินไป · กดเล่นเพื่อลองใหม่','Connection timed out · tap play to retry'),error:t('สถานีไม่ตอบสนอง · ลองใหม่หรือเลือกสถานีอื่น','Stream unavailable · retry or choose another'),ended:t('สตรีมหยุดแล้ว · กดเล่นเพื่อต่อใหม่','Stream ended · tap play to reconnect'),unsupported:t('เบราว์เซอร์นี้ไม่รองรับสตรีมนี้','This browser cannot play this stream')})[player.state];}
   function renderPlayer(){
@@ -62,10 +44,7 @@
     $('radioPlayBtn').textContent=active?'Ⅱ':'▶';$('radioPlayBtn').disabled=!player.current;
     $('radioPlayBtn').setAttribute('aria-label',active?t('หยุดวิทยุ','Pause radio'):t('เล่นวิทยุ','Play radio'));
     dock.dataset.state=player.state;labelDock();
-    $('radioMute').textContent=player.muted?'🔇':'♪';$('radioMute').setAttribute('aria-label',player.muted?t('เปิดเสียง','Unmute'):t('ปิดเสียง','Mute'));$('radioMute').setAttribute('aria-pressed',String(player.muted));
-    for(const id of ['radioVolume','radioVolumeDown','radioVolumeUp'])$(id).disabled=player.volumeSupported===false;
-    $('radioVolumeHint').hidden=player.volumeSupported!==false;$('radioVolumeHint').textContent=t('สถานีนี้ไม่รองรับการปรับเสียงบนอุปกรณ์นี้ ใช้ปุ่มเสียงของเครื่องได้','Use your device volume for this station on this browser.');
-    const percent=Math.round(player.volume*100);$('radioVolume').value=String(percent);$('radioVolume').style.setProperty('--radio-level',percent+'%');$('radioVolumeValue').textContent=percent+'%';
+
   }
   function updateRows(){panel.querySelectorAll('[data-station]').forEach(row=>{const selected=row.dataset.station===player.current?.uuid;row.classList.toggle('is-current',selected);row.querySelector('.radio-select').setAttribute('aria-pressed',String(selected));row.querySelector('.radio-row-icon').textContent=selected&&player.state==='playing'?'♫':'▶';});}
   function renderList(){
@@ -91,10 +70,6 @@
   panel.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();close();}});
   document.addEventListener('pointerdown',e=>{if(!panel.hidden&&!panel.contains(e.target)&&!dock.contains(e.target))close(false);},{capture:true});
   $('radioPlayBtn').onclick=()=>['playing','loading'].includes(player.state)?player.pause():player.play(player.current);
-  $('radioMute').onclick=()=>{player.setMuted(!player.muted);saved.set('mk_radio_muted',player.muted?'1':'0');renderPlayer();};
-  function changeVolume(value){window.GameAudio?.unlock();player.setMuted(false);saved.set('mk_radio_muted','0');player.setVolume(value);saved.set('mk_radio_volume',player.volume);renderPlayer();}
-  $('radioVolume').oninput=$('radioVolume').onchange=e=>changeVolume(Number(e.target.value)/100);
-  $('radioVolumeDown').onclick=()=>changeVolume(player.volume-.1);$('radioVolumeUp').onclick=()=>changeVolume(player.volume+.1);
   $('radioSearch').oninput=renderList;$('radioRefresh').onclick=()=>load(true);
   panel.querySelectorAll('[data-radio-filter]').forEach(b=>b.onclick=()=>{filter=b.dataset.radioFilter;renderList();});
   $('radioList').onclick=e=>{
@@ -115,8 +90,7 @@
     $('radioTitle').textContent=t('ฟังเพลิน เดินหมากสนุก','Tune in. Make your move.');
     $('radioClose').setAttribute('aria-label',t('ย่อวิทยุ เพลงยังเล่นต่อ','Minimize radio, keep listening'));
     $('radioSearch').placeholder=t('ค้นหาสถานี แนวเพลง…','Search stations, genres…');$('radioSearch').setAttribute('aria-label',t('ค้นหาสถานีวิทยุ','Search radio stations'));
-    $('radioRefresh').setAttribute('aria-label',t('อัปเดตสถานี','Refresh stations'));$('radioAdd').setAttribute('aria-label',t('เพิ่มสถานีเอง','Add a station'));$('radioVolume').setAttribute('aria-label',t('ระดับเสียงวิทยุ','Radio volume'));
-    $('radioVolumeDown').setAttribute('aria-label',t('ลดเสียง 10%','Volume down 10%'));$('radioVolumeUp').setAttribute('aria-label',t('เพิ่มเสียง 10%','Volume up 10%'));
+    $('radioRefresh').setAttribute('aria-label',t('อัปเดตสถานี','Refresh stations'));$('radioAdd').setAttribute('aria-label',t('เพิ่มสถานีเอง','Add a station'));
     panel.querySelector('[data-radio-filter="all"]').textContent=t('ทั้งหมด','All');panel.querySelector('[data-radio-filter="favorites"]').textContent=t('♡ โปรด','♡ Favorites');panel.querySelector('[data-radio-filter="custom"]').textContent=t('ของฉัน','My stations');
     $('radioNameLabel').textContent=t('ชื่อสถานี','Station name');$('radioUrlLabel').textContent=t('ลิงก์สตรีม HTTPS','HTTPS stream URL');$('radioSave').textContent=t('เพิ่มสถานี','Add station');$('radioCancel').textContent=t('ยกเลิก','Cancel');renderPlayer();renderList();
   }
