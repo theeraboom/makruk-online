@@ -22,11 +22,20 @@
 .hero-preview figure[hidden]{display:none;}
 .hero-preview img{display:block;width:100%;height:auto;aspect-ratio:1.4;object-fit:contain;}
 .hero-preview-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-top:12px;}
+.hero-preview-info{min-width:0;display:grid;gap:3px;}
+.hero-preview-info strong{font-size:17px;line-height:1.6;color:#f3f5f8;}
 .hero-preview-caption{color:#a6b3c5;font-size:11px;line-height:1.6;}
-.hero-preview-options{display:flex;gap:5px;}
-.gameplay-hero .hero-preview-options button{min-height:36px;padding:7px 10px;border:1px solid #354458;border-radius:8px;background:#172437;color:#b8c4d5;font-size:11px;font-weight:500;}
-.gameplay-hero .hero-preview-options button[aria-pressed="true"]{border-color:#c2f46766;background:#c2f46714;color:#d0f59a;}
-.lobby-page #gameHeading{scroll-margin-top:115px;}
+.hero-game-picker{grid-column:1/-1;min-width:0;border-top:1px solid #344154;padding-top:18px;}
+.hero-picker-hint{margin:0 0 10px;font-size:12px;color:#b8c4d5;line-height:1.6;}
+.hero-preview-options{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;}
+.gameplay-hero .hero-preview-options button{min-width:0;padding:0;border:1px solid #354458;border-radius:10px;background:#172437;color:#b8c4d5;overflow:hidden;text-align:left;box-shadow:none;}
+.hero-preview-options img{display:block;width:100%;height:auto;aspect-ratio:1.9;object-fit:cover;}
+.hero-game-label{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:10px 12px;min-height:44px;font-size:13px;font-weight:600;line-height:1.6;overflow-wrap:anywhere;}
+.hero-selected-mark{visibility:hidden;flex:none;color:#c2f467;}
+.gameplay-hero .hero-preview-options button:hover{border-color:#8a9d74;color:#f3f5f8;}
+.gameplay-hero .hero-preview-options button[aria-pressed="true"]{border-color:#c2f467;background:#c2f46714;color:#d0f59a;}
+.hero-preview-options button[aria-pressed="true"] .hero-selected-mark{visibility:visible;}
+.lobby-page :is(#gameHeading,#playHeading){scroll-margin-top:115px;}
 @media(max-width:1050px) and (min-width:701px){.lobby-page .gameplay-hero{gap:20px;padding:24px;}.gameplay-hero h1{font-size:28px;}.gameplay-hero .welcome-sub{font-size:13px;}.hero-preview-footer{gap:7px;}}
 @media(max-width:700px){
  .lobby-page .gameplay-hero{grid-template-columns:minmax(0,1fr);gap:20px;padding:20px;border-radius:17px;}
@@ -36,8 +45,13 @@
  .hero-actions-row{gap:10px;}
  .gameplay-hero .hero-play{padding:10px 14px;min-height:44px;font-size:13px;gap:16px;}
  .gameplay-hero .hero-radio-link{margin-top:6px;font-size:11px;min-height:44px;}
- .hero-preview-footer{margin-top:9px;gap:7px;flex-direction:column;align-items:flex-start;}
+ .hero-preview-footer{margin-top:9px;gap:10px;}
+ .hero-preview-info strong{font-size:14px;}
  .hero-preview-caption{font-size:10px;}
- .gameplay-hero .hero-preview-options button{min-height:44px;padding:7px 9px;font-size:11px;}
+ .hero-game-picker{padding-top:14px;}
+ .hero-preview-options{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+ .hero-preview-options img{aspect-ratio:1.4;object-fit:contain;}
+ .hero-game-label{padding:6px;min-height:48px;font-size:11px;gap:3px;align-items:flex-start;}
+ .hero-selected-mark{font-size:10px;}
 }
 @media(prefers-reduced-motion:reduce){.gameplay-hero *{scroll-behavior:auto;}}
