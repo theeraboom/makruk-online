@@ -90,6 +90,7 @@ let boardTheme = localStorage.getItem('makruk_theme') || 'wood';
 // still change the appearance for the current game.
 let pieceSet = 'studio';
 let boardScene = null, use3D = true, sceneFailed = false, sceneLoading = false;
+let sceneRequest = 0;
 
 // Persistent UID so slot reclaim works even for anonymous users across reconnects
 let userUid = localStorage.getItem('makruk_uid');
@@ -742,7 +743,7 @@ function choosePromotion(from,to){
   const th=I18N.getLang()==='th',dialog=document.createElement('dialog');dialog.id='promotionDialog';dialog.className='studio-dialog';
   dialog.innerHTML=`<button class="ghost dialog-close" aria-label="${th?'ยกเลิก':'Cancel'}">✕</button><h2>${th?'เลื่อนเบี้ยเป็นตัวไหน?':'Promote to which piece?'}</h2><p>${th?'เลือกตัวหมากเพื่อเดินตานี้ให้สมบูรณ์':'Choose a piece to complete your move'}</p><div class="dialog-options"></div>`;
   for(const [type,thName,enName] of [['Q','ควีน','Queen'],['R','เรือ','Rook'],['B','บิชอป','Bishop'],['N','ม้า','Knight']]){
-    const button=document.createElement('button');button.type='button';button.dataset.promotion=type;button.innerHTML=Pieces.renderPiece(myRole+type,'chess-intl','classic')+`<span>${th?thName:enName}</span>`;
+    const button=document.createElement('button');button.type='button';button.dataset.promotion=type;button.innerHTML=Pieces.renderPiece(myRole+type,'chess-intl',pieceSet)+`<span>${th?thName:enName}</span>`;
     button.onclick=()=>{submitMove(from,to,type);selected=null;validMoves=[];dialog.close();render();};dialog.querySelector('.dialog-options').append(button);
   }
   dialog.querySelector('.dialog-close').onclick=()=>dialog.close();dialog.addEventListener('close',()=>dialog.remove());document.body.append(dialog);dialog.showModal();
@@ -827,9 +828,16 @@ function sceneUnavailable() {
 async function initScene() {
   if(sceneLoading||boardScene)return;
   sceneLoading=true;
+  const request=++sceneRequest;
   try {
     const build=document.querySelector('meta[name="playmakruk-build"]')?.content||'local';
-    const {BoardScene}=await import('/board-3d.js?v='+encodeURIComponent(build));
+    const {BoardScene,prepareSculptedPieces}=await import('/board-3d.js?v='+encodeURIComponent(build));
+    await Promise.all([
+      gameType==='chess'||gameType==='chess-intl'?prepareSculptedPieces(build):Promise.resolve(),
+      document.fonts.load('600 24px "Noto Sans Thai"','ขุนม้าเรือ').catch(()=>[]),
+      document.fonts.ready
+    ]);
+    if(request!==sceneRequest)return;
     boardScene=new BoardScene(document.getElementById('boardScene'),{
       onSquare:handleClick,onColumn:dropColumn,onError:sceneUnavailable,
       onCameraChange:view=>{
@@ -838,8 +846,8 @@ async function initScene() {
       }
     });
     setSceneMode(use3D);updateScene();
-  } catch(error) { console.warn('3D board unavailable:',error.message);sceneUnavailable(); }
-  finally { sceneLoading=false; }
+  } catch(error) { if(request===sceneRequest){console.warn('3D board unavailable:',error.message);sceneUnavailable();} }
+  finally { if(request===sceneRequest)sceneLoading=false; }
 }
 function preset(tilt,side) {
   if(side!==undefined)flipped=side;
@@ -872,7 +880,7 @@ document.addEventListener('langchange',()=>{
   document.getElementById('cameraInstructions').textContent=I18N.getLang()==='th'?'แตะตัวหมากแล้วแตะช่องเพื่อเดิน · ลากเพื่อหมุน · จีบสองนิ้วหรือเลื่อนล้อเมาส์เพื่อซูม':'Tap a piece, then its destination. Drag to orbit. Pinch or scroll to zoom.';
   setSceneMode(use3D);
 });
-window.addEventListener('pagehide',()=>{boardScene?.dispose();boardScene=null;document.getElementById('boardStage').classList.remove('has-3d');});
+window.addEventListener('pagehide',()=>{sceneRequest++;sceneLoading=false;boardScene?.dispose();boardScene=null;document.getElementById('boardStage').classList.remove('has-3d');});
 window.addEventListener('pageshow',event=>{if(event.persisted&&!sceneFailed)initScene();});
 applyCamera();
 initScene();
@@ -905,6 +913,7 @@ document.querySelectorAll('#themeOptions .theme-btn').forEach((btn) => {
 });
 
 function applyPieceSet(set) {
+  if(!['studio','thai-letters'].includes(set))set='studio';
   pieceSet = set;
   localStorage.setItem('makruk_pieceset', set);
   document.querySelectorAll('#pieceOptions .theme-btn').forEach((b) => {

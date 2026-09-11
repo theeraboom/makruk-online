@@ -1,0 +1,19 @@
+Playmakruk — 3D model credits
+
+International chess pieces and the knight used in the Thai set are adapted
+from “A Beautiful Game”. Original assets by Moeen Sayed and Mujtaba Sayed
+for SideFX. MaterialX Project / Academy Software Foundation, copyright 2020.
+glTF conversion by Ed Mackey, copyright 2022; initial conversion by Chris
+Rydalch and Jonathan Stone.
+
+Source and full attribution:
+https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/ABeautifulGame
+
+Licensed under Creative Commons Attribution 4.0 International:
+https://creativecommons.org/licenses/by/4.0/
+https://creativecommons.org/licenses/by/4.0/legalcode
+
+Changes for Playmakruk: extracted individual piece geometry, combined the
+pawn crown/body, reduced triangle counts, normalized dimensions and origins,
+generated wood UVs, replaced all materials, and added original Thai turned
+piece shapes. No endorsement by the original authors is implied.

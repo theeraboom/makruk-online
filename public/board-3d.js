@@ -1,6 +1,8 @@
 import * as T from './vendor/three-0.185.1/three.module.min.js';
 import { OrbitControls } from './vendor/three-0.185.1/OrbitControls.js';
 import { RoomEnvironment } from './vendor/three-0.185.1/RoomEnvironment.js';
+import { sculptedPiece, prepareSculptedPieces } from './sculpted-pieces.js';
+export { prepareSculptedPieces };
 
 const PALETTES = {
   wood: ['#e7c998','#a67448','#94633c','#c1a074','#1c292b'],
@@ -36,7 +38,7 @@ function surfaceTexture(kind, base) {
 function labelTexture(text,color='#deca9f',bg=null) {
   const canvas=document.createElement('canvas');canvas.width=256;canvas.height=128;
   const c=canvas.getContext('2d');if(bg){c.fillStyle=bg;c.fillRect(0,0,256,128);}
-  c.fillStyle=color;c.font=`600 ${text.length>4?44:text.length>2?56:74}px "Prompt", sans-serif`;c.textAlign='center';c.textBaseline='middle';c.fillText(text,128,69);
+  c.fillStyle=color;c.font=`600 ${text.length>4?44:text.length>2?56:74}px "Manrope", "Noto Sans Thai", sans-serif`;c.textAlign='center';c.textBaseline='middle';c.fillText(text,128,69);
   const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;return texture;
 }
 function disposeTree(root) {
@@ -70,6 +72,9 @@ function inscription(parent,text,color,w,h,x,y,z,rotation=-Math.PI/2) {
   o.rotation.x=rotation;o.castShadow=false;return o;
 }
 function makePiece(code,game,set) {
+  if((game==='chess'||game==='chess-intl')&&set!=='outline'&&set!=='thai-letters') {
+    const piece=sculptedPiece(code,game,set);if(piece)return piece;
+  }
   const group=new T.Group(),white=code[0]==='w',type=code[1];
   const carved=set==='thai-carved',outline=set==='outline',classic=set==='classic';
   const body=mat(white?(carved?'#e0b676':classic?'#f2ddae':'#f6eed9'):(carved?'#623623':classic?'#43342c':'#202f35'),carved?.43:.26,.1,{wireframe:outline});
@@ -135,18 +140,18 @@ export class BoardScene {
     this.host=host;this.callbacks={onSquare,onColumn,onCameraChange,onError};this.disposed=false;this.visible=true;this.frame=0;this.animations=[];this.pieces=new Map();this.snapshot=null;
     this.scene=new T.Scene();this.camera=new T.PerspectiveCamera(38,1,.1,100);
     this.renderer=new T.WebGLRenderer({antialias:true,alpha:true,powerPreference:'low-power'});
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.6));this.renderer.outputColorSpace=T.SRGBColorSpace;
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));this.renderer.outputColorSpace=T.SRGBColorSpace;
     this.renderer.toneMapping=T.ACESFilmicToneMapping;this.renderer.toneMappingExposure=1.0;
-    this.renderer.shadowMap.enabled=true;this.renderer.shadowMap.type=T.VSMShadowMap;
+    this.renderer.shadowMap.enabled=true;this.renderer.shadowMap.type=T.PCFShadowMap;
     this.canvas=this.renderer.domElement;this.canvas.className='board-canvas';this.canvas.setAttribute('aria-hidden','true');this.canvas.style.touchAction='none';host.append(this.canvas);
     this.controls=new OrbitControls(this.camera,this.canvas);this.controls.enablePan=false;this.controls.enableDamping=true;this.controls.dampingFactor=.13;
     this.controls.rotateSpeed=.65;this.controls.zoomSpeed=.7;this.controls.minPolarAngle=.025;this.controls.maxPolarAngle=81*deg;
     this.controls.minDistance=9;this.controls.maxDistance=30;this.controls.touches.TWO=T.TOUCH.DOLLY_ROTATE;
     this.controls.addEventListener('change',()=>{this.requestRender();this.callbacks.onCameraChange?.({tilt:this.controls.getPolarAngle()/deg,rotation:this.controls.getAzimuthalAngle()/deg,distance:this.controls.getDistance()});});
-    this.scene.add(new T.HemisphereLight('#eef4ff','#6a5143',1.1));
-    const key=new T.DirectionalLight('#fff0d8',2.8);key.position.set(-4,11,5);key.castShadow=true;key.shadow.mapSize.set(1024,1024);Object.assign(key.shadow.camera,{left:-7,right:7,top:7,bottom:-7,near:.1,far:30});key.shadow.normalBias=.025;key.shadow.bias=-.0002;key.shadow.radius=3;key.shadow.blurSamples=8;this.scene.add(key);
-    const rim=new T.DirectionalLight('#b6d6f5',1.8);rim.position.set(7,6,-6);this.scene.add(rim);
-    const environment=new RoomEnvironment(),pmrem=new T.PMREMGenerator(this.renderer);this.environment=pmrem.fromScene(environment,.04);this.scene.environment=this.environment.texture;this.scene.environmentIntensity=.32;environment.dispose();pmrem.dispose();
+    this.scene.add(new T.HemisphereLight('#eef4ff','#57432f',.6));
+    const key=new T.DirectionalLight('#fff0d8',2.1);key.position.set(-4,9,5);key.castShadow=true;key.shadow.mapSize.set(2048,2048);Object.assign(key.shadow.camera,{left:-7,right:7,top:7,bottom:-7,near:.1,far:30});key.shadow.normalBias=.009;key.shadow.bias=-.00008;key.shadow.radius=3;this.scene.add(key);
+    const rim=new T.DirectionalLight('#c5dcf5',1.25);rim.position.set(7,6,-6);this.scene.add(rim);
+    const environment=new RoomEnvironment(),pmrem=new T.PMREMGenerator(this.renderer);this.environment=pmrem.fromScene(environment,.04);this.scene.environment=this.environment.texture;this.scene.environmentIntensity=.6;environment.dispose();pmrem.dispose();
     this.table=new T.Group();this.markers=new T.Group();this.pieceLayer=new T.Group();this.scene.add(this.table,this.markers,this.pieceLayer);
     this.raycaster=new T.Raycaster();this.pointer=new T.Vector2();this.installInput();
     this.resizeObserver=new ResizeObserver(()=>this.resize());this.resizeObserver.observe(host);
@@ -183,7 +188,7 @@ export class BoardScene {
     // cube. This leaves comfortable tap targets on portrait phone screens.
     if(distance===undefined) {
       const points=[];
-      for(const [half,y0,y1,depth] of c4?[[4.4,-.75,6.8,1.65]]:[[4.55,-.7,.08,4.55],[3.85,.05,1.45,3.85]])
+      for(const [half,y0,y1,depth] of c4?[[4.4,-.75,6.8,1.65]]:[[4.55,-.7,.08,4.55],[3.85,.05,1.82,3.85]])
         for(const x of [-half,half])for(const y of [y0,y1])for(const z of [-depth,depth])points.push(new T.Vector3(x,y,z));
       let near=9,far=29;
       for(let attempt=0;attempt<13;attempt++) {

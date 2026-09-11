@@ -6,8 +6,8 @@ const assert=require('node:assert/strict'),fs=require('node:fs/promises'),path=r
 const base=process.env.QA_BASE||'http://127.0.0.1:3218',out=process.env.QA_OUTPUT||'work/immersive-qa';
 const results=[];
 async function frame(page){await page.waitForFunction(()=>document.querySelector('#appFrame')?.contentWindow?.location.href.includes('_view=content')&&document.querySelector('#appFrame').contentWindow.location.pathname===location.pathname);return page.frames().find(x=>x.url().includes('_view=content'))}
-async function create(page,game){await page.goto(base);let f=await frame(page);await f.waitForFunction(()=>typeof socket!=='undefined'&&socket.connected);await f.evaluate(game=>{lastCreatedPw=crypto.randomUUID();socket.emit('create_room',{name:'Immersive board QA',gameType:game,botEnabled:true,botDifficulty:'easy',userColor:game==='checkers-intl'?'b':'w',password:lastCreatedPw})},game);await page.waitForURL('**/room.html?id=*');f=await frame(page);await f.waitForFunction(()=>typeof use3D!=='undefined'&&Array.isArray(board)&&(boardScene||sceneFailed));return f;}
-async function clickSquare(page,f,r,c,piece=false,touch=false){const p=await f.evaluate(({r,c,piece})=>boardScene.projectSquare(r,c,piece),{r,c,piece});if(touch)await page.touchscreen.tap(p.x,p.y);else await page.mouse.click(p.x,p.y);}
+async function create(page,game,waitScene=true){await page.goto(base);let f=await frame(page);await f.waitForFunction(()=>typeof socket!=='undefined'&&socket.connected);await f.evaluate(game=>{lastCreatedPw=crypto.randomUUID();socket.emit('create_room',{name:'Immersive board QA',gameType:game,botEnabled:true,botDifficulty:'easy',userColor:game==='checkers-intl'?'b':'w',password:lastCreatedPw})},game);await page.waitForURL('**/room.html?id=*');f=await frame(page);await f.waitForFunction(waitScene=>typeof use3D!=='undefined'&&Array.isArray(board)&&(!waitScene||boardScene||sceneFailed),waitScene);return f;}
+async function clickSquare(page,f,r,c,piece=false,touch=false){await f.evaluate(async()=>{const board=document.querySelector('#boardStage').getBoundingClientRect(),header=document.querySelector('body>header').getBoundingClientRect();scrollBy(0,board.top-header.height-8);await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));});const p=await f.evaluate(({r,c,piece})=>boardScene.projectSquare(r,c,piece),{r,c,piece});if(touch)await page.touchscreen.tap(p.x,p.y);else await page.mouse.click(p.x,p.y);}
 async function main(){await fs.mkdir(out,{recursive:true});for(const[name,engine,options]of[['chrome',chromium,{viewport:{width:1360,height:1050}}],['webkit-mobile',webkit,{...devices['iPhone 13']}]]){
   const browser=await engine.launch(name==='chrome'?{channel:'chrome',headless:true}:{headless:true});
   try{for(const game of ['chess','chess-intl','checkers','checkers-intl','connect4']){
@@ -15,6 +15,7 @@ async function main(){await fs.mkdir(out,{recursive:true});for(const[name,engine
     try{
       f=await create(page,game);await f.waitForFunction(()=>boardScene&&use3D);assert.equal(await f.evaluate(()=>sceneFailed),false);
       assert.equal(await f.evaluate(()=>pieceSet),'studio');await page.waitForTimeout(400);
+      if(game==='chess'||game==='chess-intl')assert.ok(await f.evaluate(()=>[...boardScene.pieces.values()].every(p=>p.userData.sculpted)));
       const baseline=await f.evaluate(()=>({camera:boardScene.camera.position.toArray(),moves:moves.length,selected}));
       const canvas=await f.locator('canvas.board-canvas').boundingBox();
       // Drag rotates the camera without selecting or moving a piece.
@@ -38,7 +39,8 @@ async function main(){await fs.mkdir(out,{recursive:true});for(const[name,engine
       for(const theme of ['darkwood','marble','neon','green','blue','purple','gray','wood']){
         await f.locator('.board-theme-picker>summary').click();await f.locator('#themeOptions [data-theme="'+theme+'"]').click();assert.equal(await f.locator('.board-theme-picker').getAttribute('open'),null);
       }
-      if(game!=='connect4')for(const set of ['classic','thai-carved','thai-letters','outline','studio']){
+      assert.deepEqual(await f.locator('#pieceOptions [data-pieceset]').evaluateAll(buttons=>buttons.map(b=>b.dataset.pieceset)),['studio','thai-letters']);
+      if(game!=='connect4')for(const set of ['thai-letters','studio']){
         await f.locator('#piecePicker>summary').click();await f.locator('#pieceOptions [data-pieceset="'+set+'"]').click();assert.equal(await f.locator('#piecePicker').getAttribute('open'),null);
       }
       await f.locator('#camera3D').click();await f.locator('#cameraFocus').click();assert.equal(await f.locator('.game-section.is-focused').count(),1);
@@ -71,7 +73,10 @@ async function main(){await fs.mkdir(out,{recursive:true});for(const[name,engine
     assert.ok(await f.evaluate(()=>boardScene.controls.getDistance())<before);assert.equal(await f.evaluate(()=>moves.length),opening.moves);assert.equal(await f.evaluate(()=>selected),null);
     await f.evaluate(()=>socket.emit('resign'));await page.close();results.push({browser:name,touchDrag:true,pinchZoom:true,multiTouchDoesNotMove:true});
   }
+  // Returning while model loading is in flight must create only one renderer.
+  {const page=await browser.newPage(options);let release;const gate=new Promise(resolve=>release=resolve);await page.route('**/models/*.bin',async route=>{await gate;await route.continue();});const f=await create(page,'chess',false);await f.evaluate(()=>{window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true}));window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}));});release();await f.waitForFunction(()=>boardScene&&use3D&&!sceneLoading);await page.waitForTimeout(100);assert.equal(await f.locator('canvas.board-canvas').count(),1);assert.ok(await f.evaluate(()=>[...boardScene.pieces.values()].every(p=>p.userData.sculpted)));await f.evaluate(()=>socket.emit('resign'));await page.close();results.push({browser:name,pageRestoreDuringModelLoading:true});}
   // A device without WebGL can still enter a room and play with the DOM board.
+  {const page=await browser.newPage(options);await page.route('**/models/*.bin',route=>route.abort());const f=await create(page,'chess');assert.equal(await f.evaluate(()=>sceneFailed&&!use3D),true);await f.locator('#board .square[data-row="5"][data-col="0"]').click();await f.locator('#board .square[data-row="4"][data-col="0"]').click();await f.waitForFunction(()=>moves.length>=2);await f.evaluate(()=>socket.emit('resign'));await page.close();results.push({browser:name,modelDownloadFailureFallbackPlayable:true});}
   {const page=await browser.newPage(options);await page.addInitScript(()=>{const get=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/.test(type)?null:get.call(this,type,...args);};});const f=await create(page,'chess');assert.equal(await f.evaluate(()=>sceneFailed&&!use3D),true);await f.locator('#board .square[data-row="5"][data-col="0"]').click();await f.locator('#board .square[data-row="4"][data-col="0"]').click();await f.waitForFunction(()=>moves.length>=2);await f.evaluate(()=>socket.emit('resign'));await page.close();results.push({browser:name,noWebGLFallbackPlayable:true});}
   // Simulated WebGL context loss must restore the playable 2D board.
   const page=await browser.newPage(options);let f=await create(page,'chess');await f.evaluate(()=>boardScene.renderer.getContext().getExtension('WEBGL_lose_context').loseContext());await f.waitForFunction(()=>sceneFailed&&!use3D&&!boardScene);await f.locator('#board .square[data-row="5"][data-col="0"]').click();await f.locator('#board .square[data-row="4"][data-col="0"]').click();await f.waitForFunction(()=>moves.length>=2);await f.evaluate(()=>socket.emit('resign'));await page.close();results.push({browser:name,contextLossFallbackPlayable:true});
