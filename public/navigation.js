@@ -6,7 +6,8 @@
   // An old persistent shell can otherwise retain the previous radio forever.
   // Upgrade on the next page navigation while preserving the room URL/identity.
   if(host&&version&&host.version!==version){parent.location.replace(publicUrl().href);return;}
-  window.AppNavigation={go(value){const url=publicUrl(value);if(host)host.navigate(url.href);else location.assign(url.href);},publicUrl};
+  document.documentElement.classList.add('app-content');
+  window.AppNavigation={go(value){const url=publicUrl(value);if(host)host.navigate(url.href);else location.assign(url.href);},setModalOpen(open){host?.setModalOpen?.(open);},publicUrl};
   if(!host){if(parent===window&&new URL(location.href).searchParams.has('_view'))location.replace(publicUrl().href);return;}
   window.Radio={open:()=>parent.Radio?.open(),pause:()=>parent.Radio?.pause()};
   Object.defineProperty(window,'GameAudio',{get:()=>parent.GameAudio});

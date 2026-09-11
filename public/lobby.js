@@ -18,7 +18,6 @@ const socket = io({
 document.getElementById('langToggleBtn').onclick = () => I18N.toggleLang();
 document.addEventListener('langchange', () => { socket.emit('list_rooms'); });
 const nameInput = document.getElementById('nameInput');
-const saveNameBtn = document.getElementById('saveName');
 
 // Persistent UID (shared with room.js) so slot reclaim works across reconnects
 let userUid = localStorage.getItem('makruk_uid');
@@ -28,7 +27,7 @@ if (!userUid) {
 }
 let savedName = localStorage.getItem('makruk_name') || '';
 nameInput.value = savedName;
-if (savedName) document.getElementById('profileName').textContent = savedName;
+updateProfileButton();
 // Re-send identity on every connect (initial + reconnects)
 socket.on('connect', () => {
   socket.emit('set_uid', userUid);
@@ -37,23 +36,37 @@ socket.on('connect', () => {
 socket.emit('set_uid', userUid);
 if (savedName) socket.emit('set_name', savedName);
 
-saveNameBtn.onclick = () => {
-  const name = nameInput.value.trim();
-  if (name) {
-    savedName = name;
-    localStorage.setItem('makruk_name', name);
-    document.getElementById('profileName').textContent = name;
-    document.getElementById('profileName').removeAttribute('data-i18n');
-    document.getElementById('nameFeedback').textContent = I18N.t('name.saved');
-    socket.emit('set_name', name);
-    saveNameBtn.textContent = I18N.t('name.saved');
-    setTimeout(() => (saveNameBtn.textContent = I18N.t('name.save')), 1500);
-  } else {
-    document.getElementById('nameFeedback').textContent = I18N.t('ui.nameRequired');
-    nameInput.focus();
+const profileButton=document.getElementById('profileButton');
+const profileDialog=document.getElementById('profileDialog');
+const profileForm=document.getElementById('profileForm');
+function updateProfileButton(){
+  const action=document.getElementById('profileAction'),name=document.getElementById('profileName');
+  const key=savedName?'profile.edit':'profile.set';action.dataset.i18n=key;action.textContent=I18N.t(key);
+  name.textContent=savedName;name.hidden=!savedName;
+}
+function savePlayerName(){
+  const name=nameInput.value.trim().slice(0,24);
+  if(!name){
+    document.getElementById('nameFeedback').textContent=I18N.t('ui.nameRequired');
+    nameInput.setAttribute('aria-invalid','true');nameInput.focus();return false;
   }
+  savedName=name;localStorage.setItem('makruk_name',name);updateProfileButton();
+  socket.emit('set_name',name);
+  if(profileDialog.open)profileDialog.close();
+  return true;
+}
+profileButton.onclick=()=>{
+  nameInput.value=savedName;nameInput.removeAttribute('aria-invalid');document.getElementById('nameFeedback').textContent='';
+  profileDialog.showModal();window.AppNavigation?.setModalOpen(true);nameInput.focus();nameInput.select();
 };
-nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') saveNameBtn.click(); });
+document.getElementById('closeProfile').onclick=()=>profileDialog.close();
+profileDialog.addEventListener('close',()=>{
+  // Discard an unconfirmed edit so starting a game cannot save a cancelled name.
+  window.AppNavigation?.setModalOpen(false);nameInput.value=savedName;profileButton.focus({preventScroll:true});
+});
+profileForm.addEventListener('submit',event=>{event.preventDefault();savePlayerName();});
+nameInput.addEventListener('input',()=>{nameInput.removeAttribute('aria-invalid');document.getElementById('nameFeedback').textContent='';});
+document.addEventListener('langchange',updateProfileButton);
 
 const newRoomInput = document.getElementById('newRoomName');
 const newRoomPasswordInput = document.getElementById('newRoomPassword');
@@ -212,7 +225,7 @@ function createRoom() {
   syncSetup();
   createTimer = setTimeout(() => resetCreate('ui.createError'), 12000);
   // Save a name typed in the profile even if the player did not press Save.
-  if (nameInput.value.trim() && nameInput.value.trim() !== savedName) saveNameBtn.click();
+  if (nameInput.value.trim() && nameInput.value.trim() !== savedName) savePlayerName();
   const name = newRoomInput.value.trim();
   const password = newRoomPasswordInput.value.trim();
   lastCreatedPw = password || null;

@@ -551,7 +551,7 @@ function renderPage(req, html) {
   return versionAssets(`<!doctype html><html lang="th"><head>${head}<link rel="stylesheet" href="/app-shell.css"></head><body class="app-shell">
     <iframe id="appFrame" title="Playmakruk — เกมและห้องเล่น" allow="autoplay; clipboard-write; web-share"></iframe>
     <div id="navigationStatus" role="status">กำลังเปิดหน้า…</div>
-    <noscript><style>html,body.app-shell{height:auto;overflow:auto}.app-shell #appFrame,.app-shell #navigationStatus{display:none}</style><p>เปิด JavaScript เพื่อเล่นเกมและฟังวิทยุ</p>${fallback}</noscript>
+    <noscript><style>html,body.app-shell{position:static;height:auto;min-height:100%;overflow:auto}.app-shell #appFrame,.app-shell #navigationStatus{display:none}</style><p>เปิด JavaScript เพื่อเล่นเกมและฟังวิทยุ</p>${fallback}</noscript>
     <script src="/app-shell.js"></script><script src="/i18n.js"></script><script src="/audio-engine.js"></script><script src="/radio-core.js"></script><script src="/radio.js"></script>
   </body></html>`);
 }

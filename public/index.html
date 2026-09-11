@@ -165,19 +165,28 @@
     </nav>
     <div class="header-spacer"></div>
     <div class="user-bar">
-      <details class="profile-menu">
-        <summary><span class="profile-avatar" aria-hidden="true">♙</span><span id="profileName" data-i18n="ui.profile">ชื่อผู้เล่น</span><span aria-hidden="true">⌄</span></summary>
-        <div class="profile-popover">
-          <label for="nameInput" data-i18n="name.placeholder">ตั้งชื่อของคุณ</label>
-          <input id="nameInput" maxlength="24" autocomplete="nickname" data-i18n-placeholder="name.placeholder" placeholder="ตั้งชื่อของคุณ">
-          <button id="saveName" class="primary" data-i18n="name.save">บันทึก</button>
-          <span id="nameFeedback" class="sr-only" role="status"></span>
-        </div>
-      </details>
+      <button type="button" id="profileButton" class="profile-button" aria-haspopup="dialog" aria-controls="profileDialog">
+        <span class="profile-avatar" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8" r="3.5"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/></svg></span>
+        <span class="profile-copy"><span id="profileAction" data-i18n="profile.set">ตั้งชื่อผู้เล่น</span><span id="profileName" hidden></span></span>
+        <span class="profile-edit" aria-hidden="true">✎</span>
+      </button>
       <button id="langToggleBtn" class="ghost lang-toggle" title="Change language">EN</button>
       <button id="darkToggleBtn" class="ghost dark-toggle" title="Dark mode" aria-label="Dark mode">☾</button>
     </div>
   </header>
+  <dialog id="profileDialog" class="profile-dialog" aria-labelledby="profileTitle" aria-describedby="profileHint">
+    <form id="profileForm" novalidate>
+      <button type="button" id="closeProfile" class="profile-close" aria-label="Close">✕</button>
+      <span class="profile-dialog-icon" aria-hidden="true">♟</span>
+      <h2 id="profileTitle" data-i18n="profile.title">อยากให้เรียกคุณว่าอะไร?</h2>
+      <p id="profileHint" data-i18n="profile.hint">ชื่อนี้จะแสดงในวงเล่นและแชท</p>
+      <label for="nameInput" data-i18n="ui.profile">ชื่อผู้เล่น</label>
+      <input id="nameInput" maxlength="24" autocomplete="nickname" enterkeyhint="done" aria-describedby="profileLimit nameFeedback" data-i18n-placeholder="profile.placeholder" placeholder="เช่น บูม" autofocus>
+      <small id="profileLimit" data-i18n="profile.limit">ใช้ได้สูงสุด 24 ตัวอักษร</small>
+      <p id="nameFeedback" class="profile-feedback" role="status"></p>
+      <button type="submit" id="saveName" class="primary" data-i18n="profile.save">บันทึกชื่อผู้เล่น</button>
+    </form>
+  </dialog>
   <main id="main">
     <noscript>กรุณาเปิด JavaScript เพื่อเล่นเกม / Please enable JavaScript to play.</noscript>
     <section class="welcome" aria-labelledby="welcomeTitle">
