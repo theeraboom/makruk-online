@@ -16,6 +16,19 @@ const socket = io({
 });
 
 document.getElementById('langToggleBtn').onclick = () => I18N.toggleLang();
+document.getElementById('heroRadioBtn').onclick=()=>window.Radio?.open();
+function translateHeroPreview(){
+  document.querySelector('#heroThaiPreview img').alt=I18N.t('hero.previewThai');
+  document.querySelector('#heroChessPreview img').alt=I18N.t('hero.previewChess');
+  document.getElementById('heroPreviewOptions').setAttribute('aria-label',I18N.t('hero.previewOptions'));
+}
+translateHeroPreview();document.addEventListener('langchange',translateHeroPreview);
+document.querySelectorAll('[data-hero-preview]').forEach(button=>{button.onclick=()=>{
+  const thai=button.dataset.heroPreview==='chess';
+  document.getElementById('heroThaiPreview').hidden=!thai;document.getElementById('heroChessPreview').hidden=thai;
+  document.querySelectorAll('[data-hero-preview]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
+};});
+
 document.addEventListener('langchange', () => { socket.emit('list_rooms'); });
 const nameInput = document.getElementById('nameInput');
 

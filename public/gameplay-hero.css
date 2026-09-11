@@ -1,0 +1,43 @@
+/* The promotional board is a photograph of the live renderer, with no WebGL
+   or autoplay on the lobby. Full interaction starts inside a game room. */
+.lobby-page .gameplay-hero{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);align-items:center;gap:28px;padding:30px;margin-bottom:28px;border:1px solid #344154;border-radius:22px;background:radial-gradient(ellipse at 5% 0,#253f4633,transparent 55%),#101927;color:#f3f5f8;overflow:hidden;}
+.gameplay-hero .hero-copy{min-width:0;}
+.gameplay-hero .eyebrow{color:#b7ca9d;font-size:10px;letter-spacing:.19em;margin:0 0 12px;}
+.gameplay-hero h1{color:#f3f5f8;font-size:clamp(27px,3vw,42px);line-height:1.45;letter-spacing:0;margin:0;}
+.gameplay-hero h1 span{display:block;}
+.gameplay-hero h1 .hero-depth{color:#c2f467;}
+.gameplay-hero .welcome-sub{color:#b8c4d5;font-size:14px;line-height:1.8;max-width:38ch;margin:12px 0 20px;}
+.hero-actions-row{display:flex;align-items:center;flex-wrap:wrap;gap:12px;}
+.gameplay-hero .hero-play{display:inline-flex;align-items:center;justify-content:space-between;gap:24px;min-height:46px;border-radius:10px;padding:11px 18px;background:#c2f467;color:#172414;font-size:14px;font-weight:700;text-decoration:none;}
+.gameplay-hero .hero-play:hover{background:#d2ff82;}
+.gameplay-hero .connection-chip{padding:6px 10px;min-height:30px;border-color:#344357;border-radius:8px;background:#1a2637;color:#c1cbd8;font-size:11px;}
+.gameplay-hero .connection-chip strong{border-color:#344357;}
+.gameplay-hero .connection-chip .live-dot{background:#c2f467;}
+.gameplay-hero .hero-radio-link{display:inline-flex;gap:7px;align-items:center;padding:4px 0;margin-top:12px;min-height:36px;border:0;background:transparent;box-shadow:none;color:#b9c6d5;font-size:12px;font-weight:500;text-align:left;}
+.gameplay-hero .hero-radio-link:hover{color:#fff;}
+.hero-radio-link svg{width:16px;height:16px;flex:none;}
+.gameplay-hero :is(button,a):focus-visible{outline-color:#c2f467;}
+.hero-preview{min-width:0;}
+.hero-preview figure{margin:0;border-radius:13px;overflow:hidden;background:#243131;box-shadow:0 12px 28px #0004;}
+.hero-preview figure[hidden]{display:none;}
+.hero-preview img{display:block;width:100%;height:auto;aspect-ratio:1.4;object-fit:contain;}
+.hero-preview-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-top:12px;}
+.hero-preview-caption{color:#a6b3c5;font-size:11px;line-height:1.6;}
+.hero-preview-options{display:flex;gap:5px;}
+.gameplay-hero .hero-preview-options button{min-height:36px;padding:7px 10px;border:1px solid #354458;border-radius:8px;background:#172437;color:#b8c4d5;font-size:11px;font-weight:500;}
+.gameplay-hero .hero-preview-options button[aria-pressed="true"]{border-color:#c2f46766;background:#c2f46714;color:#d0f59a;}
+.lobby-page #gameHeading{scroll-margin-top:115px;}
+@media(max-width:1050px) and (min-width:701px){.lobby-page .gameplay-hero{gap:20px;padding:24px;}.gameplay-hero h1{font-size:28px;}.gameplay-hero .welcome-sub{font-size:13px;}.hero-preview-footer{gap:7px;}}
+@media(max-width:700px){
+ .lobby-page .gameplay-hero{grid-template-columns:minmax(0,1fr);gap:20px;padding:20px;border-radius:17px;}
+ .gameplay-hero .eyebrow{font-size:9px;margin-bottom:7px;}
+ .gameplay-hero h1{font-size:clamp(23px,6vw,32px);line-height:1.45;}
+ .gameplay-hero .welcome-sub{font-size:13px;max-width:none;margin:8px 0 14px;line-height:1.7;}
+ .hero-actions-row{gap:10px;}
+ .gameplay-hero .hero-play{padding:10px 14px;min-height:44px;font-size:13px;gap:16px;}
+ .gameplay-hero .hero-radio-link{margin-top:6px;font-size:11px;min-height:44px;}
+ .hero-preview-footer{margin-top:9px;gap:7px;flex-direction:column;align-items:flex-start;}
+ .hero-preview-caption{font-size:10px;}
+ .gameplay-hero .hero-preview-options button{min-height:44px;padding:7px 9px;font-size:11px;}
+}
+@media(prefers-reduced-motion:reduce){.gameplay-hero *{scroll-behavior:auto;}}
