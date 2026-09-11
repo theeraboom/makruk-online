@@ -6,6 +6,6 @@ body.app-shell{position:fixed;top:var(--app-viewport-top,0px);left:0;margin:0;pa
 body.app-shell #radioBtn,body.app-shell #radioPanel{position:absolute}
 body.app-shell.content-modal-open #radioBtn,body.app-shell.content-modal-open #radioPanel{visibility:hidden;pointer-events:none}
 body.app-shell #radioPanel{max-height:calc(var(--app-viewport-height,100vh) - 112px)}
-.app-shell #navigationStatus{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:1100;padding:8px 16px;border-radius:20px;background:#1b2b43;color:#d9e5f5;font:12px Sarabun,sans-serif;box-shadow:0 3px 14px #0003}
+.app-shell #navigationStatus{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:1100;padding:8px 16px;border-radius:20px;background:#1b2b43;color:#d9e5f5;font:12px var(--font-ui);box-shadow:0 3px 14px #0003}
 .app-shell #navigationStatus[hidden]{display:none}
 @media(max-width:600px){body.app-shell #radioPanel{max-height:calc(var(--app-viewport-height,100vh) - 84px - env(safe-area-inset-bottom))}}

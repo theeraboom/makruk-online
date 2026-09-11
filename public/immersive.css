@@ -9,7 +9,7 @@
 .room-page .has-3d #boardWrapper{clip-path:inset(50%);width:1px;height:1px;overflow:hidden;padding:0;border:0;transform:none;left:0;top:0;}
 .room-page .board-camera.immersive-camera{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;width:100%;max-width:900px;padding:8px 10px;border-radius:16px;position:relative;z-index:3;}
 .immersive-camera .camera-presets{display:flex;flex:1;gap:4px;min-width:0;}
-.immersive-camera button,.immersive-camera .camera-help>summary{min-height:38px;font:500 11px 'Prompt',sans-serif;padding:8px 9px;border-radius:10px;white-space:nowrap;}
+.immersive-camera button,.immersive-camera .camera-help>summary{min-height:38px;font:500 11px var(--font-ui);padding:8px 9px;border-radius:10px;white-space:nowrap;}
 .immersive-camera .camera-presets button{flex:1;}
 .immersive-camera .scene-tools{display:flex;align-items:center;gap:3px;}
 .immersive-camera .scene-tools>button,.immersive-camera .camera-help>summary{min-width:34px;text-align:center;}

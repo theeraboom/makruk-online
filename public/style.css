@@ -101,7 +101,7 @@ html, body {
   padding: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: 'Sarabun', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: var(--font-ui);
   font-size: 15px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
@@ -195,7 +195,7 @@ header {
   font-size: 20px;
   font-weight: 700;
   color: var(--text);
-  font-family: 'Prompt', 'Sarabun', sans-serif;
+  font-family: var(--font-ui);
   letter-spacing: 0.01em;
 }
 .logo .logo-text {
@@ -210,7 +210,7 @@ header {
   -webkit-background-clip: initial;
   background-clip: initial;
   color: var(--text-muted);
-  font-family: 'Sarabun', sans-serif;
+  font-family: var(--font-ui);
   font-weight: 400;
 }
 .logo-mark {
@@ -224,7 +224,7 @@ header {
   justify-content: center;
   font-size: 28px;
   color: #FFFFFF;
-  font-family: 'Prompt', 'Sarabun', sans-serif;
+  font-family: var(--font-ui);
   text-shadow:
     0 1px 0 rgba(80, 50, 0, 0.5),
     0 2px 4px rgba(80, 50, 0, 0.6);
@@ -278,7 +278,7 @@ html[data-theme="dark"] .logo-mark {
 .info-card h3,
 .viewers-header,
 .chat-header {
-  font-family: 'Prompt', 'Sarabun', sans-serif;
+  font-family: var(--font-ui);
   letter-spacing: 0.01em;
 }
 .seo-card h2,
@@ -442,7 +442,7 @@ main { max-width: 1280px; margin: 0 auto; padding: 24px; }
 .hero-text { position: relative; z-index: 1; }
 
 .hero-title {
-  font-family: 'Prompt', 'Sarabun', sans-serif;
+  font-family: var(--font-ui);
   font-size: 36px;
   font-weight: 700;
   margin: 0 0 10px;
@@ -973,7 +973,7 @@ body[data-board-theme="gray"] { --sq-light: #FFFFFF; --sq-dark: #B8B8B8; --sq-se
   position: absolute;
   font-size: 10px;
   font-weight: 700;
-  font-family: 'Inter', monospace;
+  font-family: var(--font-ui);
   pointer-events: none;
   line-height: 1;
   user-select: none;
@@ -1099,7 +1099,7 @@ body[data-board-theme="gray"] .dark .sq-label { color: #FFF; }
 
 /* Thai Letters */
 .ps-letter {
-  font-family: 'Sarabun', sans-serif;
+  font-family: var(--font-ui);
   font-weight: 800;
   font-size: 14px;
   line-height: 1;
@@ -1154,7 +1154,7 @@ body[data-board-theme="gray"] .dark .sq-label { color: #FFF; }
   flex-shrink: 0;
 }
 .ps-preview-svg { color: var(--primary-hover); font-size: 14px; }
-.ps-preview-letter { font-family: 'Sarabun'; font-weight: 700; font-size: 12px; }
+.ps-preview-letter { font-family: var(--font-ui); font-weight: 700; font-size: 12px; }
 
 .game-controls {
   display: flex;
@@ -1592,7 +1592,7 @@ footer {
   line-height: 1.75;
 }
 .rules-content h1 {
-  font-family: 'Prompt', 'Sarabun', sans-serif;
+  font-family: var(--font-ui);
   font-size: 34px;
   font-weight: 700;
   margin: 0 0 8px;
@@ -1734,7 +1734,7 @@ html[data-theme="dark"] .tc-btn.active:active {
   margin-top: 6px;
 }
 .clock {
-  font-family: 'Inter', monospace;
+  font-family: var(--font-ui);
   font-size: 14px;
   font-weight: 600;
   color: var(--text-2);
@@ -1867,7 +1867,7 @@ html[data-theme="dark"] .tc-btn.active:active {
   margin-top: 12px;
   max-height: 200px;
   overflow-y: auto;
-  font-family: 'Inter', monospace;
+  font-family: var(--font-ui);
   font-size: 13px;
   display: grid;
   gap: 4px;

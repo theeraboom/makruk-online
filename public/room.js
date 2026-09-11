@@ -277,7 +277,7 @@ function updatePlayerSlot(side, player) {
       avatarEl.textContent = '🤖';
       avatarEl.classList.add('bot-avatar');
       avatarEl.classList.remove('empty');
-      nameEl.textContent = player.botDifficulty ? I18N.t('bot.name.' + player.botDifficulty) : '🤖 Bot';
+      nameEl.textContent = player.botDifficulty ? I18N.t('bot.name.' + player.botDifficulty).replace(/^🤖\s*/, '') : 'Bot';
     } else {
       avatarEl.textContent = (player.name || '?').slice(0, 2).toUpperCase();
       avatarEl.classList.remove('bot-avatar');

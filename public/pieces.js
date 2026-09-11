@@ -27,7 +27,7 @@
     let shape='';
     if(set==='thai-letters'){
       const label=checker?(type==='K'?'ฮอส':'เบี้ย'):(game==='chess-intl'?INTERNATIONAL:THAI_LETTERS)[type];
-      shape=`<circle cx="32" cy="33" r="23" fill="${fill}" stroke="${stroke}" stroke-width="1.5"/><circle cx="32" cy="33" r="19" fill="none" stroke="${stroke}" stroke-opacity=".45"/><text x="32" y="38" text-anchor="middle" font-family="Sarabun,sans-serif" font-weight="700" font-size="${label.length>4?13:16}" fill="${white?'#483820':'#f4e6ce'}">${label}</text>`;
+      shape=`<circle cx="32" cy="33" r="23" fill="${fill}" stroke="${stroke}" stroke-width="1.5"/><circle cx="32" cy="33" r="19" fill="none" stroke="${stroke}" stroke-opacity=".45"/><text x="32" y="38" text-anchor="middle" font-family="Noto Sans Thai,sans-serif" font-weight="700" font-size="${label.length>4?13:16}" fill="${white?'#483820':'#f4e6ce'}">${label}</text>`;
     } else if(checker){
       shape=`${type==='K'?'<ellipse cx="32" cy="41" rx="23" ry="12" fill="'+fill+'" stroke="'+stroke+'"/>':''}<path d="M9 31 V39 C9 55 55 55 55 39 V31 Z" fill="${fill}" stroke="${stroke}"/><ellipse cx="32" cy="31" rx="23" ry="15" fill="${fill}" stroke="${stroke}" stroke-width="${line}"/><ellipse cx="32" cy="31" rx="18" ry="11" fill="none" stroke="${stroke}" stroke-width="${carved?2:1}"/>${type==='K'?`<path d="M23 27 L27 31 L32 23 L37 31 L41 27 L38 37 H26 Z" fill="${white?'#96713e':'#dec98f'}"/>`:`<circle cx="32" cy="31" r="4" fill="none" stroke="${stroke}"/>`}`;
     } else {
