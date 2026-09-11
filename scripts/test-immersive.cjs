@@ -15,7 +15,19 @@ async function main(){await fs.mkdir(out,{recursive:true});for(const[name,engine
     try{
       f=await create(page,game);await f.waitForFunction(()=>boardScene&&use3D);assert.equal(await f.evaluate(()=>sceneFailed),false);
       assert.equal(await f.evaluate(()=>pieceSet),'studio');await page.waitForTimeout(400);
+      await f.waitForFunction(()=>RoomScenes.isVisible()&&boardScene.snapshot.scenery);
+      assert.equal(await f.evaluate(()=>document.body.dataset.roomScene),game);
+      assert.equal(await f.evaluate(()=>boardScene.scene.background),null);
+      await page.screenshot({path:path.join(out,game+'-'+name+'-room.png')});
+      const sceneMoves=await f.evaluate(()=>moves.length);
+      const sceneChoices=game==='chess'?['connect4','checkers','checkers-intl','chess-intl','chess','none','auto']:['none','auto'];
+      for(const scene of sceneChoices){
+        await f.locator('#scenePicker>summary').click();await f.locator('#sceneOptions [data-scene="'+scene+'"]').click();assert.equal(await f.locator('#scenePicker').getAttribute('open'),null);
+        await f.waitForFunction(({scene,game})=>scene==='none'?!RoomScenes.isVisible()&&boardScene.scene.background?.isColor:RoomScenes.isVisible()&&document.body.dataset.roomScene===(scene==='auto'?game:scene),{scene,game});
+        assert.equal(await f.evaluate(()=>moves.length),sceneMoves);
+      }
       if(game==='chess'||game==='chess-intl')assert.ok(await f.evaluate(()=>[...boardScene.pieces.values()].every(p=>p.userData.sculpted)));
+      await f.evaluate(async()=>{const b=document.querySelector('#boardStage').getBoundingClientRect(),h=document.querySelector('body>header').getBoundingClientRect();scrollBy(0,b.top-h.height-8);await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));});
       const baseline=await f.evaluate(()=>({camera:boardScene.camera.position.toArray(),moves:moves.length,selected}));
       const canvas=await f.locator('canvas.board-canvas').boundingBox();
       // Drag rotates the camera without selecting or moving a piece.
@@ -39,9 +51,11 @@ async function main(){await fs.mkdir(out,{recursive:true});for(const[name,engine
       for(const theme of ['darkwood','marble','neon','green','blue','purple','gray','wood']){
         await f.locator('.board-theme-picker>summary').click();await f.locator('#themeOptions [data-theme="'+theme+'"]').click();assert.equal(await f.locator('.board-theme-picker').getAttribute('open'),null);
       }
-      assert.deepEqual(await f.locator('#pieceOptions [data-pieceset]').evaluateAll(buttons=>buttons.map(b=>b.dataset.pieceset)),['studio','thai-letters']);
-      if(game!=='connect4')for(const set of ['thai-letters','studio']){
+      const expectedSets=['studio','thai-letters'];
+      assert.deepEqual(await f.locator('#pieceOptions [data-pieceset]').evaluateAll(buttons=>buttons.map(b=>b.dataset.pieceset)),expectedSets);
+      if(game!=='connect4')for(const set of [...expectedSets.slice(1),'studio']){
         await f.locator('#piecePicker>summary').click();await f.locator('#pieceOptions [data-pieceset="'+set+'"]').click();assert.equal(await f.locator('#piecePicker').getAttribute('open'),null);
+        if(!['studio','thai-letters'].includes(set))assert.ok(await f.evaluate(set=>[...boardScene.pieces.values()].every(p=>p.userData.fantasy===set),set));
       }
       await f.locator('#camera3D').click();await f.locator('#cameraFocus').click();assert.equal(await f.locator('.game-section.is-focused').count(),1);
       const player=await f.locator('.players-bar').boundingBox(),camera=await f.locator('#boardCamera').boundingBox(),stage=await f.locator('#boardStage').boundingBox();assert.ok(player.y+player.height<=stage.y+1);assert.ok(stage.y+stage.height<=camera.y+1);
@@ -58,7 +72,7 @@ async function main(){await fs.mkdir(out,{recursive:true});for(const[name,engine
       assert.equal(await f.locator('canvas.board-canvas').count(),1);assert.equal(await f.evaluate(()=>moves.length),countBeforeRestore);
       // A still scene stops rendering; there is no permanent background loop.
       await page.waitForTimeout(500);const n=await f.evaluate(()=>boardScene.renderer.info.render.frame);await page.waitForTimeout(400);assert.equal(await f.evaluate(()=>boardScene.renderer.info.render.frame),n);
-      assert.deepEqual(errors,[]);results.push({browser:name,game,default3D:true,dragDoesNotMove:true,opponentSideMoveAndAI:true,zoom:true,allThemesAndPieces:true,focusLayout:true,fallbackSwitch:true,idleRenderingStops:true,pageRestore:true,errors});console.log('PASS',name,game);
+      assert.deepEqual(errors,[]);results.push({browser:name,game,default3D:true,staticSceneMatchesGame:true,scenePickerCloses:true,sceneOffAndAuto:true,dragDoesNotMove:true,opponentSideMoveAndAI:true,zoom:true,allThemesAndPieces:true,focusLayout:true,fallbackSwitch:true,idleRenderingStops:true,pageRestore:true,errors});console.log('PASS',name,game);
     }finally{if(f)await f.evaluate(()=>socket.emit('resign')).catch(()=>{});await page.close();}
   }
   if(name==='chrome') {
@@ -76,6 +90,7 @@ async function main(){await fs.mkdir(out,{recursive:true});for(const[name,engine
   // Returning while model loading is in flight must create only one renderer.
   {const page=await browser.newPage(options);let release;const gate=new Promise(resolve=>release=resolve);await page.route('**/models/*.bin',async route=>{await gate;await route.continue();});const f=await create(page,'chess',false);await f.evaluate(()=>{window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true}));window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}));});release();await f.waitForFunction(()=>boardScene&&use3D&&!sceneLoading);await page.waitForTimeout(100);assert.equal(await f.locator('canvas.board-canvas').count(),1);assert.ok(await f.evaluate(()=>[...boardScene.pieces.values()].every(p=>p.userData.sculpted)));await f.evaluate(()=>socket.emit('resign'));await page.close();results.push({browser:name,pageRestoreDuringModelLoading:true});}
   // A device without WebGL can still enter a room and play with the DOM board.
+  {const page=await browser.newPage(options);await page.route('**/img/scenes/*.webp',route=>route.abort());const f=await create(page,'chess');await page.waitForTimeout(400);assert.equal(await f.evaluate(()=>RoomScenes.isVisible()),false);assert.ok(await f.evaluate(()=>boardScene.scene.background.isColor));await f.locator('#cameraMode').click();await f.locator('#board .square[data-row="5"][data-col="0"]').click();await f.locator('#board .square[data-row="4"][data-col="0"]').click();await f.waitForFunction(()=>moves.length>=2);await f.evaluate(()=>socket.emit('resign'));await page.close();results.push({browser:name,backgroundDownloadFailurePlayable:true});}
   {const page=await browser.newPage(options);await page.route('**/models/*.bin',route=>route.abort());const f=await create(page,'chess');assert.equal(await f.evaluate(()=>sceneFailed&&!use3D),true);await f.locator('#board .square[data-row="5"][data-col="0"]').click();await f.locator('#board .square[data-row="4"][data-col="0"]').click();await f.waitForFunction(()=>moves.length>=2);await f.evaluate(()=>socket.emit('resign'));await page.close();results.push({browser:name,modelDownloadFailureFallbackPlayable:true});}
   {const page=await browser.newPage(options);await page.addInitScript(()=>{const get=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return /webgl/.test(type)?null:get.call(this,type,...args);};});const f=await create(page,'chess');assert.equal(await f.evaluate(()=>sceneFailed&&!use3D),true);await f.locator('#board .square[data-row="5"][data-col="0"]').click();await f.locator('#board .square[data-row="4"][data-col="0"]').click();await f.waitForFunction(()=>moves.length>=2);await f.evaluate(()=>socket.emit('resign'));await page.close();results.push({browser:name,noWebGLFallbackPlayable:true});}
   // Simulated WebGL context loss must restore the playable 2D board.

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>วงเล่น — เล่นหมากรุก หมากฮอส ออนไลน์</title>
 <meta name="description" content="ห้องเล่นหมากรุก/หมากฮอสออนไลน์สด พร้อมแชทระหว่างผู้เล่นและผู้ชม — เปิดวิทยุไทยฟังขณะเล่นได้">
-<meta name="robots" content="noindex">
+<meta name="robots" content="noindex, follow">
 <meta name="theme-color" content="#174b3c">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231F2937'/%3E%3Ctext x='50%25' y='54%25' font-size='44' text-anchor='middle' dominant-baseline='middle' fill='%23FBBF24'%3E♛%3C/text%3E%3C/svg%3E">
 <link rel="apple-touch-icon" href="/og-image.png">
@@ -14,14 +14,15 @@
 <meta property="og:site_name" content="Playmakruk.com">
 <meta property="og:title" content="มาดูเกมหมากรุก / หมากฮอสสด — ร่วมแชทกับผู้ชมได้เลย">
 <meta property="og:description" content="เข้าร่วมวงเล่นหมากรุกไทย/หมากฮอสไทยสด ดูเกมพร้อมแชทกับผู้ชมคนอื่น">
-<meta property="og:image" content="https://playmakruk.com/og-image.png?v=studio-20260910">
+<meta property="og:image" content="https://playmakruk.com/img/og-himmapan-e7e88fe3b6.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:locale" content="th_TH">
 
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:description" content="เข้าวงเล่นหรือดูเกมกระดานออนไลน์กับเพื่อน พร้อมแชทและฟังวิทยุไทย">
 <meta name="twitter:title" content="มาดูเกมหมากรุก / หมากฮอสสด — ร่วมแชทกับผู้ชมได้เลย">
-<meta name="twitter:image" content="https://playmakruk.com/og-image.png?v=studio-20260910">
+<meta name="twitter:image" content="https://playmakruk.com/img/og-himmapan-e7e88fe3b6.jpg">
 
 <link rel="stylesheet" href="fonts.css">
 <link rel="stylesheet" href="style.css">
@@ -32,8 +33,12 @@
 <link rel="stylesheet" href="immersive.css">
 <script src="theme.js"></script>
 <link rel="stylesheet" href="typography.css">
+<link rel="stylesheet" href="room-scenes.css">
+<meta property="og:image:alt" content="Playmakruk — หมากรุกไทย หมากฮอสออนไลน์ เล่นฟรีกับเพื่อน พร้อมฟังวิทยุไทย">
+<meta name="twitter:image:alt" content="Playmakruk — หมากรุกไทย หมากฮอสออนไลน์ เล่นฟรีกับเพื่อน พร้อมฟังวิทยุไทย">
 </head>
 <body class="room-page">
+  <div class="room-world" aria-hidden="true"></div>
   <header>
     <a href="/" class="back-btn" data-i18n="back">← กลับ</a>
     <a href="/" class="logo">
@@ -117,6 +122,7 @@
               <button type="button" class="theme-btn" data-theme="gray"><span class="swatch sw-gray"></span><span data-i18n="theme.gray">เทา</span></button>
             </div>
           </details>
+          <details class="theme-picker scene-picker" id="scenePicker"><summary class="ghost">▧ <span>ฉากหลัง</span></summary><div id="sceneOptions" aria-label="เลือกฉากหลัง"></div></details>
           <details class="theme-picker piece-picker" id="piecePicker" hidden>
             <summary class="ghost" data-i18n="btn.pieces">♟ ตัวหมาก</summary>
             <div class="theme-options" id="pieceOptions">
@@ -291,6 +297,7 @@
   <script src="connect4.js"></script>
   <script src="pieces.js"></script>
   <script src="share.js"></script>
+  <script src="room-scenes.js"></script>
   <script src="room.js"></script>
   <script src="radio-core.js"></script>
 <script src="radio.js"></script>

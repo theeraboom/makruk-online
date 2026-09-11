@@ -141,17 +141,17 @@ export class BoardScene {
     this.scene=new T.Scene();this.camera=new T.PerspectiveCamera(38,1,.1,100);
     this.renderer=new T.WebGLRenderer({antialias:true,alpha:true,powerPreference:'low-power'});
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));this.renderer.outputColorSpace=T.SRGBColorSpace;
-    this.renderer.toneMapping=T.ACESFilmicToneMapping;this.renderer.toneMappingExposure=1.0;
+    this.renderer.toneMapping=T.ACESFilmicToneMapping;this.renderer.toneMappingExposure=.9;
     this.renderer.shadowMap.enabled=true;this.renderer.shadowMap.type=T.PCFShadowMap;
     this.canvas=this.renderer.domElement;this.canvas.className='board-canvas';this.canvas.setAttribute('aria-hidden','true');this.canvas.style.touchAction='none';host.append(this.canvas);
     this.controls=new OrbitControls(this.camera,this.canvas);this.controls.enablePan=false;this.controls.enableDamping=true;this.controls.dampingFactor=.13;
     this.controls.rotateSpeed=.65;this.controls.zoomSpeed=.7;this.controls.minPolarAngle=.025;this.controls.maxPolarAngle=81*deg;
     this.controls.minDistance=9;this.controls.maxDistance=30;this.controls.touches.TWO=T.TOUCH.DOLLY_ROTATE;
     this.controls.addEventListener('change',()=>{this.requestRender();this.callbacks.onCameraChange?.({tilt:this.controls.getPolarAngle()/deg,rotation:this.controls.getAzimuthalAngle()/deg,distance:this.controls.getDistance()});});
-    this.scene.add(new T.HemisphereLight('#eef4ff','#57432f',.6));
-    const key=new T.DirectionalLight('#fff0d8',2.1);key.position.set(-4,9,5);key.castShadow=true;key.shadow.mapSize.set(2048,2048);Object.assign(key.shadow.camera,{left:-7,right:7,top:7,bottom:-7,near:.1,far:30});key.shadow.normalBias=.009;key.shadow.bias=-.00008;key.shadow.radius=3;this.scene.add(key);
-    const rim=new T.DirectionalLight('#c5dcf5',1.25);rim.position.set(7,6,-6);this.scene.add(rim);
-    const environment=new RoomEnvironment(),pmrem=new T.PMREMGenerator(this.renderer);this.environment=pmrem.fromScene(environment,.04);this.scene.environment=this.environment.texture;this.scene.environmentIntensity=.6;environment.dispose();pmrem.dispose();
+    this.scene.add(new T.HemisphereLight('#eef4ff','#57432f',.24));
+    const key=new T.DirectionalLight('#fff0d8',3.1);key.position.set(-4,9,5);key.castShadow=true;key.shadow.mapSize.set(2048,2048);Object.assign(key.shadow.camera,{left:-7,right:7,top:7,bottom:-7,near:.1,far:30});key.shadow.normalBias=.009;key.shadow.bias=-.00008;key.shadow.radius=3;this.scene.add(key);
+    const rim=new T.DirectionalLight('#c5dcf5',.85);rim.position.set(7,6,-6);this.scene.add(rim);
+    const environment=new RoomEnvironment(),pmrem=new T.PMREMGenerator(this.renderer);this.environment=pmrem.fromScene(environment,.04);this.scene.environment=this.environment.texture;this.scene.environmentIntensity=.35;environment.dispose();pmrem.dispose();
     this.table=new T.Group();this.markers=new T.Group();this.pieceLayer=new T.Group();this.scene.add(this.table,this.markers,this.pieceLayer);
     this.raycaster=new T.Raycaster();this.pointer=new T.Vector2();this.installInput();
     this.resizeObserver=new ResizeObserver(()=>this.resize());this.resizeObserver.observe(host);
@@ -228,11 +228,11 @@ export class BoardScene {
     const p=this.snapshot?.gameType==='connect4'?new T.Vector3(c-3,5.7-r,0):new T.Vector3(c-3.5,piece?.42:.05,r-3.5);
     this.camera.updateMatrixWorld();p.project(this.camera);const rect=this.canvas.getBoundingClientRect();return {x:rect.left+(p.x+1)*rect.width/2,y:rect.top+(1-p.y)*rect.height/2};
   }
-  buildTable(game,theme) {
+  buildTable(game,theme,scenery=false) {
     disposeTree(this.table);const [light,dark,frame,accent,floor]=PALETTES[theme]||PALETTES.wood,kind=theme==='marble'?'marble':'wood';
-    this.scene.background=new T.Color(floor);this.scene.fog=new T.Fog(floor,22,65);
-    const edge=mat(frame,.33,.12,{map:surfaceTexture(kind,'#ffffff')}),trim=mat(accent,.28,.6),ground=mat(floor,.96,0);
-    box(this.table,200,.15,200,ground,0,-.77,0);contactShadow(this.table,game==='connect4');
+    this.scene.background=scenery?null:new T.Color(floor);this.scene.fog=scenery?null:new T.Fog(floor,22,65);
+    const edge=mat(frame,.33,.12,{map:surfaceTexture(kind,'#ffffff')}),trim=mat(accent,.28,.6),ground=scenery?new T.ShadowMaterial({opacity:.25}):mat(floor,.96,0);
+    box(this.table,200,.15,200,ground,0,-.77,0).castShadow=false;contactShadow(this.table,game==='connect4');
     if(game==='connect4') {
       const shape=new T.Shape();shape.moveTo(-3.85,.25);shape.lineTo(3.85,.25);shape.lineTo(3.85,6.6);shape.lineTo(-3.85,6.6);shape.closePath();
       for(let r=0;r<6;r++)for(let c=0;c<7;c++){const hole=new T.Path();hole.absarc(c-3,5.7-r,.407,0,Math.PI*2,true);shape.holes.push(hole);}
@@ -257,9 +257,9 @@ export class BoardScene {
   }
   update(state) {
     if(this.disposed||!state.board)return;const old=this.snapshot;
-    const newTable=!old||old.theme!==state.theme||old.gameType!==state.gameType;
+    const newTable=!old||old.theme!==state.theme||old.gameType!==state.gameType||old.scenery!==state.scenery;
     const newPieces=!old||old.pieceSet!==state.pieceSet||old.gameType!==state.gameType;
-    if(newTable)this.buildTable(state.gameType,state.theme);
+    if(newTable)this.buildTable(state.gameType,state.theme,state.scenery);
     if(newPieces){disposeTree(this.pieceLayer);this.pieces.clear();this.animations=[];}
     const c4=state.gameType==='connect4';
     if(old&&state.moveCount<old.moveCount)this.animations=[];

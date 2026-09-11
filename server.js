@@ -574,6 +574,7 @@ app.get(HTML_PATHS, (req, res, next) => {
     const shareUrl='https://playmakruk.com/room.html?id='+encodeURIComponent(req.query.id);
     html=html.replace('</head>',`<meta property="og:url" content="${escapeHtml(shareUrl)}"></head>`);
   }
+  if(req.query._view==='content')res.set('X-Robots-Tag','noindex, follow');
   res.set('Cache-Control','no-store');res.type('html').send(renderPage(req,html));
 });
 

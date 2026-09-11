@@ -127,10 +127,7 @@
     'chat.newMessages': '↓ ข้อความใหม่',
     'chat.radio': '♫ เปิดวิทยุ',
     'chat.help': 'Enter เพื่อส่ง · Shift + Enter ขึ้นบรรทัดใหม่',
-    'pieces.classic': 'คลาสสิก',
-      'pieces.thai-carved': 'ไทยแกะสลัก',
       'pieces.thai-letters': 'อักษรไทย',
-      'pieces.outline': 'โครงเส้น',
       'viewers.count': 'คนกำลังดู',
 
       // Room — chat / panels
@@ -232,8 +229,8 @@
       "profile.title": "อยากให้เรียกคุณว่าอะไร?", "profile.hint": "ชื่อนี้จะแสดงในวงเล่นและแชท",
       "profile.placeholder": "เช่น บูม", "profile.limit": "ใช้ได้สูงสุด 24 ตัวอักษร", "profile.save": "บันทึกชื่อผู้เล่น",
       "ui.eyebrow": "YOUR NEXT MOVE",
-      "ui.title": "เกมคลาสสิก เล่นในสไตล์คุณ",
-      "ui.subtitle": "เล่นกับเพื่อน ฝึกกับ AI หรือแวะมาดูวงอื่น — ฟรี ไม่ต้องสมัคร",
+      "ui.title": "หมากรุก หมากฮอส เล่นในสไตล์คุณ",
+      "ui.subtitle": "เกมกระดานออนไลน์สำหรับคนไทย — ชวนเพื่อน ฝึกกับ AI และฟังวิทยุไทย",
       "ui.connecting": "กำลังเชื่อมต่อ",
       "ui.online": "ออนไลน์",
       "ui.offline": "กำลังเชื่อมต่อใหม่",
@@ -408,10 +405,7 @@
     'chat.newMessages': '↓ New messages',
     'chat.radio': '♫ Radio',
     'chat.help': 'Enter to send · Shift + Enter for a new line',
-    'pieces.classic': 'Classic',
-      'pieces.thai-carved': 'Thai Carved',
       'pieces.thai-letters': 'Thai Letters',
-      'pieces.outline': 'Outline',
       'viewers.count': 'watching',
 
       'chat.live': 'Live chat',

@@ -151,6 +151,7 @@ socket.on('room_state', (state) => {
   document.title = displayName + ' — Playmakruk.com';
   const prevStatus = status;
   gameType = state.gameType || 'chess';
+  RoomScenes.setGame(gameType);
   const labelEl = document.getElementById('roomGameTypeLabel');
   if (labelEl) labelEl.textContent = I18N.t('game.' + gameType);
   document.querySelectorAll('.rule-list').forEach((el) => {
@@ -807,8 +808,9 @@ function applyCamera(moveScene=false) {
 function updateScene() {
   if(!boardScene||!board)return;
   const engine=getEngine(),check=!isCheckersGame()&&!isConnect4Game()&&engine.isInCheck?.(board,currentPlayer)?engine.findKing(board,currentPlayer):null;
-  boardScene.update({board,gameType,theme:boardTheme,pieceSet,selected:selected||mustContinueFrom,validMoves,lastMove:moves.at(-1),moveCount:moves.length,winCells,check,flipped});
+  boardScene.update({board,gameType,theme:boardTheme,scenery:RoomScenes.isVisible(),pieceSet,selected:selected||mustContinueFrom,validMoves,lastMove:moves.at(-1),moveCount:moves.length,winCells,check,flipped});
 }
+document.addEventListener('roomscenechange',updateScene);
 function setSceneMode(enabled) {
   use3D=!!enabled&&!sceneFailed;
   document.getElementById('boardStage').classList.toggle('has-3d',use3D&&!!boardScene);
