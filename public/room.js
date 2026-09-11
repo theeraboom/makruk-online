@@ -89,6 +89,7 @@ let boardTheme = localStorage.getItem('makruk_theme') || 'wood';
 // Each newly opened board starts with the 3D studio pieces. The picker can
 // still change the appearance for the current game.
 let pieceSet = 'studio';
+let boardScene = null, use3D = true, sceneFailed = false;
 
 // Persistent UID so slot reclaim works even for anonymous users across reconnects
 let userUid = localStorage.getItem('makruk_uid');
@@ -135,7 +136,7 @@ socket.on('room_not_found', () => {
 socket.on('joined', ({ role, name }) => {
   myRole = role;
   currentDisplayName = typeof name === 'string' ? name : userName;
-  if (!hasJoinedView) { flipped = role === 'b'; hasJoinedView = true; }
+  if (!hasJoinedView) { flipped = role === 'b'; hasJoinedView = true; applyCamera(true); }
   applyCamera();
   updateRoleBadge();
 });
@@ -164,7 +165,7 @@ socket.on('room_state', (state) => {
   if (themePicker) themePicker.hidden = false;
   const boardWrapper = document.getElementById('boardWrapper');
   if (boardWrapper) boardWrapper.classList.toggle('connect4', isConnect4Game());
-  document.getElementById('boardCamera').hidden = isConnect4Game();
+  document.getElementById('boardCamera').hidden = false;
   applyCamera();
   // Tag players-bar so avatars switch to yellow/red for Connect 4
   const playersBar = document.querySelector('.players-bar');
@@ -553,6 +554,7 @@ function renderMoves() {
 }
 
 function render() {
+  updateScene();
   if (isConnect4Game()) { renderConnect4(); return; }
   const boardEl = document.getElementById('board');
   boardEl.className = 'board';
@@ -641,6 +643,10 @@ function renderConnect4() {
       const cell = document.createElement('div');
       cell.className = 'c4-cell';
       cell.dataset.col = c;
+      cell.tabIndex = r === 0 ? 0 : -1;
+      cell.setAttribute('role','button');
+      cell.setAttribute('aria-label',(I18N.getLang()==='th'?'หยอดคอลัมน์ ':'Drop in column ')+(c+1));
+      cell.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();dropColumn(c);}};
       const piece = board[r][c];
       if (piece) {
         const coin = document.createElement('div');
@@ -774,37 +780,98 @@ function legalMovesFor(r, c) {
   return engine.getLegalMoves(board, r, c);
 }
 
-document.getElementById('flipBtn').onclick = () => {
-  flipped = !flipped;
-  cameraRotation = 0; applyCamera();
-  render();
-};
-
-let cameraTilt = 24;
+let cameraTilt = 43;
 let cameraRotation = 0;
-function applyCamera() {
-  cameraTilt = Math.max(0, Math.min(45, Number.isFinite(cameraTilt) ? cameraTilt : 24));
-  cameraRotation = Math.max(-180, Math.min(180, Number.isFinite(cameraRotation) ? cameraRotation : 0));
-  const tilt = isConnect4Game() ? 0 : cameraTilt;
-  const angle = isConnect4Game() ? 0 : cameraRotation;
-  const radians = angle * Math.PI / 180;
-  const scale = (tilt ? .93 : 1) / (Math.abs(Math.sin(radians)) + Math.abs(Math.cos(radians)));
-  const stage = document.getElementById('boardStage');
-  stage.style.setProperty('--stage-ratio', isConnect4Game() ? .92 : tilt ? Math.cos(tilt*Math.PI/180)*.93+.11 : 1.04);
-  stage.style.setProperty('--camera-tilt', tilt+'deg');stage.style.setProperty('--camera-rotation', angle+'deg');stage.style.setProperty('--camera-scale', scale);
-  document.getElementById('cameraTilt').value=cameraTilt;document.getElementById('cameraRotation').value=cameraRotation;
-  document.getElementById('cameraTiltValue').value=cameraTilt+'°';document.getElementById('cameraRotationValue').value=cameraRotation+'°';
-  document.getElementById('cameraTop').setAttribute('aria-pressed', String(!tilt));document.getElementById('camera3D').setAttribute('aria-pressed', String(tilt>0));
-  document.getElementById('cameraMine').setAttribute('aria-pressed',String(flipped === (myRole==='b')));document.getElementById('cameraOpponent').setAttribute('aria-pressed',String(flipped !== (myRole==='b')));
-  localStorage.setItem('makruk_camera_tilt',cameraTilt);localStorage.setItem('makruk_camera_rotation',cameraRotation);
+function syncCameraControls() {
+  document.getElementById('cameraTilt').value=cameraTilt;
+  document.getElementById('cameraRotation').value=cameraRotation;
+  document.getElementById('cameraTiltValue').value=Math.round(cameraTilt)+'°';
+  document.getElementById('cameraRotationValue').value=Math.round(cameraRotation)+'°';
+  document.getElementById('cameraTop').setAttribute('aria-pressed',String(cameraTilt<3));
+  document.getElementById('camera3D').setAttribute('aria-pressed',String(use3D&&cameraTilt>=3));
+  const angle=((cameraRotation+(flipped?180:0))%360+360)%360;
+  const mine=myRole==='b'?180:0;
+  document.getElementById('cameraMine').setAttribute('aria-pressed',String(Math.abs(angle-mine)<3));
+  document.getElementById('cameraOpponent').setAttribute('aria-pressed',String(Math.abs(angle-((mine+180)%360))<3));
 }
-document.getElementById('cameraTilt').oninput=e=>{cameraTilt=Number(e.target.value);applyCamera();};
-document.getElementById('cameraRotation').oninput=e=>{cameraRotation=Number(e.target.value);applyCamera();};
-document.getElementById('camera3D').onclick=()=>{cameraTilt=30;cameraRotation=-10;applyCamera();};
-document.getElementById('cameraTop').onclick=()=>{cameraTilt=0;cameraRotation=0;applyCamera();};
-document.getElementById('cameraMine').onclick=()=>{flipped=myRole==='b';cameraRotation=0;applyCamera();render();};
-document.getElementById('cameraOpponent').onclick=()=>{flipped=myRole!=='b';cameraRotation=0;applyCamera();render();};
+function applyCamera(moveScene=false) {
+  // The accessible 2D board always stays flat. Its coordinates still follow the
+  // chosen side; the WebGL camera owns all free rotation and perspective.
+  const stage=document.getElementById('boardStage');
+  stage.style.setProperty('--stage-ratio',isConnect4Game()? .92 : 1.04);
+  stage.style.setProperty('--camera-tilt','0deg');stage.style.setProperty('--camera-rotation','0deg');stage.style.setProperty('--camera-scale',1);
+  if(moveScene&&boardScene)boardScene.setView({tilt:cameraTilt,rotation:cameraRotation+(flipped?180:0)});
+  syncCameraControls();
+}
+function updateScene() {
+  if(!boardScene||!board)return;
+  const engine=getEngine(),check=!isCheckersGame()&&!isConnect4Game()&&engine.isInCheck?.(board,currentPlayer)?engine.findKing(board,currentPlayer):null;
+  boardScene.update({board,gameType,theme:boardTheme,pieceSet,selected:selected||mustContinueFrom,validMoves,lastMove:moves.at(-1),moveCount:moves.length,winCells,check,flipped});
+}
+function setSceneMode(enabled) {
+  use3D=!!enabled&&!sceneFailed;
+  document.getElementById('boardStage').classList.toggle('has-3d',use3D&&!!boardScene);
+  boardScene?.setVisible(use3D);
+  const button=document.getElementById('cameraMode'),th=I18N.getLang()==='th';
+  button.textContent=use3D?'2D':'3D';button.setAttribute('aria-pressed',String(!use3D));
+  button.setAttribute('aria-label',use3D?(th?'สลับกระดานสองมิติ':'Switch to 2D board'):(th?'สลับกระดานสามมิติ':'Switch to 3D board'));
+  for(const id of ['cameraZoomIn','cameraZoomOut','cameraTilt','cameraRotation'])document.getElementById(id).disabled=!use3D;
+  applyCamera();
+}
+function sceneUnavailable() {
+  sceneFailed=true;setSceneMode(false);boardScene?.dispose();boardScene=null;
+  const message=document.getElementById('sceneStatus');message.hidden=false;
+  message.textContent=I18N.getLang()==='th'?'ใช้กระดาน 2D บนอุปกรณ์นี้ · เล่นต่อได้ตามปกติ':'Using the 2D board on this device. You can continue playing.';
+  document.getElementById('cameraMode').disabled=true;document.getElementById('camera3D').disabled=true;
+}
+async function initScene() {
+  try {
+    const build=document.querySelector('meta[name="playmakruk-build"]')?.content||'local';
+    const {BoardScene}=await import('/board-3d.js?v='+encodeURIComponent(build));
+    boardScene=new BoardScene(document.getElementById('boardScene'),{
+      onSquare:handleClick,onColumn:dropColumn,onError:sceneUnavailable,
+      onCameraChange:view=>{
+        cameraTilt=view.tilt;cameraRotation=((view.rotation-(flipped?180:0)+540)%360)-180;
+        syncCameraControls();
+      }
+    });
+    setSceneMode(use3D);updateScene();
+  } catch(error) { console.warn('3D board unavailable:',error.message);sceneUnavailable(); }
+}
+function preset(tilt,side) {
+  if(side!==undefined)flipped=side;
+  cameraTilt=tilt;cameraRotation=0;
+  if(boardScene&&!sceneFailed)setSceneMode(true);
+  applyCamera(true);render();
+}
+document.getElementById('flipBtn').onclick=()=>preset(isConnect4Game()?75:43,!flipped);
+document.getElementById('camera3D').onclick=()=>{preset(isConnect4Game()?75:43);cameraRotation=-12;applyCamera(true);};
+document.getElementById('cameraTop').onclick=()=>preset(isConnect4Game()?25:2);
+document.getElementById('cameraMine').onclick=()=>preset(isConnect4Game()?75:43,myRole==='b');
+document.getElementById('cameraOpponent').onclick=()=>preset(isConnect4Game()?75:43,myRole!=='b');
+document.getElementById('cameraTilt').oninput=e=>{cameraTilt=Number(e.target.value);applyCamera(true);};
+document.getElementById('cameraRotation').oninput=e=>{cameraRotation=Number(e.target.value);applyCamera(true);};
+document.getElementById('cameraZoomIn').onclick=()=>boardScene?.zoom(.88);
+document.getElementById('cameraZoomOut').onclick=()=>boardScene?.zoom(1.14);
+document.getElementById('cameraMode').onclick=()=>setSceneMode(!use3D);
+function setBoardFocus(value) {
+  document.querySelector('.game-section').classList.toggle('is-focused',value);
+  document.body.classList.toggle('board-focused',value);
+  document.querySelectorAll('body>header,.room-sidebar,main>footer').forEach(el=>{el.inert=value;});
+  const button=document.getElementById('cameraFocus');button.setAttribute('aria-pressed',String(value));button.textContent=value?'✕':'⛶';
+  button.setAttribute('aria-label',I18N.getLang()==='th'?(value?'ย่อกระดาน':'ขยายกระดาน'):(value?'Exit focus view':'Focus on board'));
+  boardScene?.resize();
+}
+document.getElementById('cameraFocus').onclick=()=>setBoardFocus(!document.body.classList.contains('board-focused'));
+document.addEventListener('keydown',e=>{if(e.key==='Escape')setBoardFocus(false);});
+document.getElementById('boardWrapper').addEventListener('focusin',()=>{if(use3D)setSceneMode(false);});
+document.addEventListener('langchange',()=>{
+  document.getElementById('cameraInstructions').textContent=I18N.getLang()==='th'?'แตะตัวหมากแล้วแตะช่องเพื่อเดิน · ลากเพื่อหมุน · จีบสองนิ้วหรือเลื่อนล้อเมาส์เพื่อซูม':'Tap a piece, then its destination. Drag to orbit. Pinch or scroll to zoom.';
+  setSceneMode(use3D);
+});
+window.addEventListener('pagehide',()=>{boardScene?.dispose();boardScene=null;});
 applyCamera();
+initScene();
 
 function closePicker(button) {
   const details=button.closest('details'); details.open=false; details.querySelector('summary').focus();
@@ -820,6 +887,7 @@ document.querySelectorAll('.theme-picker,.sound-settings').forEach(details=>{
 });
 function applyTheme(theme) {
   boardTheme = theme;
+  updateScene();
   localStorage.setItem('makruk_theme', theme);
   document.body.dataset.boardTheme = theme;
   document.querySelectorAll('#themeOptions .theme-btn').forEach((b) => {

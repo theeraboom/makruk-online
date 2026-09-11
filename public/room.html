@@ -31,6 +31,7 @@
 <link rel="stylesheet" href="arena.css">
   <link rel="stylesheet" href="studio-v2.css">
 <link rel="stylesheet" href="radio.css">
+<link rel="stylesheet" href="immersive.css">
 <script src="theme.js"></script>
 </head>
 <body class="room-page">
@@ -71,14 +72,30 @@
         </div>
 
         <div class="board-stage" id="boardStage">
+          <div class="board-scene" id="boardScene"></div>
           <div class="board-wrapper" id="boardWrapper">
             <div class="board" id="board"></div>
           </div>
         </div>
 
-        <div class="board-camera" id="boardCamera">
-          <div class="camera-top"><span data-i18n="camera.title">มุมมองกระดาน</span><div class="camera-presets"><button type="button" id="camera3D" data-i18n="camera.3d">3D</button><button type="button" id="cameraTop" data-i18n="camera.top">มองจากด้านบน</button><button type="button" id="cameraMine" data-i18n="camera.mine">ฝั่งตัวเอง</button><button type="button" id="cameraOpponent" data-i18n="camera.opponent">ฝั่งตรงข้าม</button></div></div>
-          <details class="camera-fine"><summary data-i18n="camera.fine">ปรับความเอียงและหมุนละเอียด</summary><div class="camera-sliders"><label><span data-i18n="camera.tilt">ความเอียง</span><input id="cameraTilt" type="range" min="0" max="45" step="1" value="24"><output id="cameraTiltValue">24°</output></label><label><span data-i18n="camera.rotate">หมุนรอบกระดาน</span><input id="cameraRotation" type="range" min="-180" max="180" step="5" value="0"><output id="cameraRotationValue">0°</output></label></div></details>
+        <div class="board-camera immersive-camera" id="boardCamera" aria-label="มุมมองกระดาน">
+          <div class="camera-presets">
+            <button type="button" id="camera3D" aria-label="มุมสามมิติเริ่มต้น">◈ <span data-i18n="camera.3d">3D</span></button>
+            <button type="button" id="cameraTop" data-i18n="camera.top">มองจากด้านบน</button>
+            <button type="button" id="cameraMine" data-i18n="camera.mine">ฝั่งตัวเอง</button>
+            <button type="button" id="cameraOpponent" data-i18n="camera.opponent">ฝั่งตรงข้าม</button>
+          </div>
+          <div class="scene-tools">
+            <button type="button" id="cameraZoomIn" aria-label="ซูมเข้า">＋</button>
+            <button type="button" id="cameraZoomOut" aria-label="ซูมออก">−</button>
+            <button type="button" id="cameraFocus" aria-label="ขยายกระดาน" aria-pressed="false">⛶</button>
+            <button type="button" id="cameraMode" aria-label="สลับกระดานสองมิติ" aria-pressed="false">2D</button>
+            <details class="camera-help"><summary aria-label="วิธีควบคุมมุมมอง">?</summary><div>
+              <p id="cameraInstructions">แตะตัวหมากแล้วแตะช่องเพื่อเดิน · ลากเพื่อหมุน · จีบสองนิ้วหรือเลื่อนล้อเมาส์เพื่อซูม</p>
+              <div class="camera-sliders"><label><span data-i18n="camera.tilt">ความเอียง</span><input id="cameraTilt" type="range" min="2" max="81" step="1" value="43"><output id="cameraTiltValue">43°</output></label><label><span data-i18n="camera.rotate">หมุนรอบกระดาน</span><input id="cameraRotation" type="range" min="-180" max="180" step="1" value="0"><output id="cameraRotationValue">0°</output></label></div>
+            </div></details>
+          </div>
+          <small id="sceneStatus" role="status" hidden></small>
         </div>
 
         <div class="game-controls">
