@@ -16,33 +16,6 @@ const socket = io({
 });
 
 document.getElementById('langToggleBtn').onclick = () => I18N.toggleLang();
-document.getElementById('heroRadioBtn').onclick=()=>window.Radio?.open();
-let heroGameType='chess';
-function translateHeroPreview(){
-  document.querySelectorAll('[data-hero-figure]').forEach(figure=>{
-    figure.querySelector('img').alt=I18N.t('game.'+figure.dataset.heroFigure)+' 3D — '+I18N.t('hero.actual');
-  });
-  const name=I18N.t('game.'+heroGameType);
-  document.getElementById('heroGameName').textContent=name;
-  document.querySelector('.hero-play').setAttribute('aria-label',I18N.t('hero.play')+' · '+name);
-  document.getElementById('heroPreviewOptions').setAttribute('aria-label',I18N.t('hero.previewOptions'));
-}
-translateHeroPreview();document.addEventListener('langchange',translateHeroPreview);
-document.querySelectorAll('[data-hero-preview]').forEach(button=>{button.onclick=()=>{
-  heroGameType=button.dataset.heroPreview;
-  document.querySelectorAll('[data-hero-figure]').forEach(figure=>{figure.hidden=figure.dataset.heroFigure!==heroGameType;});
-  document.querySelectorAll('[data-hero-preview]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
-  translateHeroPreview();
-};});
-// Previewing is independent of the room settings until the player chooses to play.
-document.querySelector('.hero-play').onclick=event=>{
-  event.preventDefault();
-  selectGame(heroGameType);
-  const heading=document.getElementById('playHeading');
-  heading.focus({preventScroll:true});
-  heading.scrollIntoView({block:'start',behavior:'instant'});
-};
-
 document.addEventListener('langchange', () => { socket.emit('list_rooms'); });
 const nameInput = document.getElementById('nameInput');
 
@@ -125,13 +98,15 @@ function updateSidePickerLabels() {
   bBtn.textContent = I18N.t(bKey);
 }
 
-function selectGame(game) {
-  selectedGameType=game;
-  document.querySelectorAll('#gameTypeOptions .tc-btn').forEach(button=>button.classList.toggle('active',button.dataset.gt===game));
-  updateSidePickerLabels();
-  syncSetup();
-}
-document.querySelectorAll('#gameTypeOptions .tc-btn').forEach(btn=>{btn.onclick=()=>selectGame(btn.dataset.gt);});
+document.querySelectorAll('#gameTypeOptions .tc-btn').forEach((btn) => {
+  btn.onclick = () => {
+    document.querySelectorAll('#gameTypeOptions .tc-btn').forEach((b) => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedGameType = btn.dataset.gt;
+    updateSidePickerLabels();
+    syncSetup();
+  };
+});
 
 document.querySelectorAll('#tcBaseOptions .tc-btn').forEach((btn) => {
   btn.onclick = () => {
