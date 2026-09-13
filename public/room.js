@@ -21,7 +21,14 @@ const roomId = params.get('id');
 const initialPw = params.get('pw') || null;
 if (!roomId) AppNavigation.go('/');
 
+// Use the same identity in the handshake when entering a room or reconnecting.
+let userUid = localStorage.getItem('makruk_uid');
+if (!userUid) {
+  userUid = 'u_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+  localStorage.setItem('makruk_uid', userUid);
+}
 const socket = io({
+  auth: { uid: userUid },
   reconnection: true,
   reconnectionAttempts: Infinity,        // keep trying forever
   reconnectionDelay: 1000,               // start with 1s
@@ -93,12 +100,6 @@ let pieceSet = 'studio';
 let boardScene = null, use3D = true, sceneFailed = false, sceneLoading = false;
 let sceneRequest = 0;
 
-// Persistent UID so slot reclaim works even for anonymous users across reconnects
-let userUid = localStorage.getItem('makruk_uid');
-if (!userUid) {
-  userUid = 'u_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
-  localStorage.setItem('makruk_uid', userUid);
-}
 const userName = localStorage.getItem('makruk_name') || '';
 let currentDisplayName = userName;
 // Last password that reached the server — reused on reconnect (so a player
@@ -332,11 +333,15 @@ function updateFooterStats() {
   const lang = I18N.getLang();
   const locale = lang === 'th' ? 'th-TH' : 'en-US';
   const v = lastSiteStats.totalVisits.toLocaleString(locale);
-  const o = lastSiteStats.onlineUsers.toLocaleString(locale);
+  const o = socket.connected && lastSiteStats.onlineUsers !== null ? lastSiteStats.onlineUsers.toLocaleString(locale) : '—';
   footer.innerHTML = `© 2026 Playmakruk.com — ${I18N.t('footer.visits')} <strong>${v}</strong> ${I18N.t('footer.times')} • ${I18N.t('footer.online')} <strong>${o}</strong> ${I18N.t('footer.people')}`;
 }
 socket.on('site_stats', ({ totalVisits, onlineUsers }) => {
   lastSiteStats = { totalVisits, onlineUsers };
+  updateFooterStats();
+});
+socket.on('disconnect', () => {
+  if (lastSiteStats) lastSiteStats.onlineUsers = null;
   updateFooterStats();
 });
 

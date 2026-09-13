@@ -283,7 +283,21 @@ const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
 const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 const VISITS_KEY = 'playmakruk:visits';
 let totalVisits = 0;
-let onlineUsers = 0;
+
+function validUserUid(uid) {
+  return typeof uid === 'string' && /^[a-zA-Z0-9_-]{8,64}$/.test(uid);
+}
+
+function siteStats() {
+  // One browser identity may have several tabs or overlapping reconnects.
+  // Derive presence from live sockets so a separate counter cannot drift.
+  const users = new Set();
+  for (const socket of io.sockets.sockets.values()) {
+    const uid = socket.data.user?.uid;
+    users.add(uid ? 'uid:' + uid : 'socket:' + socket.id);
+  }
+  return { totalVisits, onlineUsers: users.size };
+}
 
 async function upstashCmd(pathSegment) {
   const res = await fetch(`${UPSTASH_URL}/${pathSegment}`, {
@@ -480,7 +494,7 @@ async function incrVisits() {
 loadVisits().then((n) => {
   totalVisits = n;
   console.log(`[Visits] starting count: ${totalVisits}${UPSTASH_URL ? ' (Upstash)' : ' (file)'}`);
-  io.emit('site_stats', { totalVisits, onlineUsers });
+  io.emit('site_stats', siteStats());
 });
 
 restoreRooms().then((n) => {
@@ -500,7 +514,7 @@ app.use((req, res, next) => {
     res.setHeader('Set-Cookie', 'mkv=1; Path=/; Max-Age=31536000; SameSite=Lax');
     incrVisits().then((n) => {
       totalVisits = n;
-      io.emit('site_stats', { totalVisits, onlineUsers });
+      io.emit('site_stats', siteStats());
     }).catch(() => {});
   }
   next();
@@ -514,7 +528,8 @@ app.get('/health', (req, res) => {
     status: 'ok',
     uptime: process.uptime(),
     rooms: rooms.size,
-    onlineUsers,
+    onlineUsers: siteStats().onlineUsers,
+    onlineConnections: io.sockets.sockets.size,
     timestamp: Date.now(),
   });
 });
@@ -668,9 +683,12 @@ function pushSystemMessage(room, key, params) {
 }
 
 io.on('connection', (socket) => {
-  socket.data.user = { name: 'Anon-' + socket.id.slice(0, 4), uid: null };
-  onlineUsers++;
-  io.emit('site_stats', { totalVisits, onlineUsers });
+  const uid = socket.handshake.auth?.uid;
+  socket.data.user = {
+    name: socket.data.user?.name || 'Anon-' + socket.id.slice(0, 4),
+    uid: validUserUid(uid) ? uid : (socket.data.user?.uid || null),
+  };
+  io.emit('site_stats', siteStats());
 
   socket.on('set_name', (name) => {
     if (typeof name === 'string' && name.trim()) {
@@ -681,8 +699,10 @@ io.on('connection', (socket) => {
   // Persistent user ID — stable across reconnects so slot reclaim works
   // even when the user has no saved name (random Anon-XXXX changes each connect)
   socket.on('set_uid', (uid) => {
-    if (typeof uid === 'string' && /^[a-zA-Z0-9_-]{8,64}$/.test(uid)) {
+    if (validUserUid(uid) && socket.data.user.uid !== uid) {
       socket.data.user.uid = uid;
+      // Older open pages send identity after connecting instead of in auth.
+      io.emit('site_stats', siteStats());
     }
   });
 
@@ -991,8 +1011,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    onlineUsers = Math.max(0, onlineUsers - 1);
-    io.emit('site_stats', { totalVisits, onlineUsers });
+    io.emit('site_stats', siteStats());
     const roomId = socket.data.roomId;
     if (!roomId) return;
     const room = rooms.get(roomId);

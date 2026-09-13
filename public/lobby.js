@@ -6,7 +6,14 @@ const CHECKERS_SYMBOLS = {
   'wM': '⛂', 'wK': '⛃', 'bM': '⛂', 'bK': '⛃'
 };
 
+// Persistent UID shared by tabs and room.js, available before connecting.
+let userUid = localStorage.getItem('makruk_uid');
+if (!userUid) {
+  userUid = 'u_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+  localStorage.setItem('makruk_uid', userUid);
+}
 const socket = io({
+  auth: { uid: userUid },
   reconnection: true,
   reconnectionAttempts: Infinity,
   reconnectionDelay: 1000,
@@ -19,12 +26,6 @@ document.getElementById('langToggleBtn').onclick = () => I18N.toggleLang();
 document.addEventListener('langchange', () => { socket.emit('list_rooms'); });
 const nameInput = document.getElementById('nameInput');
 
-// Persistent UID (shared with room.js) so slot reclaim works across reconnects
-let userUid = localStorage.getItem('makruk_uid');
-if (!userUid) {
-  userUid = 'u_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
-  localStorage.setItem('makruk_uid', userUid);
-}
 let savedName = localStorage.getItem('makruk_name') || '';
 nameInput.value = savedName;
 updateProfileButton();
@@ -271,25 +272,25 @@ function fmtFooterLobby(totalVisits, onlineUsers) {
   const lang = I18N.getLang();
   const locale = lang === 'th' ? 'th-TH' : 'en-US';
   const v = totalVisits.toLocaleString(locale);
-  const o = onlineUsers.toLocaleString(locale);
+  const o = onlineUsers === null ? '—' : onlineUsers.toLocaleString(locale);
   return `© 2026 Playmakruk.com — ${I18N.t('footer.visits')} <strong>${v}</strong> ${I18N.t('footer.times')} • ${I18N.t('footer.online')} <strong>${o}</strong> ${I18N.t('footer.people')}`;
+}
+function renderSiteStats() {
+  const onlineUsers = socket.connected && lastSiteStats ? lastSiteStats.onlineUsers : null;
+  const onlineEl = document.getElementById('statOnline');
+  if (onlineEl) onlineEl.textContent = onlineUsers === null ? '—' : onlineUsers.toLocaleString(I18N.getLang() === 'th' ? 'th-TH' : 'en-US');
+  const footer = document.getElementById('footerStats');
+  if (footer && lastSiteStats) footer.innerHTML = fmtFooterLobby(lastSiteStats.totalVisits, onlineUsers);
 }
 socket.on('site_stats', ({ totalVisits, onlineUsers }) => {
   lastSiteStats = { totalVisits, onlineUsers };
-  const onlineEl = document.getElementById('statOnline');
-  if (onlineEl) onlineEl.textContent = onlineUsers.toLocaleString(I18N.getLang() === 'th' ? 'th-TH' : 'en-US');
-  const footer = document.getElementById('footerStats');
-  if (footer) footer.innerHTML = fmtFooterLobby(totalVisits, onlineUsers);
+  renderSiteStats();
 });
-document.addEventListener('langchange', () => {
-  if (lastSiteStats) {
-    const f = document.getElementById('footerStats');
-    if (f) f.innerHTML = fmtFooterLobby(lastSiteStats.totalVisits, lastSiteStats.onlineUsers);
-    const o = document.getElementById('statOnline');
-    if (o) o.textContent = lastSiteStats.onlineUsers.toLocaleString(I18N.getLang() === 'th' ? 'th-TH' : 'en-US');
-  }
-
+socket.on('disconnect', () => {
+  if (lastSiteStats) lastSiteStats.onlineUsers = null;
+  renderSiteStats();
 });
+document.addEventListener('langchange', renderSiteStats);
 
 function renderStats(rooms) {
   const totalPlayers = rooms.reduce((sum, r) => sum + r.playerCount, 0);

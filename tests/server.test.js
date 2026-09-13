@@ -15,11 +15,11 @@ class Client {
     assert.equal(r.status, 200);
     return r.text();
   }
-  async connect(uid) {
+  async connect(uid, authenticate = false) {
     const handshake = await this.request();
     this.sid = JSON.parse(handshake.slice(1)).sid;
-    await this.request('POST', '40');
-    await this.next('site_stats');
+    await this.request('POST', '40' + (authenticate ? JSON.stringify({ uid }) : ''));
+    this.initialStats = await this.next('site_stats');
     await this.emit('set_uid', uid);
     return this;
   }
@@ -79,9 +79,49 @@ test('real server gameplay and reconnect regressions', { timeout: 40000 }, async
       if (match) { clearTimeout(timer); resolve('http://127.0.0.1:' + match[1]); }
     });
   });
-  const client = async uid => { const c = new Client(base); clients.push(c); return c.connect(uid); };
+  const client = async (uid, authenticate) => { const c = new Client(base); clients.push(c); return c.connect(uid, authenticate); };
   const create = async (c, options = {}) => { await c.emit('create_room', { gameType: 'chess', ...options }); return (await c.next('room_created')).id; };
   const join = async (c, id, password) => { await c.emit('join_room', { roomId: id, password }); return (await c.next('joined')).role; };
+
+  await t.test('online presence counts seven tabs from one browser once and removes closed connections', async () => {
+    const tabs = [];
+    const stats = async () => (await fetch(base + '/health')).json();
+    try {
+      assert.equal((await stats()).onlineUsers, 0);
+      for (let i = 0; i < 7; i++) {
+        const tab = await client('presence_same_browser', i % 2 === 0);
+        tabs.push(tab);
+        assert.equal((await stats()).onlineUsers, 1, 'a repeated browser UID must not add a person');
+        if (i % 2 === 0) assert.equal(tab.initialStats.onlineUsers, 1, 'identity is known in the first stats packet');
+      }
+      assert.equal((await stats()).onlineConnections, 7);
+      const other = await client('presence_other_browser', true);
+      tabs.push(other);
+      assert.equal((await stats()).onlineUsers, 2);
+      await tabs[0].next('site_stats', value => value.onlineUsers === 2);
+      // Repeated identity messages and invalid IDs must not change the count.
+      await tabs[0].emit('set_uid', 'presence_same_browser');
+      await tabs[0].emit('set_uid', { invalid: true });
+      assert.equal((await stats()).onlineUsers, 2);
+      for (const tab of tabs.slice(0, 6)) await tab.close();
+      assert.equal((await stats()).onlineUsers, 2, 'the last tab keeps its browser online');
+      await tabs[6].close();
+      assert.equal((await stats()).onlineUsers, 1);
+      await other.next('site_stats', value => value.onlineUsers === 1);
+      const reconnected = await client('presence_other_browser', true);
+      tabs.push(reconnected);
+      assert.equal((await stats()).onlineUsers, 1, 'overlapping reconnects must not double count');
+      await other.close();
+      assert.equal((await stats()).onlineUsers, 1);
+      await reconnected.close();
+      assert.equal((await stats()).onlineUsers, 0);
+      // HTTP visits, preview crawlers and health monitors are not online players.
+      await fetch(base + '/', { headers: { 'User-Agent': 'facebookexternalhit/1.1' } });
+      assert.equal((await stats()).onlineUsers, 0);
+    } finally {
+      await Promise.allSettled(tabs.map(tab => tab.close()));
+    }
+  });
 
   await t.test('malformed join and move payloads do not crash the server', async () => {
     const c = await client('test_bad_payload');
@@ -220,7 +260,10 @@ test('real server gameplay and reconnect regressions', { timeout: 40000 }, async
   });
   await t.test('HTML returns a persistent shell, clean room metadata and safely escaped room names',async()=>{
     const a=await client('meta_client'),id=await create(a,{name:'Room <title> & "friends"'});
-    const html=await(await fetch(base+'/room.html?id='+id)).text();assert.match(html,/id="appFrame"/);assert.match(html,/Room &lt;title&gt; &amp; &quot;friends&quot;/);assert.ok(html.includes('https://playmakruk.com/room.html?id='+id));assert.match(html,/og-image.png\?v=studio-20260910/);
+    const html=await(await fetch(base+'/room.html?id='+id)).text();assert.match(html,/id="appFrame"/);assert.match(html,/Room &lt;title&gt; &amp; &quot;friends&quot;/);assert.ok(html.includes('https://playmakruk.com/room.html?id='+id));
+    const imageUrl = html.match(/property="og:image" content="([^"]+)"/)[1];
+    assert.equal(html.match(/name="twitter:image" content="([^"]+)"/)[1], imageUrl);
+    assert.equal((await fetch(base + new URL(imageUrl).pathname)).status, 200);
     const content=await(await fetch(base+'/room.html?id='+id+'&_view=content')).text();assert.ok(!/src="radio(?:-core)?\.js/.test(content));assert.match(content,/src="\/navigation\.js\?v=[a-f0-9]{12}"/);
     const version=html.match(/name="playmakruk-build" content="([a-f0-9]{12})"/)[1];
     for(const page of [html,content]){const scripts=[...page.matchAll(/src="([^" ]+\.js[^" ]*)"/g)].map(x=>x[1]);assert.ok(scripts.length>0);assert.ok(scripts.every(url=>url.endsWith('?v='+version)));assert.ok(page.includes('radio.css?v='+version));}
