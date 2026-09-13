@@ -273,7 +273,7 @@
       <section class="play-panel" aria-labelledby="playHeading">
         <div class="section-header"><h2 id="playHeading"><span class="step-number">02</span><span data-i18n="ui.ready">ตั้งวงพร้อมเล่น</span></h2></div>
         <div class="selected-game-line"><span data-i18n="ui.yourGame">เกมที่เลือก</span><strong id="selectedGameName">หมากรุกไทย</strong></div>
-        <fieldset class="setup-field"><legend data-i18n="ui.opponent">อยากเล่นกับใคร?</legend><div class="opponent-options" id="opponentOptions"><button type="button" class="opponent-choice active" data-mode="friend" aria-pressed="true"><span aria-hidden="true">♙ ♙</span><span data-i18n="ui.friend">เล่นกับเพื่อน</span></button><button type="button" class="opponent-choice" data-mode="bot" aria-pressed="false"><span aria-hidden="true">✦</span><span data-i18n="ui.bot">ฝึกกับ AI</span></button></div></fieldset>
+        <fieldset class="setup-field"><legend data-i18n="ui.opponent">อยากเล่นกับใคร?</legend><div class="opponent-options" id="opponentOptions"><button type="button" class="opponent-choice active" data-mode="friend" aria-pressed="true"><span aria-hidden="true">♙ ♙</span><span data-i18n="ui.friend">เล่นกับเพื่อน</span></button><button type="button" class="opponent-choice" data-mode="bot" aria-pressed="false"><span aria-hidden="true">✦</span><span data-i18n="ui.bot">ฝึกกับ AI</span></button><button type="button" class="opponent-choice" data-mode="local" aria-pressed="false"><span aria-hidden="true">▣</span><span data-i18n="ui.local">เล่นด้วยกันเครื่องเดียว</span></button></div></fieldset>
         <input type="checkbox" id="botEnabled" hidden>
         <div class="time-control-row" id="botDifficultyRow" hidden><span class="tc-label" id="difficultyLabel" data-i18n="ui.difficulty">ระดับความยาก</span><div class="tc-options" id="botOptions" role="group" aria-labelledby="difficultyLabel"><button type="button" class="tc-btn" data-bd="easy" data-i18n="bot.easy">ง่าย</button><button type="button" class="tc-btn active" data-bd="medium" data-i18n="bot.medium">กลาง</button><button type="button" class="tc-btn" data-bd="hard" data-i18n="bot.hard">ยาก</button></div></div>
         <div class="time-control-row"><span class="tc-label" id="timeLabel" data-i18n="create.timeBase">เวลาต่อฝ่าย</span><div class="tc-options time-options" id="tcBaseOptions" role="group" aria-labelledby="timeLabel"><button type="button" class="tc-btn active" data-tc="" data-i18n="tc.none">ไม่จับเวลา</button><button type="button" class="tc-btn" data-tc="1">1m</button><button type="button" class="tc-btn" data-tc="3">3m</button><button type="button" class="tc-btn" data-tc="5">5m</button><button type="button" class="tc-btn" data-tc="10">10m</button><button type="button" class="tc-btn" data-tc="15">15m</button><button type="button" class="tc-btn" data-tc="30">30m</button><button type="button" class="tc-btn" data-tc="60">1h</button><button type="button" class="tc-btn" data-tc="90">90m</button></div></div>
@@ -385,7 +385,7 @@
   <script src="i18n.js"></script>
   <script src="pieces.js"></script>
   <script src="lobby.js"></script>
-  <script src="radio-core.js"></script>
+  <script src="radio-catalog.js"></script><script src="radio-core.js"></script>
 <script src="radio.js"></script>
 </body>
 </html>

@@ -316,3 +316,9 @@ html.app-content{overscroll-behavior-y:contain}
 }
 @media(max-width:360px){.lobby-page>header .logo-mark{display:none;}.lobby-page>header .logo{font-size:17px;}}
 @media(max-height:450px){.profile-dialog{padding:18px 22px;}.profile-dialog-icon{display:none;}.profile-dialog h2{font-size:19px;margin:0;}.profile-dialog #profileHint{margin-bottom:3px;}.profile-dialog form{gap:5px;}.profile-dialog #saveName{margin-top:5px;}.profile-dialog #nameInput{min-height:44px;}}
+
+/* Friends sharing a screen have a clear third option. */
+.opponent-choice[data-mode="local"] { grid-column:1/-1; flex-direction:row; gap:10px; min-height:48px; }
+.local-play .room-sidebar { display:none; }
+
+.local-play .room-grid { grid-template-columns:minmax(0,1fr); max-width:980px; margin-inline:auto; }

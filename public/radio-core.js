@@ -8,11 +8,12 @@
       const name = String(raw.name || '').trim().slice(0,100);
       const uuid = String(raw.stationuuid || raw.uuid || '').slice(0,200);
       if (!name || !uuid) return null;
-      return {uuid,name,url:url.href,tags:String(raw.tags || '').slice(0,180),codec:String(raw.codec || '').slice(0,20),bitrate:Math.max(0,Number(raw.bitrate)||0),hls:raw.hls === 1 || raw.hls === true || /\.m3u8(?:\?|$)/i.test(url.href)};
+      const band = raw.band === 'AM' || /\bAM\s*\d{3,4}/i.test(name) ? 'AM' : raw.band === 'FM' ? 'FM' : '';
+      return {uuid,name,url:url.href,tags:String(raw.tags || '').slice(0,180),codec:String(raw.codec || '').slice(0,20),bitrate:Math.max(0,Number(raw.bitrate)||0),hls:raw.hls === 1 || raw.hls === true || /\.m3u8(?:\?|$)/i.test(url.href),band,recommended:raw.recommended===true};
     } catch { return null; }
   }
   function radioOnly(raw) {
-    return !/\b(?:tv|television|video|h\.?26[45])\b/i.test([raw?.name,raw?.tags,raw?.codec].join(' '));
+    return !/\b(?:tv|television|video|h\.?26[45])\b|\bNBT\d*HD\b|\/live_event\//i.test([raw?.name,raw?.tags,raw?.codec,raw?.url_resolved||raw?.url].join(' '));
   }
   function fixedMobileVolume(nav={}) {
     return /iPhone|iPad|iPod/i.test(nav.userAgent||'')||(/Mac/i.test(nav.platform||'')&&nav.maxTouchPoints>1);
@@ -31,6 +32,16 @@
       set(key,value) { memory.set(key,String(value));try {backend.setItem(key,String(value));} catch {} },
       json(key,fallback) { try { return JSON.parse(this.get(key)) ?? fallback; } catch { return fallback; } }
     };
+  }
+  function catalogueStation(raw, catalogue = {}) {
+    const item = station(raw); if (!item) return null;
+    const replacement = (catalogue.replacements || []).find(r => r.from === item.uuid);
+    const preferred = (catalogue.stations || []).find(s => s.uuid === (replacement?.to || item.uuid) || s.url === item.url);
+    if (preferred) return station(preferred);
+    return (catalogue.excludedUrls || []).includes(item.url) ? null : item;
+  }
+  function mergeStations(catalogue = {}, directory = [], custom = []) {
+    return stations([...custom, ...(catalogue.stations || []), ...directory.map(s => catalogueStation(s, catalogue))]);
   }
   async function fetchStations(fetcher, hosts, timeout=4500) {
     for (const host of hosts) {
@@ -64,8 +75,9 @@
       const audio=this.makeAudio();this.audio=audio;audio.preload='none';try{audio.volume=this.volume*this.volume;}catch{}audio.muted=this.muted;
       const active=()=>id===this.generation;
       const fail=(state='error')=>{if(active()){this.release();this.update(state);}};
-      const arm=()=>{clearTimeout(this.timer);this.timer=setTimeout(()=>fail('timeout'),this.timeout);};
-      audio.onplaying=()=>{if(active()){clearTimeout(this.timer);this.update('playing');}};
+      // Repeated waiting/stalled events must not keep a dead stream loading forever.
+      const arm=()=>{if(!this.timer)this.timer=setTimeout(()=>fail('timeout'),this.timeout);};
+      audio.onplaying=()=>{if(active()){clearTimeout(this.timer);this.timer=null;this.update('playing');}};
       audio.onwaiting=audio.onstalled=()=>{if(active()){this.update('loading');arm();}};
       audio.onerror=()=>fail('error');audio.onended=()=>fail('ended');
       this.update('loading');arm();
@@ -81,12 +93,12 @@
           hls.loadSource(target.url);hls.attachMedia(audio);
         } else audio.src=target.url;
         await audio.play();
-        if(active()){clearTimeout(this.timer);this.update('playing');}
+        if(active()){clearTimeout(this.timer);this.timer=null;this.update('playing');}
       } catch(error) {
         if(active()) fail(error.name==='NotAllowedError'?'blocked':'error');
       }
     }
   }
-  const api={station,stations,storage,fetchStations,Player,fixedMobileVolume};
+  const api={station,stations,storage,fetchStations,Player,fixedMobileVolume,catalogueStation,mergeStations};
   if(typeof module!=='undefined' && module.exports)module.exports=api;else root.RadioCore=api;
 })(typeof window!=='undefined'?window:globalThis);

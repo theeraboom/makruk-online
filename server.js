@@ -337,6 +337,8 @@ function snapshotRoom(room) {
     hasDefaultName: !!room.hasDefaultName,
     password: room.password,
     creatorColor: room.creatorColor,
+    passAndPlay: !!room.passAndPlay,
+    localOwnerUid: room.localOwnerUid || null,
     bot: room.bot,
     gameType: room.gameType,
     board: room.board,
@@ -554,7 +556,7 @@ function renderPage(req, html) {
   html=html.replace('</head>',`<meta name="playmakruk-build" content="${ASSET_VERSION}"></head>`);
   if (req.query._view === 'content') {
     return versionAssets(html.replace('</head>', '<script src="/navigation.js"></script></head>')
-      .replace(/<script src="radio(?:-core)?\.js"><\/script>/g, '')
+      .replace(/<script src="radio(?:-core|-catalog)?\.js"><\/script>/g, '')
       .replace('<script src="i18n.js"></script>', '<script src="i18n.js"></script><script src="audio-engine.js"></script>'));
   }
   const head = html.match(/<head>([\s\S]*?)<\/head>/)[1];
@@ -567,14 +569,14 @@ function renderPage(req, html) {
     <iframe id="appFrame" title="Playmakruk — เกมและห้องเล่น" allow="autoplay; clipboard-write; web-share"></iframe>
     <div id="navigationStatus" role="status">กำลังเปิดหน้า…</div>
     <noscript><style>html,body.app-shell{position:static;height:auto;min-height:100%;overflow:auto}.app-shell #appFrame,.app-shell #navigationStatus{display:none}</style><p>เปิด JavaScript เพื่อเล่นเกมและฟังวิทยุ</p>${fallback}</noscript>
-    <script src="/app-shell.js"></script><script src="/i18n.js"></script><script src="/audio-engine.js"></script><script src="/radio-core.js"></script><script src="/radio.js"></script>
+    <script src="/app-shell.js"></script><script src="/i18n.js"></script><script src="/audio-engine.js"></script><script src="/radio-catalog.js"></script><script src="/radio-core.js"></script><script src="/radio.js"></script>
   </body></html>`);
 }
 app.get(HTML_PATHS, (req, res, next) => {
   let html;
   try { html = fs.readFileSync(path.join(__dirname,'public',req.path==='/'?'index.html':req.path.slice(1)),'utf8'); } catch {return next();}
   const room=req.path==='/room.html'?rooms.get(req.query.id):null;
-  if(room){
+  if(room&&!room.passAndPlay){
     const label=GAME_LABELS_TH[room.gameType]||'หมากรุก';
     const rawName=room.hasDefaultName?(DEFAULT_ROOM_NAMES_TH[room.gameType]||'วงหมากรุก'):room.name;
     const title=escapeHtml(`${room.password?'🔒 ':''}${rawName} — ${label} | Playmakruk.com`);
@@ -628,7 +630,7 @@ let roomListTimer = null;
 let roomListDirty = false;
 function broadcastRoomList() {
   if (roomListTimer) { roomListDirty = true; return; }
-  io.emit('rooms_list', Array.from(rooms.values()).map(publicRoom));
+  io.emit('rooms_list', Array.from(rooms.values()).filter(room => !room.passAndPlay).map(publicRoom));
   roomListTimer = setTimeout(() => {
     roomListTimer = null;
     if (roomListDirty) {
@@ -646,6 +648,7 @@ function broadcastRoomState(roomId) {
     name: room.name,
     hasDefaultName: !!room.hasDefaultName,
     gameType: room.gameType,
+    passAndPlay: !!room.passAndPlay,
     board: room.board,
     currentPlayer: room.currentPlayer,
     status: room.status,
@@ -682,6 +685,12 @@ function pushSystemMessage(room, key, params) {
   io.to(room.id).emit('chat_message', msg);
 }
 
+function playerSide(socket, room) {
+  if (!room?.passAndPlay) return socket.data.role;
+  return socket.data.role === 'local' && room.localOwnerUid === socket.data.user.uid &&
+    room.players.w?.id === socket.id && room.players.b?.id === socket.id ? room.currentPlayer : null;
+}
+
 io.on('connection', (socket) => {
   const uid = socket.handshake.auth?.uid;
   socket.data.user = {
@@ -707,7 +716,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('list_rooms', () => {
-    socket.emit('rooms_list', Array.from(rooms.values()).map(publicRoom));
+    socket.emit('rooms_list', Array.from(rooms.values()).filter(room => !room.passAndPlay).map(publicRoom));
   });
 
   socket.on('create_room', (payload) => {
@@ -717,7 +726,9 @@ io.on('connection', (socket) => {
     const validBase = ALLOWED_TIME_BASE.includes(p.timeBase) ? p.timeBase : null;
     const validInc = ALLOWED_TIME_INCREMENT.includes(p.timeIncrement) ? p.timeIncrement : 0;
     const password = (typeof p.password === 'string' && p.password.trim()) ? p.password.trim().slice(0, 40) : null;
-    const botEnabled = !!p.botEnabled;
+    const passAndPlay = p.passAndPlay === true;
+    if (passAndPlay && !validUserUid(socket.data.user.uid)) { socket.emit('error_msg', 'กรุณาลองเปิดเกมใหม่'); return; }
+    const botEnabled = !passAndPlay && !!p.botEnabled;
     const botDifficulty = ALLOWED_BOT_DIFFICULTIES.includes(p.botDifficulty) ? p.botDifficulty : 'medium';
     // creator's preferred side ('w' or 'b'); falls back to 'w' if unset
     // backward-compat: legacy clients sent botColor (= bot's side); userColor is the inverse
@@ -731,8 +742,10 @@ io.on('connection', (socket) => {
       id,
       name: userName || '',
       hasDefaultName: !userName,
-      password,
+      password: passAndPlay ? null : password,
       creatorColor,
+      passAndPlay,
+      localOwnerUid: passAndPlay ? socket.data.user.uid : null,
       players: { w: null, b: null },
       viewers: new Map(),
       messages: [],
@@ -762,6 +775,23 @@ io.on('connection', (socket) => {
       return;
     }
 
+    if (room.passAndPlay) {
+      if (room.localOwnerUid !== socket.data.user.uid) {
+        socket.emit('room_not_found', { roomId }); return;
+      }
+      const controller = room.players.w?.id || room.players.b?.id;
+      if (controller && controller !== socket.id && io.sockets.sockets.has(controller)) {
+        socket.emit('error_msg', 'เกมนี้เปิดอยู่ในอีกแท็บ กรุณากลับไปเล่นที่แท็บเดิม');
+        socket.emit('room_not_found', { roomId }); return;
+      }
+      socket.join(roomId); socket.data.roomId = roomId; socket.data.role = 'local';
+      for (const color of ['w', 'b']) room.players[color] = { id: socket.id, uid: room.localOwnerUid, name: color === 'w' ? 'Player 1' : 'Player 2' };
+      if (room.status === 'waiting') room.status = 'playing';
+      if (room.status === 'playing' && !room.runningSince) startClock(room);
+      socket.emit('joined', { roomId, role: room.currentPlayer, passAndPlay: true, name: socket.data.user.name });
+      socket.emit('chat_history', room.messages);
+      broadcastRoomState(roomId); persistRoom(room); return;
+    }
     if (room.password && room.password !== password) {
       socket.emit('password_required', { roomId, name: room.name });
       return;
@@ -869,9 +899,11 @@ io.on('connection', (socket) => {
     const roomId = socket.data.roomId;
     const room = rooms.get(roomId);
     if (!room || room.status !== 'playing') return;
-    if (socket.data.role !== room.currentPlayer) {
+    if (playerSide(socket, room) !== room.currentPlayer) {
       socket.emit('error_msg', 'ยังไม่ถึงตาคุณ'); return;
     }
+    // Ignore a queued second tap until the first move has reached the screen.
+    if (room.passAndPlay && payload.ply !== room.moves.length) { broadcastRoomState(roomId); return; }
 
     // Connect Four: client sends a column index to drop into.
     if (CONNECT4_TYPES.includes(room.gameType)) {
@@ -932,11 +964,11 @@ io.on('connection', (socket) => {
   socket.on('resign', () => {
     const room = rooms.get(socket.data.roomId);
     if (!room || room.status !== 'playing') return;
-    if (socket.data.role !== 'w' && socket.data.role !== 'b') return;
+    if (!['w', 'b'].includes(playerSide(socket, room))) return;
     deductTime(room);
-    const loser = socket.data.role;
+    const loser = playerSide(socket, room);
     const winner = loser === 'w' ? 'b' : 'w';
-    if(room.gameType==='chess-intl' && Rules.timeoutWinner(room,socket.data.role)===null) finishDraw(room,'dead');
+    if(room.gameType==='chess-intl' && Rules.timeoutWinner(room,loser)===null) finishDraw(room,'dead');
     else {endGame(room, 'resign', winner);pushSystemMessage(room, 'sys.resign', { user: socket.data.user.name, winner });}
     broadcastRoomState(socket.data.roomId);
     broadcastRoomList();
@@ -971,13 +1003,14 @@ io.on('connection', (socket) => {
   });
 
   socket.on('draw_action', (payload) => {
-    const room=rooms.get(socket.data.roomId),side=socket.data.role;
+    const room=rooms.get(socket.data.roomId),side=playerSide(socket,room);
     if(!room||room.status!=='playing'||!['w','b'].includes(side)||!payload||typeof payload!=='object')return;
     // A draw request cannot rescue a flag that has already fallen.
     if(room.timeBase&&room.runningSince&&(room.currentPlayer==='w'?room.whiteTime:room.blackTime)-(Date.now()-room.runningSince)<=0){finishTimeout(room,room.currentPlayer);}
     else {
       const d=Rules.ensure(room);
-      if(payload.action==='claim'&&room.currentPlayer===side&&Rules.claimReason(room))finishDraw(room,Rules.claimReason(room));
+      if(payload.action==='agree'&&room.passAndPlay)finishDraw(room,'agreement');
+      else if(payload.action==='claim'&&room.currentPlayer===side&&Rules.claimReason(room))finishDraw(room,Rules.claimReason(room));
       else if(payload.action==='offer'&&!room.bot&&!d.offer)d.offer=side;
       else if(payload.action==='accept'&&d.offer&&d.offer!==side)finishDraw(room,'agreement');
       else if(payload.action==='decline'&&d.offer&&d.offer!==side)d.offer=null;
@@ -991,7 +1024,7 @@ io.on('connection', (socket) => {
     const roomId = socket.data.roomId;
     const room = rooms.get(roomId);
     if (!room) return;
-    if (socket.data.role !== 'w' && socket.data.role !== 'b') return;
+    if (!['w', 'b'].includes(playerSide(socket, room))) return;
     Object.assign(room, buildInitialMatchState(room.gameType, room.timeBase, room.timeIncrement));
     if (room.bot) {
       room.players[room.bot.color] = { id: 'BOT', name: 'Bot', isBot: true, botDifficulty: room.bot.difficulty };
@@ -1018,6 +1051,12 @@ io.on('connection', (socket) => {
     if (!room) return;
 
     const role = socket.data.role;
+    if (room.passAndPlay) {
+      if (room.players.w?.id !== socket.id || room.players.b?.id !== socket.id) return;
+      for (const color of ['w', 'b']) room.players[color] = { ...room.players[color], id: null, disconnectedAt: Date.now() };
+      if (room.status === 'playing') { deductTime(room); room.status = 'waiting'; }
+      persistRoom(room); return;
+    }
     let removed = false;
     // Mark slot as disconnected (for reclaim window) instead of clearing entirely
     // — name is kept so the same user can reclaim within RECLAIM_WINDOW_MS

@@ -135,6 +135,41 @@ test('real server gameplay and reconnect regressions', { timeout: 40000 }, async
     }
     assert.equal((await fetch(base + '/health')).status, 200);
   });
+  await t.test('one device can alternate both sides in all five games while outsiders cannot join', async () => {
+    for (const gameType of ['chess','chess-intl','checkers','checkers-intl','connect4']) {
+      const uid='local_game_'+gameType,owner=await client(uid,true),outsider=await client('outsider_'+gameType,true);
+      const id=await create(owner,{gameType,passAndPlay:true,botEnabled:true,timeBase:5,timeIncrement:2,password:'ignored'});
+      assert.equal(await join(owner,id),gameType==='checkers-intl'?'b':'w');
+      let state=await owner.next('room_state',s=>s.id===id);
+      assert.equal(state.status,'playing');assert.equal(state.passAndPlay,true);assert.equal(state.hasBot,false);
+      assert.ok(state.players.w&&!state.players.w.isBot&&state.players.b&&!state.players.b.isBot);
+      await outsider.emit('list_rooms');assert.ok(!(await outsider.next('rooms_list',list=>!list.some(r=>r.id===id))).some(r=>r.id===id));
+      await outsider.emit('join_room',{roomId:id});assert.equal((await outsider.next('room_not_found')).roomId,id);
+      // The owner cannot control the same match from a second active tab.
+      const second=await client(uid,true);await second.emit('join_room',{roomId:id});assert.equal((await second.next('room_not_found')).roomId,id);
+      const engine=require('../public/'+gameType);
+      for(let turn=0;turn<2;turn++){
+        let payload={ply:state.moves.length};
+        if(gameType==='connect4')payload.col=turn;
+        else outer:for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+          if(engine.pieceColor(state.board[r][c])!==state.currentPlayer)continue;
+          const legal=gameType.startsWith('checkers')?engine.getLegalMoves(state.board,r,c,state.currentPlayer,state.mustContinueFrom):gameType==='chess-intl'?engine.getLegalMoves(state.board,r,c,{castling:state.castling,enPassant:state.enPassant}):engine.getLegalMoves(state.board,r,c);
+          if(legal.length){payload={...payload,from:{r,c},to:{r:legal[0].r,c:legal[0].c}};break outer;}
+        }
+        await owner.emit('move',payload);state=await owner.next('room_state',s=>s.id===id&&s.moves.length===turn+1);
+        assert.equal(state.currentPlayer,turn===0?(gameType==='checkers-intl'?'w':'b'):(gameType==='checkers-intl'?'b':'w'));
+        // A duplicate tap must not play the next side's move.
+        await owner.emit('move',payload);assert.equal((await owner.next('room_state',s=>s.id===id&&s.moves.length===turn+1)).moves.length,turn+1);
+      }
+      await owner.close();
+      const back=await client(uid,true);await join(back,id);state=await back.next('room_state',s=>s.id===id);
+      assert.equal(state.moves.length,2);assert.equal(state.status,'playing');assert.ok(state.runningSince);
+      await back.emit('draw_action',{action:'agree'});assert.equal((await back.next('room_state',s=>s.status==='ended')).endedReason,'agreement');
+      await back.emit('reset_game');state=await back.next('room_state',s=>s.status==='playing'&&s.moves.length===0);assert.equal(state.currentPlayer,gameType==='checkers-intl'?'b':'w');
+      await back.emit('resign');assert.equal((await back.next('room_state',s=>s.status==='ended')).endedWinner,gameType==='checkers-intl'?'w':'b');
+      await Promise.all([back.close(),second.close(),outsider.close()]);
+    }
+  });
   await t.test('all five game types create and preserve setup options', async () => {
     const c = await client('test_all_games');
     for (const gameType of ['chess', 'chess-intl', 'checkers', 'checkers-intl', 'connect4']) {

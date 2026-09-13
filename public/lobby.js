@@ -146,15 +146,18 @@ document.querySelectorAll('#userColorOptions .tc-btn').forEach((btn) => {
 });
 
 let botEnabled = false;
+let opponentMode = 'friend';
 let selectedBotDifficulty = 'medium';
 const botEnabledInput = document.getElementById('botEnabled');
 const botOptions = document.getElementById('botOptions');
-function setBotEnabled(on) {
-  botEnabled = !!on;
+function setBotEnabled(on) { setOpponentMode(on ? 'bot' : 'friend'); }
+function setOpponentMode(mode) {
+  opponentMode = mode;
+  botEnabled = mode === 'bot';
   botEnabledInput.checked = botEnabled;
   document.getElementById('botDifficultyRow').hidden = !botEnabled;
   document.querySelectorAll('#opponentOptions button').forEach(b => {
-    const active = (b.dataset.mode === 'bot') === botEnabled;
+    const active = b.dataset.mode === opponentMode;
     b.classList.toggle('active', active);
     b.setAttribute('aria-pressed', String(active));
   });
@@ -163,7 +166,7 @@ function setBotEnabled(on) {
 }
 botEnabledInput.onchange = () => setBotEnabled(botEnabledInput.checked);
 document.querySelectorAll('#opponentOptions button').forEach(b => {
-  b.onclick = () => setBotEnabled(b.dataset.mode === 'bot');
+  b.onclick = () => setOpponentMode(b.dataset.mode);
 });
 document.querySelectorAll('#botOptions .tc-btn').forEach(btn => {
   btn.onclick = () => { selectedBotDifficulty = btn.dataset.bd; setBotEnabled(true); };
@@ -181,12 +184,15 @@ function syncSetup() {
   document.getElementById('incrementHint').textContent = I18N.t(selectedTimeBase ? 'ui.incrementHelp' : 'ui.incrementHint');
   document.querySelectorAll('.tc-btn').forEach(b => b.setAttribute('aria-pressed', String(b.classList.contains('active'))));
   document.getElementById('selectedGameName').textContent = I18N.t('game.' + selectedGameType);
-  document.getElementById('createLabel').textContent = I18N.t(creatingRoom ? 'ui.creating' : botEnabled ? 'ui.createBot' : 'ui.createFriend');
-  document.getElementById('playHint').textContent = I18N.t(botEnabled ? 'ui.botHint' : 'ui.friendHint');
+  const local = opponentMode === 'local';
+  newRoomPasswordInput.closest('.time-control-row').hidden = local;
+  document.getElementById('userColorOptions').closest('.time-control-row').hidden = local;
+  document.getElementById('createLabel').textContent = I18N.t(creatingRoom ? 'ui.creating' : local ? 'ui.createLocal' : botEnabled ? 'ui.createBot' : 'ui.createFriend');
+  document.getElementById('playHint').textContent = I18N.t(local ? 'ui.localHint' : botEnabled ? 'ui.botHint' : 'ui.friendHint');
   document.getElementById('setupSummary').textContent = [
-    botEnabled ? I18N.t('ui.bot') + ' · ' + I18N.t('bot.' + selectedBotDifficulty) : I18N.t('ui.friend'),
+    local ? I18N.t('ui.local') : botEnabled ? I18N.t('ui.bot') + ' · ' + I18N.t('bot.' + selectedBotDifficulty) : I18N.t('ui.friend'),
     formatTimeControl(selectedTimeBase, selectedTimeIncrement) || I18N.t('tc.none'),
-    ...(newRoomPasswordInput.value.trim() ? [I18N.t('ui.private')] : [])
+    ...(!local && newRoomPasswordInput.value.trim() ? [I18N.t('ui.private')] : [])
   ].join(' • ');
   createBtn.disabled = creatingRoom || !socket.connected;
   createBtn.setAttribute('aria-busy', String(creatingRoom));
@@ -230,7 +236,7 @@ function createRoom() {
   // Save a name typed in the profile even if the player did not press Save.
   if (nameInput.value.trim() && nameInput.value.trim() !== savedName) savePlayerName();
   const name = newRoomInput.value.trim();
-  const password = newRoomPasswordInput.value.trim();
+  const password = opponentMode === 'local' ? '' : newRoomPasswordInput.value.trim();
   lastCreatedPw = password || null;
   socket.emit('create_room', {
     name,
@@ -239,6 +245,7 @@ function createRoom() {
     timeIncrement: selectedTimeIncrement,
     password: password || null,
     botEnabled,
+    passAndPlay: opponentMode === 'local',
     botDifficulty: selectedBotDifficulty,
     userColor: selectedUserColor,
   });

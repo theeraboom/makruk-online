@@ -1,6 +1,21 @@
 const {test}=require('node:test');const assert=require('node:assert/strict');
 const {stations,station,storage,fetchStations,Player}=require('../public/radio-core');
 const {fixedMobileVolume}=require('../public/radio-core');
+const {mergeStations,catalogueStation}=require('../public/radio-core');
+const catalogue=require('../public/radio-catalog');
+test('curated Thai stations and AM remain available without the directory; broken feeds migrate safely',()=>{
+ const list=mergeStations(catalogue,[]);
+ assert.ok(list.some(s=>s.name.includes('COOL')&&s.recommended));
+ assert.ok(list.some(s=>s.band==='AM'&&s.name.includes('819')));
+ assert.ok(list.some(s=>s.band==='AM'&&s.name.includes('891')));
+ const old={uuid:'c02dba45-1182-4185-9bc2-58aef0d799b6',name:'MCOT 100.5',url:'https://lcdn.mcot.net/RadioLive/smil:fm1005_live.smil/playlist.m3u8'};
+ const updated=catalogueStation(old,catalogue);assert.ok(updated.url.includes('ymqaf8yp.mcot.net'));
+ assert.equal(mergeStations(catalogue,[old]).filter(s=>s.uuid===updated.uuid).length,1);
+ assert.equal(catalogueStation({...entry(),url:'https://stream.talay.asia/talay'},catalogue),null);
+ assert.equal(mergeStations(catalogue,[],[entry('custom')])[0].uuid,'custom');
+ assert.equal(stations([{...entry(),name:'NBT2HD'},{...entry('tv'),url:'https://cdn.example/live_event/tv.m3u8'}]).length,0);
+ for(const replacement of catalogue.replacements)assert.ok(catalogue.stations.some(s=>s.uuid===replacement.to),'replacement must point directly to a current station');
+});
 test('iPhone, iPad desktop mode, and Chrome iOS require gain instead of reported native volume',()=>{
  assert.equal(fixedMobileVolume({userAgent:'iPhone Version/18 Safari'}),true);
  assert.equal(fixedMobileVolume({userAgent:'iPhone CriOS/130 Mobile Safari'}),true);
@@ -25,6 +40,16 @@ test('pause cancels pending playback and autoplay denial is distinct from stream
 });
 test('a hung stream times out and releases audio',async()=>{
  const{p,audios}=harness(10);p.play(entry());await new Promise(r=>setTimeout(r,25));assert.equal(p.state,'timeout');assert.equal(audios[0].paused,true);
+});
+test('repeated stalled events cannot keep a dead stream loading indefinitely',async()=>{
+ const{p,audios}=harness(30);p.play(entry());
+ const timer=setInterval(()=>audios[0].onstalled?.(),5);
+ await new Promise(r=>setTimeout(r,65));clearInterval(timer);
+ assert.equal(p.state,'timeout');assert.equal(audios[0].paused,true);
+});
+test('a stream which stalls after playback also has a bounded timeout',async()=>{
+ const{p,audios}=harness(15);const pending=p.play(entry());audios[0].resolve();await pending;
+ audios[0].onwaiting();await new Promise(r=>setTimeout(r,35));assert.equal(p.state,'timeout');
 });
 test('directory timeouts and invalid responses fail over to the next host',async()=>{
  const calls=[];const list=await fetchStations(async(url,{signal})=>{calls.push(url);if(calls.length===1)return new Promise((_,reject)=>signal.addEventListener('abort',()=>reject(Error('timeout'))));if(calls.length===2)return{ok:true,json:async()=>({bad:true})};return{ok:true,json:async()=>[entry()]};},['https://a','https://b','https://c'],10);assert.equal(list.length,1);assert.equal(calls.length,3);

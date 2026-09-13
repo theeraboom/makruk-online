@@ -68,6 +68,7 @@ let lastViewerCount = 0;
 let lastRoomName = '';
 let lastHasDefaultName = false;
 let myRole = null;
+let passAndPlay = false;
 let board = null;
 let drawInfo=null, drawHasBot=false;
 let currentPlayer = 'w';
@@ -136,7 +137,8 @@ socket.on('room_not_found', () => {
   setTimeout(() => { AppNavigation.go('/'); }, 3000);
 });
 
-socket.on('joined', ({ role, name }) => {
+socket.on('joined', ({ role, name, passAndPlay: local }) => {
+  passAndPlay = !!local;
   myRole = role;
   currentDisplayName = typeof name === 'string' ? name : userName;
   if (!hasJoinedView) { flipped = role === 'b'; hasJoinedView = true; applyCamera(true); }
@@ -145,6 +147,8 @@ socket.on('joined', ({ role, name }) => {
 });
 
 socket.on('room_state', (state) => {
+  passAndPlay = !!state.passAndPlay;
+  document.body.classList.toggle('local-play', passAndPlay);
   lastRoomName = state.name;
   lastHasDefaultName = !!state.hasDefaultName;
   roomIsPrivate = !!state.isPrivate;
@@ -184,6 +188,7 @@ socket.on('room_state', (state) => {
     : I18N.t('rules.summary');
   board = state.board;
   currentPlayer = state.currentPlayer;
+  if (passAndPlay) myRole = currentPlayer;
   status = state.status;
   mustContinueFrom = state.mustContinueFrom || null;
   chessCastling = state.castling || null;
@@ -277,7 +282,11 @@ function updatePlayerSlot(side, player) {
   const avatarEl = document.getElementById('avatar' + side);
   const nameEl = slot.querySelector('.player-name');
   if (player) {
-    if (player.isBot) {
+    if (passAndPlay) {
+      avatarEl.textContent = side === 'W' ? '1' : '2';
+      avatarEl.classList.remove('bot-avatar', 'empty');
+      nameEl.textContent = I18N.t(side === 'W' ? 'local.player1' : 'local.player2');
+    } else if (player.isBot) {
       avatarEl.textContent = '🤖';
       avatarEl.classList.add('bot-avatar');
       avatarEl.classList.remove('empty');
@@ -431,6 +440,7 @@ function spawnFloatingReaction(emoji) {
 
 function updateRoleBadge() {
   const badge = document.getElementById('roleBadge');
+  if (passAndPlay) { badge.textContent = I18N.t('ui.local'); badge.className = 'role-badge'; return; }
   if (isConnect4Game()) {
     if (myRole === 'w') { badge.textContent = I18N.t('c4.role.y'); badge.className = 'role-badge connect4 w'; }
     else if (myRole === 'b') { badge.textContent = I18N.t('c4.role.r'); badge.className = 'role-badge connect4 b'; }
@@ -701,7 +711,7 @@ function dropColumn(col) {
   if (!socket.connected) { showToast(I18N.t('ui.connectError')); return; }
   if (status !== 'playing' || myRole !== currentPlayer) return;
   if (Connect4.findLandingRow(board, col) < 0) return; // column full
-  socket.emit('move', { col });
+  socket.emit('move', { col, ply: moves.length });
 }
 
 function handleClick(r, c) {
@@ -743,7 +753,7 @@ function handleClick(r, c) {
 }
 
 function submitMove(from,to,promotion) {
-  socket.emit('move',{from,to,promotion,claimDraw:document.getElementById('claimNextMove').checked});
+  socket.emit('move',{from,to,promotion,ply:moves.length,claimDraw:document.getElementById('claimNextMove').checked});
 }
 function choosePromotion(from,to){
   if(document.getElementById('promotionDialog'))return;
@@ -757,7 +767,10 @@ function choosePromotion(from,to){
 }
 function drawAction(action){if(socket.connected)socket.emit('draw_action',{action});}
 document.getElementById('claimDrawBtn').onclick=()=>drawAction('claim');
-document.getElementById('offerDrawBtn').onclick=()=>drawAction('offer');
+document.getElementById('offerDrawBtn').onclick=()=>{
+  if (passAndPlay) { if (confirm(I18N.getLang()==='th'?'ทั้งสองฝ่ายตกลงจบเกมเสมอกันใช่ไหม?':'Do both players agree to a draw?')) drawAction('agree'); }
+  else drawAction('offer');
+};
 document.getElementById('countDrawBtn').onclick=()=>drawAction('count');
 document.getElementById('stopCountBtn').onclick=()=>drawAction('stop_count');
 document.getElementById('acceptDrawBtn').onclick=()=>drawAction('accept');
@@ -767,7 +780,7 @@ function renderDrawControls(){
   document.getElementById('drawControls').hidden=!player||!active;
   if(!active)document.getElementById('promotionDialog')?.close();
   const button=document.getElementById('claimDrawBtn');button.textContent=th?'ขอเสมอตามกติกา':'Claim draw';button.hidden=isConnect4Game();button.disabled=!mine||!drawInfo?.claim;
-  const offer=document.getElementById('offerDrawBtn');offer.textContent=th?'เสนอเสมอ':'Offer draw';offer.hidden=drawHasBot;offer.disabled=!!drawInfo?.offer;
+  const offer=document.getElementById('offerDrawBtn');offer.textContent=passAndPlay?(th?'ตกลงเสมอ':'Agree a draw'):(th?'เสนอเสมอ':'Offer draw');offer.hidden=drawHasBot;offer.disabled=!!drawInfo?.offer;
   const incoming=drawInfo?.offer&&drawInfo.offer!==myRole;
   document.getElementById('drawOffer').hidden=!drawInfo?.offer;document.getElementById('drawOfferText').textContent=incoming?(th?'อีกฝ่ายขอเสมอ':'Opponent offers a draw'):(th?'ส่งคำขอเสมอแล้ว':'Draw offered');
   for(const [id,label,en] of [['acceptDrawBtn','ตกลง','Accept'],['declineDrawBtn','เล่นต่อ','Decline']]){const b=document.getElementById(id);b.hidden=!incoming;b.textContent=th?label:en;}
@@ -947,7 +960,9 @@ document.getElementById('resetBtn').onclick = () => {
 
 document.getElementById('resignBtn').onclick = () => {
   if (!socket.connected) { showToast(I18N.t('ui.connectError')); return; }
-  if (confirm(I18N.t('confirm.resign'))) socket.emit('resign');
+  const side = isConnect4Game() ? I18N.t(myRole === 'w' ? 'c4.side.y' : 'c4.side.r') : (I18N.getLang()==='th' ? (myRole==='w'?'ขาว':'ดำ') : (myRole==='w'?'White':'Black'));
+  const prompt = passAndPlay ? (I18N.getLang()==='th' ? `ฝ่าย${side}ยอมแพ้ใช่ไหม?` : `Should ${side} resign?`) : I18N.t('confirm.resign');
+  if (confirm(prompt)) socket.emit('resign');
 };
 
 document.getElementById('shareBtn').onclick = () => {
@@ -962,7 +977,8 @@ document.getElementById('shareBtn').onclick = () => {
   async function copy(){try{await navigator.clipboard.writeText(urls[destination]);dialog.querySelector('#shareResult').textContent=th?'คัดลอกแล้ว':'Copied';}catch{dialog.querySelector('#shareUrl').select();dialog.querySelector('#shareResult').textContent=th?'เลือกลิงก์ไว้แล้ว กดคัดลอกได้เลย':'Select and copy the link above';}}
   dialog.querySelector('#copyShareLink').onclick=copy;
   dialog.querySelector('#nativeShareLink').onclick=async()=>{try{const result=await ShareLinks.send(navigator,{title:'Playmakruk',text:destination==='room'?(th?'มาเล่นด้วยกันที่วงนี้':'Join me at this table'):(th?'แวะมาเล่นหมากด้วยกัน':'Play a board game with me'),url:urls[destination]});if(result!=='cancelled')dialog.querySelector('#shareResult').textContent=result==='copied'?(th?'คัดลอกแล้ว':'Copied'):(th?'แชร์แล้ว':'Shared');}catch{await copy();}};
-  choose('room');dialog.showModal();
+  if (passAndPlay) dialog.querySelector('[data-destination="room"]').remove();
+  choose(passAndPlay ? 'website' : 'room');dialog.showModal();
 };
 
 const soundBtn = document.getElementById('soundBtn');
