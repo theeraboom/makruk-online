@@ -78,7 +78,10 @@
       // Repeated waiting/stalled events must not keep a dead stream loading forever.
       const arm=()=>{if(!this.timer)this.timer=setTimeout(()=>fail('timeout'),this.timeout);};
       audio.onplaying=()=>{if(active()){clearTimeout(this.timer);this.timer=null;this.update('playing');}};
-      audio.onwaiting=audio.onstalled=()=>{if(active()){this.update('loading');arm();}};
+      audio.onwaiting=()=>{if(active()){this.update('loading');arm();}};
+      // HLS may report stalled downloads while buffered audio keeps playing.
+      // Only start a failure timeout when playback has actually run out of data.
+      audio.onstalled=()=>{if(active()&&!(audio.readyState>=3&&!audio.paused)){this.update('loading');arm();}};
       audio.onerror=()=>fail('error');audio.onended=()=>fail('ended');
       this.update('loading');arm();
       try {

@@ -51,6 +51,12 @@ test('a stream which stalls after playback also has a bounded timeout',async()=>
  const{p,audios}=harness(15);const pending=p.play(entry());audios[0].resolve();await pending;
  audios[0].onwaiting();await new Promise(r=>setTimeout(r,35));assert.equal(p.state,'timeout');
 });
+test('stalled downloads must not cut off audio which still has buffered data',async()=>{
+ const{p,audios}=harness(15);const pending=p.play(entry());audios[0].resolve();await pending;
+ audios[0].readyState=4;audios[0].paused=false;audios[0].onstalled();
+ await new Promise(r=>setTimeout(r,35));assert.equal(p.state,'playing');assert.equal(audios[0].paused,false);
+ audios[0].readyState=2;audios[0].onwaiting();await new Promise(r=>setTimeout(r,35));assert.equal(p.state,'timeout');
+});
 test('directory timeouts and invalid responses fail over to the next host',async()=>{
  const calls=[];const list=await fetchStations(async(url,{signal})=>{calls.push(url);if(calls.length===1)return new Promise((_,reject)=>signal.addEventListener('abort',()=>reject(Error('timeout'))));if(calls.length===2)return{ok:true,json:async()=>({bad:true})};return{ok:true,json:async()=>[entry()]};},['https://a','https://b','https://c'],10);assert.equal(list.length,1);assert.equal(calls.length,3);
 });
