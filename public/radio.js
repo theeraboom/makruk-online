@@ -10,7 +10,7 @@
   let favorites=new Set((Array.isArray(favRaw)?favRaw.filter(x=>typeof x==='string'):[]).map(id=>catalogue.replacements.find(r=>r.from===id)?.to||id));
   saved.set('mk_radio_favorites',JSON.stringify([...favorites]));
   const failed=new Set();
-  let filter=catalogue.stations.length?'recommended':'all',loading=false,loadError=false,loadPromise=null,hlsPromise=null,opener=null;
+  let filter='fm',loading=false,loadError=false,loadPromise=null,hlsPromise=null,opener=null;
   const en=()=>window.I18N?.getLang()==='en'||document.documentElement.lang==='en';
   const t=(th,eng)=>en()?eng:th;
   const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -21,7 +21,7 @@
   panel.innerHTML=`<div class="radio-heading"><div><span class="radio-eyebrow">PLAYMAKRUK RADIO</span><h2 id="radioTitle"></h2></div><button id="radioClose" type="button">✕</button></div>
     <div class="radio-now"><div class="radio-art" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div><div class="radio-track"><strong id="radioTrack"></strong><span id="radioState" role="status"></span></div><button id="radioPlayBtn" type="button"></button></div>
     <div class="radio-browse"><div class="radio-search-row"><input id="radioSearch" type="search" autocomplete="off"><button id="radioRefresh" type="button">↻</button><button id="radioAdd" type="button">＋</button></div>
-    <div class="radio-tabs" role="group"><button type="button" data-radio-filter="recommended"></button><button type="button" data-radio-filter="am"></button><button type="button" data-radio-filter="all"></button><button type="button" data-radio-filter="favorites"></button><button type="button" data-radio-filter="custom"></button></div></div>
+    <div class="radio-tabs" role="group"><button type="button" data-radio-filter="fm"></button><button type="button" data-radio-filter="am"></button><button type="button" data-radio-filter="favorites"></button></div></div>
     <form id="radioAddForm" hidden><label><span id="radioNameLabel"></span><input id="radioCustomName" maxlength="100" required></label><label><span id="radioUrlLabel"></span><input id="radioCustomUrl" type="url" placeholder="https://…" required></label><p id="radioFormError" role="alert"></p><div><button id="radioSave" type="submit"></button><button id="radioCancel" type="button"></button></div></form>
     <p id="radioNotice" role="status" hidden></p><div id="radioList"></div><div class="radio-credit"><span id="radioCount"></span><a href="https://www.radio-browser.info/" target="_blank" rel="noopener">Radio Browser ↗</a></div>`;
   document.body.append(dock,panel);
@@ -53,8 +53,8 @@
   function updateRows(){panel.querySelectorAll('[data-station]').forEach(row=>{const selected=row.dataset.station===player.current?.uuid;row.classList.toggle('is-current',selected);row.querySelector('.radio-select').setAttribute('aria-pressed',String(selected));row.querySelector('.radio-row-icon').textContent=selected&&player.state==='playing'?'♫':'▶';});}
   function renderList(){
     const query=$('radioSearch').value.trim().toLocaleLowerCase();
-    const list=all().filter(s=>(filter!=='recommended'||query||s.recommended)&&(filter!=='am'||s.band==='AM')&&(filter!=='favorites'||favorites.has(s.uuid))&&(filter!=='custom'||custom.some(c=>c.uuid===s.uuid))&&(!query||(s.name+' '+s.tags).toLocaleLowerCase().includes(query))).sort((a,b)=>Number(failed.has(a.uuid))-Number(failed.has(b.uuid)));
-    $('radioList').innerHTML=list.map(s=>`<div class="radio-station" data-station="${escape(s.uuid)}"><button type="button" class="radio-select" aria-pressed="false"><span class="radio-row-icon" aria-hidden="true">▶</span><span><b>${escape(s.name)}</b><small>${escape(failed.has(s.uuid)?t('ขัดข้องชั่วคราว · แตะเพื่อลองใหม่','Unavailable now · tap to retry'):[s.tags.split(',').slice(0,2).join(' · '),s.bitrate?s.bitrate+' kbps':'',s.hls?'HLS':s.codec].filter(Boolean).join(' · '))}</small></span></button><button type="button" class="radio-fav" aria-pressed="${favorites.has(s.uuid)}" aria-label="${escape(t('สถานีโปรด ','Favorite ')+s.name)}">${favorites.has(s.uuid)?'♥':'♡'}</button>${custom.some(c=>c.uuid===s.uuid)?`<button type="button" class="radio-delete" aria-label="${escape(t('ลบ ','Delete ')+s.name)}">×</button>`:''}</div>`).join('')||`<div class="radio-empty">${loading?t('กำลังหาสถานีให้คุณ…','Finding stations…'):filter==='favorites'?t('กด ♡ ข้างสถานีเพื่อเก็บไว้ฟัง','Tap ♡ beside a station to save it'):filter==='custom'?t('เพิ่มลิงก์สถานีของคุณด้วยปุ่ม ＋','Add your own stream using ＋'):t('ไม่พบสถานี ลองคำอื่นหรือเพิ่มลิงก์ด้วย ＋','No stations found. Try another search or add a stream with ＋')}</div>`;
+    const list=all().filter(s=>(filter==='favorites'?favorites.has(s.uuid):filter==='am'?s.band==='AM':s.band!=='AM')&&(!query||(s.name+' '+s.tags).toLocaleLowerCase().includes(query))).sort((a,b)=>Number(failed.has(a.uuid))-Number(failed.has(b.uuid)));
+    $('radioList').innerHTML=list.map(s=>`<div class="radio-station" data-station="${escape(s.uuid)}"><button type="button" class="radio-select" aria-pressed="false"><span class="radio-row-icon" aria-hidden="true">▶</span><span><b>${escape(s.name)}</b><small>${escape(failed.has(s.uuid)?t('ขัดข้องชั่วคราว · แตะเพื่อลองใหม่','Unavailable now · tap to retry'):[s.tags.split(',').slice(0,2).join(' · '),s.bitrate?s.bitrate+' kbps':'',s.hls?'HLS':s.codec].filter(Boolean).join(' · '))}</small></span></button><button type="button" class="radio-fav" aria-pressed="${favorites.has(s.uuid)}" aria-label="${escape(t('สถานีโปรด ','Favorite ')+s.name)}">${favorites.has(s.uuid)?'♥':'♡'}</button>${custom.some(c=>c.uuid===s.uuid)?`<button type="button" class="radio-delete" aria-label="${escape(t('ลบ ','Delete ')+s.name)}">×</button>`:''}</div>`).join('')||`<div class="radio-empty">${loading?t('กำลังหาสถานีให้คุณ…','Finding stations…'):filter==='favorites'?t('กด ♡ ข้างสถานีเพื่อเก็บไว้ฟัง','Tap ♡ beside a station to save it'):t('ไม่พบสถานี ลองคำอื่นหรือเพิ่มลิงก์ด้วย ＋','No stations found. Try another search or add a stream with ＋')}</div>`;
     $('radioCount').textContent=list.length+' '+t('สถานี','stations');
     panel.querySelectorAll('[data-radio-filter]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.radioFilter===filter)));
     $('radioNotice').hidden=!loading&&!loadError;
@@ -88,14 +88,14 @@
     e.preventDefault();const item=station({uuid:'custom_'+Date.now().toString(36),name:$('radioCustomName').value,url:$('radioCustomUrl').value.trim()});
     if(!item){$('radioFormError').textContent=t('ใช้ชื่อสถานีและลิงก์สตรีม HTTPS ที่ถูกต้อง','Enter a name and a valid HTTPS stream URL');return;}
     if(all().some(s=>s.url===item.url)){$('radioFormError').textContent=t('มีลิงก์สถานีนี้แล้ว','This stream is already in your list');return;}
-    custom.push(item);saved.set('mk_radio_custom',JSON.stringify(custom));filter='custom';$('radioSearch').value='';e.target.reset();$('radioFormError').textContent='';e.target.hidden=true;renderList();$('radioAdd').focus();
+    custom.push(item);saved.set('mk_radio_custom',JSON.stringify(custom));filter=item.band==='AM'?'am':'fm';$('radioSearch').value='';e.target.reset();$('radioFormError').textContent='';e.target.hidden=true;renderList();$('radioAdd').focus();
   };
   function translate(){
     $('radioTitle').textContent=t('ฟังเพลิน เดินหมากสนุก','Tune in. Make your move.');
     $('radioClose').setAttribute('aria-label',t('ย่อวิทยุ เพลงยังเล่นต่อ','Minimize radio, keep listening'));
     $('radioSearch').placeholder=t('ค้นหาสถานี แนวเพลง…','Search stations, genres…');$('radioSearch').setAttribute('aria-label',t('ค้นหาสถานีวิทยุ','Search radio stations'));
     $('radioRefresh').setAttribute('aria-label',t('อัปเดตสถานี','Refresh stations'));$('radioAdd').setAttribute('aria-label',t('เพิ่มสถานีเอง','Add a station'));
-    panel.querySelector('[data-radio-filter="recommended"]').textContent=t('แนะนำ','Featured');panel.querySelector('[data-radio-filter="am"]').textContent='AM';panel.querySelector('[data-radio-filter="all"]').textContent=t('ทั้งหมด','All');panel.querySelector('[data-radio-filter="favorites"]').textContent=t('♡ โปรด','♡ Saved');panel.querySelector('[data-radio-filter="custom"]').textContent=t('ของฉัน','Mine');
+    panel.querySelector('[data-radio-filter="fm"]').textContent='FM';panel.querySelector('[data-radio-filter="am"]').textContent='AM';panel.querySelector('[data-radio-filter="favorites"]').textContent=t('รายการโปรด','Favorites');
     $('radioNameLabel').textContent=t('ชื่อสถานี','Station name');$('radioUrlLabel').textContent=t('ลิงก์สตรีม HTTPS','HTTPS stream URL');$('radioSave').textContent=t('เพิ่มสถานี','Add station');$('radioCancel').textContent=t('ยกเลิก','Cancel');renderPlayer();renderList();
   }
   document.addEventListener('langchange',translate);
